@@ -19,7 +19,10 @@ export default function PluginsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchPlugins = useCallback(() => {
-    if (!token) return;
+    if (!token) {
+      setLoading(false);
+      return;
+    }
     api<PluginMeta[]>("/api/v1/plugins", { token })
       .then(setPlugins)
       .catch(() => {})

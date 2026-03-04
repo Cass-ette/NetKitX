@@ -3,9 +3,10 @@ import shutil
 import zipfile
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 
 from app.core.config import settings
+from app.core.deps import get_current_user
 from app.plugins.loader import load_single_plugin
 from app.plugins.registry import registry
 
@@ -15,6 +16,7 @@ router = APIRouter()
 
 ALLOWED_EXTENSIONS = {".py", ".yaml", ".yml", ".json", ".txt"}
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10 MB
+MAX_UNCOMPRESSED_SIZE = 50 * 1024 * 1024  # 50 MB
 
 
 @router.get("")
@@ -62,7 +64,7 @@ async def get_plugin(name: str):
 
 
 @router.post("/upload")
-async def upload_plugin(file: UploadFile):
+async def upload_plugin(file: UploadFile, _=Depends(get_current_user)):
     """Upload a plugin zip file, extract and hot-load it."""
     if not file.filename or not file.filename.endswith(".zip"):
         raise HTTPException(status_code=400, detail="Only .zip files are accepted")
@@ -77,6 +79,15 @@ async def upload_plugin(file: UploadFile):
         zf = zipfile.ZipFile(io.BytesIO(content))
     except zipfile.BadZipFile:
         raise HTTPException(status_code=400, detail="Invalid zip file")
+
+    # Check uncompressed size to prevent zip bombs
+    total_uncompressed = sum(info.file_size for info in zf.infolist())
+    if total_uncompressed > MAX_UNCOMPRESSED_SIZE:
+        zf.close()
+        raise HTTPException(
+            status_code=400,
+            detail=f"Uncompressed size too large ({total_uncompressed} bytes, max {MAX_UNCOMPRESSED_SIZE})",
+        )
 
     # Validate zip contents
     names = zf.namelist()
@@ -169,22 +180,22 @@ async def upload_plugin(file: UploadFile):
 
 
 @router.patch("/{name}")
-async def toggle_plugin(name: str, body: dict):
+async def toggle_plugin(name: str, body: dict, _=Depends(get_current_user)):
     """Enable or disable a plugin."""
     meta = registry.get_meta(name)
     if not meta:
         raise HTTPException(status_code=404, detail=f"Plugin '{name}' not found")
 
     enabled = body.get("enabled")
-    if enabled is None:
-        raise HTTPException(status_code=400, detail="Missing 'enabled' field")
+    if not isinstance(enabled, bool):
+        raise HTTPException(status_code=400, detail="'enabled' field must be a boolean")
 
-    registry.set_enabled(name, bool(enabled))
+    registry.set_enabled(name, enabled)
     return {"name": name, "enabled": registry.is_enabled(name)}
 
 
 @router.delete("/{name}")
-async def delete_plugin(name: str):
+async def delete_plugin(name: str, _=Depends(get_current_user)):
     """Unregister and delete a plugin."""
     meta = registry.get_meta(name)
     if not meta:
