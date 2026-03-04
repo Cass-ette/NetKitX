@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import init_db, get_session
 from app.core.events import manager
-from app.api.v1 import auth, tools, tasks, plugins
+from app.api.v1 import auth, tools, tasks, plugins, marketplace
 from app.plugins.loader import load_all_plugins
 
 logger = logging.getLogger(__name__)
@@ -42,6 +42,7 @@ app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(tools.router, prefix="/api/v1/tools", tags=["tools"])
 app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["tasks"])
 app.include_router(plugins.router, prefix="/api/v1/plugins", tags=["plugins"])
+app.include_router(marketplace.router, prefix="/api/v1")
 
 
 @app.get("/api/health")
