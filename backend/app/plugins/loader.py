@@ -61,6 +61,36 @@ def load_python_plugin(plugin_dir: Path) -> PluginBase | None:
     return None
 
 
+def load_single_plugin(plugin_dir: Path, engines_dir: str = "engines/bin") -> bool:
+    """Load a single plugin from its directory. Returns True if loaded successfully."""
+    if not plugin_dir.is_dir() or plugin_dir.name.startswith("_"):
+        return False
+
+    meta = load_plugin_meta(plugin_dir)
+    if not meta:
+        return False
+
+    if meta.engine == "python":
+        plugin = load_python_plugin(plugin_dir)
+        if plugin:
+            plugin.meta = meta
+            registry.register(plugin)
+            logger.info(f"Loaded plugin: {meta.name} v{meta.version}")
+            return True
+    elif meta.engine in ("go", "cli"):
+        yaml_path = plugin_dir / "plugin.yaml"
+        with open(yaml_path) as f:
+            config = yaml.safe_load(f)
+        binary = config.get("binary", "")
+        binary_path = str(Path(engines_dir).parent.parent / binary) if binary else ""
+        plugin = GoEnginePlugin(meta=meta, binary_path=binary_path)
+        registry.register(plugin)
+        logger.info(f"Loaded Go engine plugin: {meta.name} v{meta.version} -> {binary_path}")
+        return True
+
+    return False
+
+
 def load_all_plugins(plugins_dir: str, engines_dir: str = "engines/bin") -> int:
     """Load all plugins from the plugins directory. Returns count loaded."""
     plugins_path = Path(plugins_dir)
@@ -70,31 +100,7 @@ def load_all_plugins(plugins_dir: str, engines_dir: str = "engines/bin") -> int:
 
     count = 0
     for plugin_dir in plugins_path.iterdir():
-        if not plugin_dir.is_dir() or plugin_dir.name.startswith("_"):
-            continue
-
-        meta = load_plugin_meta(plugin_dir)
-        if not meta:
-            continue
-
-        if meta.engine == "python":
-            plugin = load_python_plugin(plugin_dir)
-            if plugin:
-                plugin.meta = meta
-                registry.register(plugin)
-                logger.info(f"Loaded plugin: {meta.name} v{meta.version}")
-                count += 1
-        elif meta.engine in ("go", "cli"):
-            # Read binary path from plugin.yaml config
-            yaml_path = plugin_dir / "plugin.yaml"
-            with open(yaml_path) as f:
-                config = yaml.safe_load(f)
-            binary = config.get("binary", "")
-            # Resolve relative to project root
-            binary_path = str(Path(engines_dir).parent.parent / binary) if binary else ""
-            plugin = GoEnginePlugin(meta=meta, binary_path=binary_path)
-            registry.register(plugin)
-            logger.info(f"Loaded Go engine plugin: {meta.name} v{meta.version} -> {binary_path}")
+        if load_single_plugin(plugin_dir, engines_dir):
             count += 1
 
     return count
