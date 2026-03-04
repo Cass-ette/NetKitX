@@ -9,6 +9,11 @@ from app.marketplace.resolver import (
     CircularDependencyError,
     resolve_dependencies,
 )
+from app.marketplace.installer import (
+    PluginInstaller,
+    InstallError,
+    VerificationError,
+)
 
 __all__ = [
     "Version",
@@ -20,4 +25,7 @@ __all__ = [
     "ConflictError",
     "CircularDependencyError",
     "resolve_dependencies",
+    "PluginInstaller",
+    "InstallError",
+    "VerificationError",
 ]

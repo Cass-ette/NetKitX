@@ -277,3 +277,112 @@ async def list_reviews(
     reviews = result.scalars().all()
 
     return reviews
+
+
+@router.post("/install")
+async def install_plugin(
+    plugin_name: str,
+    version: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Install a plugin from marketplace.
+
+    Resolves dependencies and installs all required plugins.
+    """
+    from app.marketplace.installer import InstallError, PluginInstaller
+    from app.marketplace.resolver import Dependency, Package, resolve_dependencies
+
+    # Get plugin from marketplace
+    plugin_stmt = select(MarketplacePlugin).where(MarketplacePlugin.name == plugin_name)
+    plugin_result = await session.execute(plugin_stmt)
+    plugin = plugin_result.scalar_one_or_none()
+
+    if not plugin:
+        raise HTTPException(status_code=404, detail="Plugin not found in marketplace")
+
+    # Get all marketplace plugins and versions for resolver
+    all_plugins_stmt = select(MarketplacePlugin).options(
+        selectinload(MarketplacePlugin.versions).selectinload(MarketplaceVersion.dependencies)
+    )
+    all_plugins_result = await session.execute(all_plugins_stmt)
+    all_plugins = all_plugins_result.scalars().all()
+
+    # Build available packages dict for resolver
+    available_packages: dict[str, list[Package]] = {}
+    for mp in all_plugins:
+        packages = []
+        for mv in mp.versions:
+            if mv.yanked:
+                continue
+
+            deps = [
+                Dependency(
+                    plugin_name=dep.depends_on_plugin,
+                    constraint=dep.version_constraint,
+                    optional=dep.optional,
+                )
+                for dep in mv.dependencies
+            ]
+
+            packages.append(Package(name=mp.name, version=mv.version, dependencies=deps))
+
+        if packages:
+            available_packages[mp.name] = packages
+
+    # Resolve dependencies
+    try:
+        solution = resolve_dependencies(plugin_name, version, available_packages)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Dependency resolution failed: {e}")
+
+    # Install plugins in dependency order
+    installer = PluginInstaller(session, current_user.id)
+    installed = []
+
+    try:
+        for pkg_name, pkg_version in solution.items():
+            # Get version info
+            version_stmt = (
+                select(MarketplaceVersion)
+                .join(MarketplacePlugin)
+                .where(
+                    MarketplacePlugin.name == pkg_name,
+                    MarketplaceVersion.version == pkg_version,
+                )
+            )
+            version_result = await session.execute(version_stmt)
+            version_obj = version_result.scalar_one_or_none()
+
+            if not version_obj:
+                raise HTTPException(
+                    status_code=404, detail=f"Version {pkg_version} not found for {pkg_name}"
+                )
+
+            # Install
+            await installer.install(
+                plugin_name=pkg_name,
+                version=pkg_version,
+                package_url=version_obj.package_url,
+                package_hash=version_obj.package_hash,
+            )
+
+            installed.append({"plugin": pkg_name, "version": pkg_version})
+
+            # Update download count
+            plugin_update_stmt = select(MarketplacePlugin).where(MarketplacePlugin.name == pkg_name)
+            plugin_update_result = await session.execute(plugin_update_stmt)
+            plugin_to_update = plugin_update_result.scalar_one_or_none()
+            if plugin_to_update:
+                plugin_to_update.downloads += 1
+                await session.commit()
+
+        return {"success": True, "installed": installed}
+
+    except InstallError as e:
+        # Rollback on installation error
+        await installer.rollback()
+        raise HTTPException(status_code=500, detail=f"Installation failed: {e}")
+    except Exception as e:
+        await installer.rollback()
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
