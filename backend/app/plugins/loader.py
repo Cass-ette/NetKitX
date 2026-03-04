@@ -6,6 +6,7 @@ from pathlib import Path
 import yaml
 
 from app.plugins.base import PluginBase, PluginMeta
+from app.plugins.engine import GoEnginePlugin
 from app.plugins.registry import registry
 
 logger = logging.getLogger(__name__)
@@ -60,7 +61,7 @@ def load_python_plugin(plugin_dir: Path) -> PluginBase | None:
     return None
 
 
-def load_all_plugins(plugins_dir: str) -> int:
+def load_all_plugins(plugins_dir: str, engines_dir: str = "engines/bin") -> int:
     """Load all plugins from the plugins directory. Returns count loaded."""
     plugins_path = Path(plugins_dir)
     if not plugins_path.exists():
@@ -83,9 +84,17 @@ def load_all_plugins(plugins_dir: str) -> int:
                 registry.register(plugin)
                 logger.info(f"Loaded plugin: {meta.name} v{meta.version}")
                 count += 1
-        else:
-            # For go/cli engines, register meta only — execution handled differently
-            logger.info(f"Registered external plugin: {meta.name} ({meta.engine})")
+        elif meta.engine in ("go", "cli"):
+            # Read binary path from plugin.yaml config
+            yaml_path = plugin_dir / "plugin.yaml"
+            with open(yaml_path) as f:
+                config = yaml.safe_load(f)
+            binary = config.get("binary", "")
+            # Resolve relative to project root
+            binary_path = str(Path(engines_dir).parent.parent / binary) if binary else ""
+            plugin = GoEnginePlugin(meta=meta, binary_path=binary_path)
+            registry.register(plugin)
+            logger.info(f"Loaded Go engine plugin: {meta.name} v{meta.version} -> {binary_path}")
             count += 1
 
     return count

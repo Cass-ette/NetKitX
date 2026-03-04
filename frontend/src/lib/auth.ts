@@ -1,0 +1,51 @@
+import { create } from "zustand";
+import { api } from "@/lib/api";
+import type { User } from "@/types";
+
+interface AuthState {
+  token: string | null;
+  user: User | null;
+  setAuth: (token: string, user: User) => void;
+  logout: () => void;
+  login: (username: string, password: string) => Promise<void>;
+  register: (username: string, email: string, password: string) => Promise<void>;
+}
+
+export const useAuth = create<AuthState>((set, get) => ({
+  token: typeof window !== "undefined" ? localStorage.getItem("token") : null,
+  user: typeof window !== "undefined"
+    ? JSON.parse(localStorage.getItem("user") || "null")
+    : null,
+
+  setAuth: (token, user) => {
+    localStorage.setItem("token", token);
+    localStorage.setItem("user", JSON.stringify(user));
+    set({ token, user });
+  },
+
+  logout: () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    set({ token: null, user: null });
+  },
+
+  login: async (username, password) => {
+    const { access_token } = await api<{ access_token: string }>("/api/v1/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    });
+    // Decode user from token (or fetch /me endpoint)
+    // For now store minimal info
+    const user: User = { id: 0, username, email: "", role: "user" };
+    get().setAuth(access_token, user);
+  },
+
+  register: async (username, email, password) => {
+    const user = await api<User>("/api/v1/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ username, email, password }),
+    });
+    // Auto-login after register
+    await get().login(username, password);
+  },
+}));

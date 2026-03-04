@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -45,9 +45,9 @@ async def update_task_status(
         return None
     task.status = status
     if status == "running":
-        task.started_at = datetime.now(timezone.utc)
+        task.started_at = datetime.now(UTC).replace(tzinfo=None)
     if status in ("done", "failed"):
-        task.finished_at = datetime.now(timezone.utc)
+        task.finished_at = datetime.now(UTC).replace(tzinfo=None)
     if result is not None:
         task.result = result
     await session.commit()

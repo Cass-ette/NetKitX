@@ -30,6 +30,9 @@ redisdata/
 # Logs
 *.log
 
+# Egg info
+*.egg-info/
+
 # Testing
 .coverage
 htmlcov/
