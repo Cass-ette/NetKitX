@@ -74,7 +74,7 @@ export default function PluginDetailPage() {
     try {
       const data = await api<PluginDetail>(
         `/api/v1/marketplace/plugins/${pluginName}`,
-        { token }
+        { token: token || undefined }
       );
       setPlugin(data);
       setSelectedVersion(data.latest_version || "");
@@ -98,12 +98,12 @@ export default function PluginDetailPage() {
       const result = await api<{success: boolean, installed: Array<{plugin: string, version: string}>}>(
         "/api/v1/marketplace/install",
         {
-          token,
+          token: token || undefined,
           method: "POST",
-          params: {
+          body: JSON.stringify({
             plugin_name: pluginName,
             version: selectedVersion || undefined,
-          },
+          }),
         }
       );
 

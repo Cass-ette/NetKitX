@@ -47,7 +47,7 @@ export default function MarketplacePage() {
 
   const loadCategories = async () => {
     try {
-      const data = await api<string[]>("/api/v1/marketplace/categories", { token });
+      const data = await api<string[]>("/api/v1/marketplace/categories", { token: token || undefined });
       setCategories(data);
     } catch (error) {
       console.error("Failed to load categories:", error);
@@ -64,7 +64,7 @@ export default function MarketplacePage() {
 
       const data = await api<MarketplacePlugin[]>(
         `/api/v1/marketplace/plugins?${params}`,
-        { token }
+        { token: token || undefined }
       );
       setPlugins(data);
     } catch (error) {
