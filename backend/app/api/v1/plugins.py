@@ -89,8 +89,12 @@ async def upload_plugin(file: UploadFile, _=Depends(get_current_user)):
             detail=f"Uncompressed size too large ({total_uncompressed} bytes, max {MAX_UNCOMPRESSED_SIZE})",
         )
 
-    # Validate zip contents
-    names = zf.namelist()
+    # Validate zip contents, filter out __pycache__ and other generated dirs
+    SKIP_DIRS = {"__pycache__", ".git", ".mypy_cache", ".ruff_cache"}
+    names = [
+        n for n in zf.namelist()
+        if not any(part in SKIP_DIRS for part in Path(n).parts)
+    ]
     for name in names:
         # Block path traversal
         if ".." in name or name.startswith("/"):
@@ -161,6 +165,8 @@ async def upload_plugin(file: UploadFile, _=Depends(get_current_user)):
         target_dir.mkdir(parents=True, exist_ok=True)
         for info in zf.infolist():
             if not info.filename.startswith(expected_prefix):
+                continue
+            if any(part in SKIP_DIRS for part in Path(info.filename).parts):
                 continue
             rel = info.filename[len(expected_prefix):]
             if not rel:
