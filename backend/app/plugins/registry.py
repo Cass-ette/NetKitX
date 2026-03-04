@@ -1,4 +1,3 @@
-
 from app.plugins.base import PluginBase, PluginMeta
 
 
