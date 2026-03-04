@@ -116,8 +116,14 @@ class VersionConstraint:
 
     def _parse(self):
         """Parse constraint string."""
+        # Range must be checked first: ">=1.0.0,<2.0.0"
+        if "," in self.constraint_str:
+            self.type = "range"
+            parts = [p.strip() for p in self.constraint_str.split(",")]
+            self.constraints = [VersionConstraint(p) for p in parts]
+
         # Exact version: "1.2.3"
-        if re.match(r"^\d+\.\d+\.\d+", self.constraint_str):
+        elif re.match(r"^\d+\.\d+\.\d+", self.constraint_str):
             self.type = "exact"
             self.version = Version.parse(self.constraint_str)
 
@@ -155,12 +161,6 @@ class VersionConstraint:
         elif "*" in self.constraint_str:
             self.type = "wildcard"
             self.pattern = self.constraint_str.replace("*", r"\d+")
-
-        # Range: ">=1.2.0,<2.0.0"
-        elif "," in self.constraint_str:
-            self.type = "range"
-            parts = [p.strip() for p in self.constraint_str.split(",")]
-            self.constraints = [VersionConstraint(p) for p in parts]
 
         else:
             raise ValueError(f"Invalid constraint: {self.constraint_str}")
