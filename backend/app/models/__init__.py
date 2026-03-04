@@ -8,6 +8,7 @@ from app.models.marketplace import (
     MarketplaceDependency,
     UserInstalledPlugin,
     MarketplaceReview,
+    MarketplaceReport,
 )
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "MarketplaceDependency",
     "UserInstalledPlugin",
     "MarketplaceReview",
+    "MarketplaceReport",
 ]
