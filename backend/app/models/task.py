@@ -14,7 +14,9 @@ class Task(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     project_id: Mapped[int | None] = mapped_column(ForeignKey("projects.id"), default=None)
     plugin_name: Mapped[str] = mapped_column(String(100), index=True)
-    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending|running|done|failed
+    status: Mapped[str] = mapped_column(
+        String(20), default="pending"
+    )  # pending|running|done|failed
     params: Mapped[dict | None] = mapped_column(JSONB, default=None)
     result: Mapped[dict | None] = mapped_column(JSONB, default=None)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), default=None)

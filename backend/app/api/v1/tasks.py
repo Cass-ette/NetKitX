@@ -23,7 +23,9 @@ async def _run_plugin(task_id: int, plugin_name: str, params: dict):
 
     if not plugin:
         async with async_session() as session:
-            await update_task_status(session, task_id, "failed", {"error": f"Plugin '{plugin_name}' not found"})
+            await update_task_status(
+                session, task_id, "failed", {"error": f"Plugin '{plugin_name}' not found"}
+            )
         await manager.send_event(tid, {"type": "error", "data": {"error": "Plugin not found"}})
         return
 
@@ -45,7 +47,9 @@ async def _run_plugin(task_id: int, plugin_name: str, params: dict):
 
         async with async_session() as session:
             await update_task_status(session, task_id, "done", {"items": results})
-        await manager.send_event(tid, {"type": "status", "data": {"status": "done", "items_count": len(results)}})
+        await manager.send_event(
+            tid, {"type": "status", "data": {"status": "done", "items_count": len(results)}}
+        )
 
     except Exception as e:
         logger.exception(f"Plugin '{plugin_name}' failed for task {task_id}")

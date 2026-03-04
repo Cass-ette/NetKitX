@@ -40,9 +40,7 @@ def load_python_plugin(plugin_dir: Path) -> PluginBase | None:
         logger.warning(f"No main.py found in {plugin_dir}")
         return None
 
-    spec = importlib.util.spec_from_file_location(
-        f"plugins.{plugin_dir.name}", main_file
-    )
+    spec = importlib.util.spec_from_file_location(f"plugins.{plugin_dir.name}", main_file)
     if not spec or not spec.loader:
         return None
 
@@ -52,11 +50,7 @@ def load_python_plugin(plugin_dir: Path) -> PluginBase | None:
     # Find the PluginBase subclass in the module
     for attr_name in dir(module):
         attr = getattr(module, attr_name)
-        if (
-            isinstance(attr, type)
-            and issubclass(attr, PluginBase)
-            and attr is not PluginBase
-        ):
+        if isinstance(attr, type) and issubclass(attr, PluginBase) and attr is not PluginBase:
             return attr()
     return None
 

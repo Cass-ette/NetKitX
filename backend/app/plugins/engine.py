@@ -19,7 +19,9 @@ class GoEnginePlugin(PluginBase):
     async def execute(self, params: dict[str, Any]) -> AsyncIterator[PluginEvent]:
         binary = Path(self.binary_path)
         if not binary.exists():
-            yield PluginEvent(type="error", data={"error": f"Engine binary not found: {self.binary_path}"})
+            yield PluginEvent(
+                type="error", data={"error": f"Engine binary not found: {self.binary_path}"}
+            )
             return
 
         proc = await asyncio.create_subprocess_exec(
@@ -49,4 +51,10 @@ class GoEnginePlugin(PluginBase):
 
         if proc.returncode != 0:
             stderr = await proc.stderr.read()
-            yield PluginEvent(type="error", data={"error": f"Engine exited with code {proc.returncode}", "stderr": stderr.decode()})
+            yield PluginEvent(
+                type="error",
+                data={
+                    "error": f"Engine exited with code {proc.returncode}",
+                    "stderr": stderr.decode(),
+                },
+            )

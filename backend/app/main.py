@@ -49,6 +49,7 @@ app.include_router(plugins.router, prefix="/api/v1/plugins", tags=["plugins"])
 @app.get("/api/health")
 async def health():
     from app.plugins.registry import registry
+
     return {
         "status": "ok",
         "version": settings.VERSION,
@@ -65,9 +66,9 @@ async def stats():
 
     async for session in get_session():
         total_tasks = (await session.execute(select(func.count(Task.id)))).scalar() or 0
-        running_tasks = (await session.execute(
-            select(func.count(Task.id)).where(Task.status == "running")
-        )).scalar() or 0
+        running_tasks = (
+            await session.execute(select(func.count(Task.id)).where(Task.status == "running"))
+        ).scalar() or 0
 
     all_plugins = registry.list_all()
     categories = {}

@@ -91,10 +91,7 @@ async def upload_plugin(file: UploadFile, _=Depends(get_current_user)):
 
     # Validate zip contents, filter out __pycache__ and other generated dirs
     SKIP_DIRS = {"__pycache__", ".git", ".mypy_cache", ".ruff_cache"}
-    names = [
-        n for n in zf.namelist()
-        if not any(part in SKIP_DIRS for part in Path(n).parts)
-    ]
+    names = [n for n in zf.namelist() if not any(part in SKIP_DIRS for part in Path(n).parts)]
     for name in names:
         # Block path traversal
         if ".." in name or name.startswith("/"):
@@ -168,7 +165,7 @@ async def upload_plugin(file: UploadFile, _=Depends(get_current_user)):
                 continue
             if any(part in SKIP_DIRS for part in Path(info.filename).parts):
                 continue
-            rel = info.filename[len(expected_prefix):]
+            rel = info.filename[len(expected_prefix) :]
             if not rel:
                 continue
             dest = target_dir / rel

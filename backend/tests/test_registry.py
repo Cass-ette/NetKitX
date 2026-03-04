@@ -1,4 +1,5 @@
 """Test plugin registry."""
+
 import pytest
 from app.plugins.registry import PluginRegistry
 from app.plugins.base import PluginBase, PluginMeta
@@ -6,6 +7,7 @@ from app.plugins.base import PluginBase, PluginMeta
 
 class DummyPlugin(PluginBase):
     """Dummy plugin for testing."""
+
     meta = PluginMeta(
         name="test-plugin",
         version="1.0.0",

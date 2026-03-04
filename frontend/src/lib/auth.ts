@@ -41,7 +41,7 @@ export const useAuth = create<AuthState>((set, get) => ({
   },
 
   register: async (username, email, password) => {
-    const user = await api<User>("/api/v1/auth/register", {
+    await api<User>("/api/v1/auth/register", {
       method: "POST",
       body: JSON.stringify({ username, email, password }),
     });

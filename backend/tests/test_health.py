@@ -1,4 +1,5 @@
 """Test health endpoint."""
+
 import pytest
 
 

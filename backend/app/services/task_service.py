@@ -7,7 +7,11 @@ from app.models.task import Task
 
 
 async def create_task(
-    session: AsyncSession, plugin_name: str, params: dict, user_id: int, project_id: int | None = None
+    session: AsyncSession,
+    plugin_name: str,
+    params: dict,
+    user_id: int,
+    project_id: int | None = None,
 ) -> Task:
     task = Task(
         plugin_name=plugin_name,
@@ -30,7 +34,9 @@ async def get_task(session: AsyncSession, task_id: int) -> Task | None:
 async def list_tasks(
     session: AsyncSession, user_id: int, status: str | None = None, limit: int = 50
 ) -> list[Task]:
-    query = select(Task).where(Task.created_by == user_id).order_by(Task.created_at.desc()).limit(limit)
+    query = (
+        select(Task).where(Task.created_by == user_id).order_by(Task.created_at.desc()).limit(limit)
+    )
     if status:
         query = query.where(Task.status == status)
     result = await session.execute(query)

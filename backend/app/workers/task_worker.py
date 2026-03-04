@@ -23,7 +23,9 @@ async def _execute_plugin(task_id: int, plugin_name: str, params: dict):
     plugin = registry.get(plugin_name)
     if not plugin:
         async with async_session() as session:
-            await update_task_status(session, task_id, "failed", {"error": f"Plugin '{plugin_name}' not found"})
+            await update_task_status(
+                session, task_id, "failed", {"error": f"Plugin '{plugin_name}' not found"}
+            )
         return
 
     async with async_session() as session:
