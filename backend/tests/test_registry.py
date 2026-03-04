@@ -1,6 +1,5 @@
 """Test plugin registry."""
 
-import pytest
 from app.plugins.registry import PluginRegistry
 from app.plugins.base import PluginBase, PluginMeta
 

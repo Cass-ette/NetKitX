@@ -1,4 +1,3 @@
-from typing import Any
 
 from app.plugins.base import PluginBase, PluginMeta
 
