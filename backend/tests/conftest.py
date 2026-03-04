@@ -8,31 +8,26 @@ from sqlalchemy.orm import sessionmaker
 from app.main import app
 from app.core.database import Base, get_session
 
-
-# Test database URL
 TEST_DATABASE_URL = "postgresql+asyncpg://netkitx:netkitx@localhost:5432/netkitx_test"
-
-# Create test engine
-test_engine = create_async_engine(TEST_DATABASE_URL, echo=False, pool_pre_ping=True)
-TestSessionLocal = sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
-
-
-@pytest_asyncio.fixture(scope="function")
-async def setup_database():
-    """Create test database tables."""
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    yield
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
 
 
 @pytest_asyncio.fixture
-async def db_session(setup_database):
-    """Get test database session."""
-    async with TestSessionLocal() as session:
+async def db_session():
+    """Create a fresh engine, tables, and session per test."""
+    engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async with async_session() as session:
         yield session
         await session.rollback()
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+
+    await engine.dispose()
 
 
 @pytest_asyncio.fixture
