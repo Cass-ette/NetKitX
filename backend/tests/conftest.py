@@ -17,7 +17,7 @@ test_engine = create_async_engine(TEST_DATABASE_URL, echo=False, pool_pre_ping=T
 TestSessionLocal = sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
 
 
-@pytest_asyncio.fixture(scope="function", autouse=True)
+@pytest_asyncio.fixture(scope="function")
 async def setup_database():
     """Create test database tables."""
     async with test_engine.begin() as conn:
