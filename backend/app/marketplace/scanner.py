@@ -398,8 +398,9 @@ class SecurityScanner:
 
         score = max(0, score)
 
-        # Pass if no critical issues and score >= 70
-        passed = self.critical_count == 0 and score >= 70
+        # Pass if no critical/high issues and score >= 70
+        high_count = sum(1 for i in self.issues if i.severity == "high")
+        passed = self.critical_count == 0 and high_count == 0 and score >= 70
 
         return ScanResult(passed=passed, issues=self.issues, score=score)
 

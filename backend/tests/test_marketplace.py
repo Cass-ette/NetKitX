@@ -115,15 +115,15 @@ async def test_list_categories(client: AsyncClient, marketplace_plugin):
     assert "utils" in response.json()
 
 
-async def test_list_installed_requires_auth(client: AsyncClient):
+async def test_list_installed_requires_auth(unauthed_client: AsyncClient):
     """Installed plugins endpoint requires authentication."""
-    response = await client.get("/api/v1/marketplace/installed")
+    response = await unauthed_client.get("/api/v1/marketplace/installed")
     assert response.status_code == 401
 
 
-async def test_create_review_requires_auth(client: AsyncClient, marketplace_plugin):
+async def test_create_review_requires_auth(unauthed_client: AsyncClient, marketplace_plugin):
     """Creating a review requires authentication."""
-    response = await client.post(
+    response = await unauthed_client.post(
         "/api/v1/marketplace/plugins/test-plugin/reviews",
         json={"rating": 5, "comment": "Great plugin!"},
     )

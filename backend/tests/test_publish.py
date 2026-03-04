@@ -167,7 +167,7 @@ class TestPluginPublish:
             )
 
         assert response.status_code == 400
-        assert "Unsafe path" in response.json()["detail"]
+        assert "path traversal" in response.json()["detail"].lower()
 
 
 class TestVersionYank:

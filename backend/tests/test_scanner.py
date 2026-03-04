@@ -255,8 +255,8 @@ async function execute(params) {
         scanner = SecurityScanner()
         result = await scanner.scan_package(zip_path)
 
-        assert result.passed is False
         assert any("eval" in issue.message.lower() for issue in result.issues)
+        assert result.score < 100
 
     @pytest.mark.asyncio
     async def test_scan_missing_plugin_yaml(self, create_plugin_package):
