@@ -217,15 +217,21 @@ async def delete_plugin(name: str, _=Depends(get_current_user)):
     # Find and delete the plugin directory first
     plugins_dir = Path(settings.PLUGINS_DIR)
     deleted_dir = False
-    for plugin_dir in plugins_dir.iterdir():
-        if not plugin_dir.is_dir():
-            continue
-        yaml_path = plugin_dir / "plugin.yaml"
-        if yaml_path.exists():
-            import yaml
+    if plugins_dir.is_dir():
+        for plugin_dir in plugins_dir.iterdir():
+            if not plugin_dir.is_dir():
+                continue
+            yaml_path = plugin_dir / "plugin.yaml"
+            if not yaml_path.exists():
+                continue
+            try:
+                import yaml
 
-            with open(yaml_path) as f:
-                config = yaml.safe_load(f)
+                with open(yaml_path) as f:
+                    config = yaml.safe_load(f)
+            except (OSError, yaml.YAMLError):
+                logger.warning(f"Skipping unreadable plugin.yaml in {plugin_dir}")
+                continue
             if config and config.get("name") == name:
                 shutil.rmtree(plugin_dir)
                 deleted_dir = True

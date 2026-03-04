@@ -20,6 +20,7 @@ export default function PluginsPage() {
 
   const fetchPlugins = useCallback(() => {
     if (!token) {
+      setPlugins([]);
       setLoading(false);
       return;
     }
