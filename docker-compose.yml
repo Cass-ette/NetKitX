@@ -1,0 +1,75 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://netkitx:netkitx@db:5432/netkitx
+      - REDIS_URL=redis://redis:6379/0
+      - PLUGINS_DIR=/app/plugins
+      - ENGINES_DIR=/app/engines/bin
+    volumes:
+      - ./backend:/app
+      - ./plugins:/app/plugins
+      - ./engines/bin:/app/engines/bin
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  worker:
+    build: ./backend
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://netkitx:netkitx@db:5432/netkitx
+      - REDIS_URL=redis://redis:6379/0
+      - PLUGINS_DIR=/app/plugins
+      - ENGINES_DIR=/app/engines/bin
+    volumes:
+      - ./backend:/app
+      - ./plugins:/app/plugins
+      - ./engines/bin:/app/engines/bin
+    depends_on:
+      - backend
+      - redis
+    command: celery -A app.workers.celery_app worker --loglevel=info
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    volumes:
+      - ./frontend/src:/app/src
+    depends_on:
+      - backend
+    command: npm run dev
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: netkitx
+      POSTGRES_PASSWORD: netkitx
+      POSTGRES_DB: netkitx
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U netkitx"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+
+volumes:
+  pgdata:
+  redisdata:

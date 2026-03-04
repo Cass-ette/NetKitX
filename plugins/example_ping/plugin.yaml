@@ -1,0 +1,23 @@
+name: example-ping
+version: 1.0.0
+description: Simple Ping Sweep - check host reachability
+category: recon
+engine: python
+
+params:
+  - name: targets
+    label: Target Hosts
+    type: string
+    required: true
+    placeholder: "192.168.1.1,192.168.1.2"
+  - name: count
+    label: Ping Count
+    type: number
+    default: 3
+
+output:
+  type: table
+  columns:
+    - { key: "host", label: "Host" }
+    - { key: "alive", label: "Alive" }
+    - { key: "latency_ms", label: "Latency (ms)" }

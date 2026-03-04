@@ -1,0 +1,34 @@
+name: example-portscan
+version: 1.0.0
+description: TCP Port Scanner (Go Engine)
+category: recon
+engine: go
+binary: engines/bin/portscan
+
+params:
+  - name: target
+    label: Target Host
+    type: string
+    required: true
+    placeholder: "192.168.1.1"
+  - name: ports
+    label: Port Range
+    type: string
+    default: "1-1024"
+    placeholder: "1-65535"
+  - name: timeout
+    label: Timeout (ms)
+    type: number
+    default: 1000
+  - name: workers
+    label: Concurrent Workers
+    type: number
+    default: 100
+
+output:
+  type: table
+  columns:
+    - { key: "host", label: "Host" }
+    - { key: "port", label: "Port" }
+    - { key: "state", label: "State" }
+    - { key: "service", label: "Service" }
