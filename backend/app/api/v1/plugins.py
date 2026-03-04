@@ -166,6 +166,8 @@ async def upload_plugin(file: UploadFile, _=Depends(get_current_user)):
         for info in zf.infolist():
             if not info.filename.startswith(expected_prefix):
                 continue
+            if any(part in SKIP_DIRS for part in Path(info.filename).parts):
+                continue
             rel = info.filename[len(expected_prefix):]
             if not rel:
                 continue
