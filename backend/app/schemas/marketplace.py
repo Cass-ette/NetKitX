@@ -171,3 +171,28 @@ class PluginPublishResponse(BaseModel):
     version: str
     message: str
 
+
+class MarketplaceReportCreate(BaseModel):
+    """Create security report."""
+
+    reason: str = Field(..., pattern="^(malware|spam|copyright|other)$")
+    description: str = Field(..., min_length=10, max_length=1000)
+
+
+class MarketplaceReportResponse(BaseModel):
+    """Report response."""
+
+    id: int
+    plugin_id: int
+    reporter_id: int
+    reason: str
+    description: str
+    status: str
+    resolution: Optional[str] = None
+    created_at: datetime.datetime
+    resolved_at: Optional[datetime.datetime] = None
+
+    class Config:
+        from_attributes = True
+
+

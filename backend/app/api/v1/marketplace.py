@@ -17,6 +17,7 @@ from app.core.deps import get_current_user
 from app.models import (
     MarketplaceDependency,
     MarketplacePlugin,
+    MarketplaceReport,
     MarketplaceReview,
     MarketplaceVersion,
     User,
@@ -26,6 +27,8 @@ from app.schemas.marketplace import (
     MarketplaceDependencyResponse,
     MarketplacePluginDetail,
     MarketplacePluginResponse,
+    MarketplaceReportCreate,
+    MarketplaceReportResponse,
     MarketplaceReviewCreate,
     MarketplaceReviewResponse,
     MarketplaceVersionResponse,
@@ -405,7 +408,7 @@ async def publish_plugin(
     """Publish a plugin to marketplace.
 
     Accepts a zip file containing plugin.yaml and plugin code.
-    Validates structure, extracts metadata, and creates marketplace entry.
+    Validates structure, extracts metadata, runs security scan, and creates marketplace entry.
     """
     if not file.filename or not file.filename.endswith(".zip"):
         raise HTTPException(status_code=400, detail="File must be a zip archive")
@@ -419,6 +422,35 @@ async def publish_plugin(
         content = await file.read()
         with open(zip_path, "wb") as f:
             f.write(content)
+
+        # Run security scan
+        from app.marketplace.scanner import SecurityScanner
+
+        scanner = SecurityScanner()
+        scan_result = await scanner.scan_package(zip_path)
+
+        if not scan_result.passed:
+            # Build error message with issues
+            critical_issues = [i for i in scan_result.issues if i.severity == "critical"]
+            high_issues = [i for i in scan_result.issues if i.severity == "high"]
+
+            error_msg = f"Security scan failed (score: {scan_result.score}/100).\n"
+            if critical_issues:
+                error_msg += f"Critical issues ({len(critical_issues)}):\n"
+                for issue in critical_issues[:3]:  # Show first 3
+                    error_msg += f"  - {issue.message}"
+                    if issue.file:
+                        error_msg += f" in {issue.file}"
+                    error_msg += "\n"
+            if high_issues:
+                error_msg += f"High severity issues ({len(high_issues)}):\n"
+                for issue in high_issues[:3]:
+                    error_msg += f"  - {issue.message}"
+                    if issue.file:
+                        error_msg += f" in {issue.file}"
+                    error_msg += "\n"
+
+            raise HTTPException(status_code=400, detail=error_msg)
 
         # Calculate hash
         sha256 = hashlib.sha256()
@@ -588,4 +620,70 @@ async def yank_version(
     await session.commit()
 
     return {"success": True, "message": f"Version {version} of {plugin_name} has been yanked"}
+
+
+@router.post("/plugins/{plugin_name}/report", response_model=MarketplaceReportResponse)
+async def report_plugin(
+    plugin_name: str,
+    report: MarketplaceReportCreate,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Report a plugin for security or policy violations."""
+    # Get plugin
+    plugin_stmt = select(MarketplacePlugin).where(MarketplacePlugin.name == plugin_name)
+    plugin_result = await session.execute(plugin_stmt)
+    plugin = plugin_result.scalar_one_or_none()
+
+    if not plugin:
+        raise HTTPException(status_code=404, detail="Plugin not found")
+
+    # Check if user already reported this plugin
+    existing_stmt = select(MarketplaceReport).where(
+        MarketplaceReport.plugin_id == plugin.id,
+        MarketplaceReport.reporter_id == current_user.id,
+        MarketplaceReport.status == "pending",
+    )
+    existing_result = await session.execute(existing_stmt)
+    if existing_result.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="You have already reported this plugin")
+
+    # Create report
+    report_obj = MarketplaceReport(
+        plugin_id=plugin.id,
+        reporter_id=current_user.id,
+        reason=report.reason,
+        description=report.description,
+        status="pending",
+    )
+    session.add(report_obj)
+    await session.commit()
+    await session.refresh(report_obj)
+
+    return report_obj
+
+
+@router.get("/reports", response_model=list[MarketplaceReportResponse])
+async def list_reports(
+    status: Optional[str] = Query(None, pattern="^(pending|reviewing|resolved|rejected)$"),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """List security reports (admin only)."""
+    # TODO: Add admin check
+    # For now, only show user's own reports
+    stmt = select(MarketplaceReport).where(MarketplaceReport.reporter_id == current_user.id)
+
+    if status:
+        stmt = stmt.where(MarketplaceReport.status == status)
+
+    stmt = stmt.order_by(MarketplaceReport.created_at.desc()).limit(limit).offset(offset)
+
+    result = await session.execute(stmt)
+    reports = result.scalars().all()
+
+    return reports
+
 

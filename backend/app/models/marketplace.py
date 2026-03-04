@@ -152,3 +152,31 @@ class MarketplaceReview(Base):
         Index("idx_reviews_plugin", "plugin_id"),
         Index("idx_reviews_unique", "plugin_id", "user_id", unique=True),
     )
+
+
+class MarketplaceReport(Base):
+    """Plugin security report."""
+
+    __tablename__ = "marketplace_reports"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    plugin_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("marketplace_plugins.id", ondelete="CASCADE"), nullable=False
+    )
+    reporter_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    reason: Mapped[str] = mapped_column(String(50), nullable=False)  # malware, spam, copyright, other
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(20), default="pending", nullable=False
+    )  # pending, reviewing, resolved, rejected
+    resolution: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(server_default=func.now(), nullable=False)
+    resolved_at: Mapped[Optional[datetime.datetime]] = mapped_column(nullable=True)
+
+    __table_args__ = (
+        Index("idx_reports_plugin", "plugin_id"),
+        Index("idx_reports_status", "status"),
+    )
+
