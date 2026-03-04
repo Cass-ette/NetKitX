@@ -5,6 +5,7 @@ import type { User } from "@/types";
 interface AuthState {
   token: string | null;
   user: User | null;
+  _hydrated: boolean;
   setAuth: (token: string, user: User) => void;
   logout: () => void;
   login: (username: string, password: string) => Promise<void>;
@@ -12,10 +13,9 @@ interface AuthState {
 }
 
 export const useAuth = create<AuthState>((set, get) => ({
-  token: typeof window !== "undefined" ? localStorage.getItem("token") : null,
-  user: typeof window !== "undefined"
-    ? JSON.parse(localStorage.getItem("user") || "null")
-    : null,
+  token: null,
+  user: null,
+  _hydrated: false,
 
   setAuth: (token, user) => {
     localStorage.setItem("token", token);
@@ -49,3 +49,10 @@ export const useAuth = create<AuthState>((set, get) => ({
     await get().login(username, password);
   },
 }));
+
+// Hydrate from localStorage on client — runs once after store creation
+if (typeof window !== "undefined") {
+  const token = localStorage.getItem("token");
+  const user = JSON.parse(localStorage.getItem("user") || "null");
+  useAuth.setState({ token, user, _hydrated: true });
+}
