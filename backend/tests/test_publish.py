@@ -6,17 +6,7 @@ import zipfile
 import pytest
 import pytest_asyncio
 
-from app.models import MarketplacePlugin, MarketplaceVersion, User
-
-
-@pytest_asyncio.fixture
-async def test_user(db_session):
-    """Create test user."""
-    user = User(username="testuser", email="test@example.com", hashed_password="hashed")
-    db_session.add(user)
-    await db_session.commit()
-    await db_session.refresh(user)
-    return user
+from app.models import MarketplacePlugin, MarketplaceVersion
 
 
 @pytest.fixture
@@ -77,7 +67,6 @@ class TestPluginPublish:
             response = await client.post(
                 "/api/v1/marketplace/publish",
                 files={"file": ("test-plugin-1.0.0.zip", f, "application/zip")},
-                headers={"Authorization": f"Bearer {test_user.id}"},
             )
 
         assert response.status_code == 200
@@ -110,7 +99,6 @@ class TestPluginPublish:
             response1 = await client.post(
                 "/api/v1/marketplace/publish",
                 files={"file": ("test-plugin-1.0.0.zip", f, "application/zip")},
-                headers={"Authorization": f"Bearer {test_user.id}"},
             )
         assert response1.status_code == 200
 
@@ -119,7 +107,6 @@ class TestPluginPublish:
             response2 = await client.post(
                 "/api/v1/marketplace/publish",
                 files={"file": ("test-plugin-1.0.0.zip", f, "application/zip")},
-                headers={"Authorization": f"Bearer {test_user.id}"},
             )
         assert response2.status_code == 400
         assert "already exists" in response2.json()["detail"]
@@ -145,7 +132,6 @@ class TestPluginPublish:
             response = await client.post(
                 "/api/v1/marketplace/publish",
                 files={"file": ("test-plugin-1.0.0.zip", f, "application/zip")},
-                headers={"Authorization": f"Bearer {test_user.id}"},
             )
 
         assert response.status_code == 403
@@ -163,7 +149,6 @@ class TestPluginPublish:
             response = await client.post(
                 "/api/v1/marketplace/publish",
                 files={"file": ("invalid.zip", f, "application/zip")},
-                headers={"Authorization": f"Bearer {test_user.id}"},
             )
 
         assert response.status_code == 400
@@ -180,7 +165,6 @@ class TestPluginPublish:
             response = await client.post(
                 "/api/v1/marketplace/publish",
                 files={"file": ("malicious.zip", f, "application/zip")},
-                headers={"Authorization": f"Bearer {test_user.id}"},
             )
 
         assert response.status_code == 400
@@ -216,7 +200,6 @@ class TestVersionYank:
         # Yank version
         response = await client.delete(
             "/api/v1/marketplace/plugins/test-plugin/versions/1.0.0",
-            headers={"Authorization": f"Bearer {test_user.id}"},
         )
 
         assert response.status_code == 200
@@ -252,7 +235,6 @@ class TestVersionYank:
         # Try to yank
         response = await client.delete(
             "/api/v1/marketplace/plugins/test-plugin/versions/1.0.0",
-            headers={"Authorization": f"Bearer {test_user.id}"},
         )
 
         assert response.status_code == 403
@@ -275,7 +257,6 @@ class TestVersionYank:
         # Try to yank nonexistent version
         response = await client.delete(
             "/api/v1/marketplace/plugins/test-plugin/versions/9.9.9",
-            headers={"Authorization": f"Bearer {test_user.id}"},
         )
 
         assert response.status_code == 404

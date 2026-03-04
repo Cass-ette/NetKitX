@@ -41,17 +41,19 @@ class ScanResult:
 class SecurityScanner:
     """Scan plugin packages for security issues."""
 
-    # Dangerous Python patterns
+    # Dangerous Python modules and functions
+    DANGEROUS_MODULES = {
+        "subprocess",
+        "os",
+        "pickle",
+        "marshal",
+    }
+
     DANGEROUS_IMPORTS = {
-        "os.system",
-        "subprocess.call",
-        "subprocess.Popen",
         "eval",
         "exec",
         "compile",
         "__import__",
-        "pickle.loads",
-        "marshal.loads",
     }
 
     # Suspicious patterns
@@ -276,6 +278,18 @@ class SecurityScanner:
             # Check imports
             if isinstance(node, ast.Import):
                 for alias in node.names:
+                    # Check dangerous modules
+                    if alias.name in self.DANGEROUS_MODULES:
+                        self.issues.append(
+                            SecurityIssue(
+                                severity="high",
+                                category="code",
+                                message=f"Dangerous module import: {alias.name}",
+                                file=file_path,
+                                line=node.lineno,
+                            )
+                        )
+                    # Check dangerous functions
                     if alias.name in self.DANGEROUS_IMPORTS:
                         self.issues.append(
                             SecurityIssue(

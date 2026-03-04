@@ -7,6 +7,8 @@ from sqlalchemy.orm import sessionmaker
 
 from app.main import app
 from app.core.database import Base, get_session
+from app.core.deps import get_current_user
+from app.models import User
 
 TEST_DATABASE_URL = "postgresql+asyncpg://netkitx:netkitx@localhost:5432/netkitx_test"
 
@@ -31,13 +33,27 @@ async def db_session():
 
 
 @pytest_asyncio.fixture
-async def client(db_session):
-    """Get test HTTP client."""
+async def test_user(db_session):
+    """Create test user."""
+    user = User(username="testuser", email="test@example.com", hashed_password="hashed")
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
+
+
+@pytest_asyncio.fixture
+async def client(db_session, test_user):
+    """Get test HTTP client with authenticated user."""
 
     async def override_get_session():
         yield db_session
 
+    async def override_get_current_user():
+        return test_user
+
     app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[get_current_user] = override_get_current_user
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
