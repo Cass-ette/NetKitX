@@ -2,8 +2,6 @@
 
 import hashlib
 import zipfile
-from pathlib import Path
-from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio

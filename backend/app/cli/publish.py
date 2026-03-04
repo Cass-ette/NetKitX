@@ -1,7 +1,6 @@
 """CLI tool for publishing plugins to marketplace."""
 
 import hashlib
-import sys
 import zipfile
 from pathlib import Path
 from typing import Optional
@@ -11,7 +10,7 @@ import typer
 import yaml
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
-from rich.prompt import Confirm, Prompt
+from rich.prompt import Confirm
 from rich.table import Table
 
 app = typer.Typer(help="Publish plugins to NetKitX marketplace")

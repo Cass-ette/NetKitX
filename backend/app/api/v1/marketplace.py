@@ -32,7 +32,6 @@ from app.schemas.marketplace import (
     MarketplaceReviewCreate,
     MarketplaceReviewResponse,
     MarketplaceVersionResponse,
-    PluginPublishRequest,
     PluginPublishResponse,
     UserInstalledPluginResponse,
 )
@@ -520,9 +519,7 @@ async def publish_plugin(
         else:
             # Verify ownership
             if plugin.author != current_user.username:
-                raise HTTPException(
-                    status_code=403, detail="You are not the author of this plugin"
-                )
+                raise HTTPException(status_code=403, detail="You are not the author of this plugin")
 
         # Check if version already exists
         version_stmt = select(MarketplaceVersion).where(
@@ -685,5 +682,3 @@ async def list_reports(
     reports = result.scalars().all()
 
     return reports
-
-

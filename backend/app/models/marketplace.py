@@ -166,7 +166,9 @@ class MarketplaceReport(Base):
     reporter_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
-    reason: Mapped[str] = mapped_column(String(50), nullable=False)  # malware, spam, copyright, other
+    reason: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # malware, spam, copyright, other
     description: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(
         String(20), default="pending", nullable=False
@@ -179,4 +181,3 @@ class MarketplaceReport(Base):
         Index("idx_reports_plugin", "plugin_id"),
         Index("idx_reports_status", "status"),
     )
-
