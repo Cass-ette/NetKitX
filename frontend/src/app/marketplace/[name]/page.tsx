@@ -57,7 +57,7 @@ export default function PluginDetailPage() {
   const pluginName = params.name as string;
 
   const [plugin, setPlugin] = useState<PluginDetail | null>(null);
-  const [selectedVersion, setSelectedVersion] = useState<string>("");
+  const [selectedVersion, setSelectedVersion] = useState<string | undefined>(undefined);
   const [installing, setInstalling] = useState(false);
   const [installSuccess, setInstallSuccess] = useState(false);
   const [installedPlugins, setInstalledPlugins] = useState<Array<{plugin: string, version: string}>>([]);
@@ -77,7 +77,7 @@ export default function PluginDetailPage() {
         { token: token || undefined }
       );
       setPlugin(data);
-      setSelectedVersion(data.latest_version || "");
+      setSelectedVersion(data.latest_version || data.versions.find(v => !v.yanked)?.version);
     } catch (error) {
       console.error("Failed to load plugin:", error);
       setError("Plugin not found");
@@ -307,7 +307,7 @@ export default function PluginDetailPage() {
             <CardContent className="space-y-4">
               <div>
                 <label className="text-sm font-medium mb-2 block">Version</label>
-                <Select value={selectedVersion} onValueChange={setSelectedVersion}>
+                <Select value={selectedVersion || undefined} onValueChange={setSelectedVersion}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select version" />
                   </SelectTrigger>

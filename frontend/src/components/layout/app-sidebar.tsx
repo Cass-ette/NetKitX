@@ -9,6 +9,7 @@ import {
   Puzzle,
   Settings,
   Shield,
+  Store,
 } from "lucide-react";
 import {
   Sidebar,
@@ -27,6 +28,7 @@ const navItems = [
   { label: "Tools", href: "/tools", icon: Wrench },
   { label: "Tasks", href: "/tasks", icon: ListTodo },
   { label: "Plugins", href: "/plugins", icon: Puzzle },
+  { label: "Marketplace", href: "/marketplace", icon: Store },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 
