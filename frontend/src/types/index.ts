@@ -21,6 +21,7 @@ export interface PluginMeta {
   engine: "python" | "go" | "cli";
   params: PluginParam[];
   output: PluginOutput;
+  enabled?: boolean;
 }
 
 export interface Task {

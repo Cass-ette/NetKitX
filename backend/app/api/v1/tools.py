@@ -7,7 +7,7 @@ router = APIRouter()
 
 @router.get("")
 async def list_tools():
-    """List all available tools (plugin metadata)."""
+    """List all available tools (enabled plugins only)."""
     return [
         {
             "name": m.name,
@@ -18,7 +18,7 @@ async def list_tools():
             "params": m.params,
             "output": m.output,
         }
-        for m in registry.list_all()
+        for m in registry.list_enabled()
     ]
 
 
@@ -28,6 +28,8 @@ async def get_tool(name: str):
     meta = registry.get_meta(name)
     if not meta:
         raise HTTPException(status_code=404, detail=f"Tool '{name}' not found")
+    if not registry.is_enabled(name):
+        raise HTTPException(status_code=404, detail=f"Tool '{name}' is disabled")
     return {
         "name": meta.name,
         "version": meta.version,
