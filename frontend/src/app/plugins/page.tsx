@@ -62,7 +62,7 @@ export default function PluginsPage() {
   const handleToggle = async (name: string, enabled: boolean) => {
     if (!token) return;
     try {
-      await api(`/api/v1/plugins/${name}`, {
+      await api(`/api/v1/plugins/${encodeURIComponent(name)}`, {
         token,
         method: "PATCH",
         body: JSON.stringify({ enabled }),
@@ -76,7 +76,7 @@ export default function PluginsPage() {
   const handleDelete = async (name: string) => {
     if (!token) return;
     try {
-      await api(`/api/v1/plugins/${name}`, {
+      await api(`/api/v1/plugins/${encodeURIComponent(name)}`, {
         token,
         method: "DELETE",
       });

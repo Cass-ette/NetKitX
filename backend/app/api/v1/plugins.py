@@ -144,7 +144,7 @@ async def upload_plugin(file: UploadFile, _=Depends(get_current_user)):
             registry.unregister(old_meta.name)
         shutil.rmtree(target_dir)
 
-    # Extract
+    # Extract — only files belonging to the target plugin directory
     if len(yaml_parts) == 1:
         # Root-level files: extract into dirname/
         target_dir.mkdir(parents=True, exist_ok=True)
@@ -156,8 +156,21 @@ async def upload_plugin(file: UploadFile, _=Depends(get_current_user)):
                 member_path.parent.mkdir(parents=True, exist_ok=True)
                 member_path.write_bytes(zf.read(name))
     else:
-        # Already has directory structure: extract directly
-        zf.extractall(plugins_dir)
+        # One level deep: only extract members under the expected prefix
+        expected_prefix = dirname + "/"
+        target_dir.mkdir(parents=True, exist_ok=True)
+        for info in zf.infolist():
+            if not info.filename.startswith(expected_prefix):
+                continue
+            rel = info.filename[len(expected_prefix):]
+            if not rel:
+                continue
+            dest = target_dir / rel
+            if info.is_dir():
+                dest.mkdir(parents=True, exist_ok=True)
+            else:
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                dest.write_bytes(zf.read(info.filename))
 
     zf.close()
 
@@ -201,10 +214,9 @@ async def delete_plugin(name: str, _=Depends(get_current_user)):
     if not meta:
         raise HTTPException(status_code=404, detail=f"Plugin '{name}' not found")
 
-    registry.unregister(name)
-
-    # Find and delete the plugin directory
+    # Find and delete the plugin directory first
     plugins_dir = Path(settings.PLUGINS_DIR)
+    deleted_dir = False
     for plugin_dir in plugins_dir.iterdir():
         if not plugin_dir.is_dir():
             continue
@@ -216,7 +228,12 @@ async def delete_plugin(name: str, _=Depends(get_current_user)):
                 config = yaml.safe_load(f)
             if config and config.get("name") == name:
                 shutil.rmtree(plugin_dir)
+                deleted_dir = True
                 logger.info(f"Deleted plugin directory: {plugin_dir}")
                 break
 
+    if not deleted_dir:
+        logger.warning(f"Plugin directory not found for '{name}', unregistering anyway")
+
+    registry.unregister(name)
     return {"deleted": name}
