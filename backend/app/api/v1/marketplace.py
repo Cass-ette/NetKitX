@@ -1,8 +1,13 @@
 """Marketplace API endpoints."""
 
+import hashlib
+import tempfile
+import zipfile
+from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+import yaml
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -10,6 +15,7 @@ from sqlalchemy.orm import selectinload
 from app.core.database import get_session
 from app.core.deps import get_current_user
 from app.models import (
+    MarketplaceDependency,
     MarketplacePlugin,
     MarketplaceReview,
     MarketplaceVersion,
@@ -23,6 +29,8 @@ from app.schemas.marketplace import (
     MarketplaceReviewCreate,
     MarketplaceReviewResponse,
     MarketplaceVersionResponse,
+    PluginPublishRequest,
+    PluginPublishResponse,
     UserInstalledPluginResponse,
 )
 
@@ -386,3 +394,198 @@ async def install_plugin(
     except Exception as e:
         await installer.rollback()
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
+
+
+@router.post("/publish", response_model=PluginPublishResponse)
+async def publish_plugin(
+    file: UploadFile,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Publish a plugin to marketplace.
+
+    Accepts a zip file containing plugin.yaml and plugin code.
+    Validates structure, extracts metadata, and creates marketplace entry.
+    """
+    if not file.filename or not file.filename.endswith(".zip"):
+        raise HTTPException(status_code=400, detail="File must be a zip archive")
+
+    # Save uploaded file to temp
+    temp_dir = Path(tempfile.mkdtemp(prefix="netkitx_publish_"))
+    zip_path = temp_dir / file.filename
+
+    try:
+        # Save upload
+        content = await file.read()
+        with open(zip_path, "wb") as f:
+            f.write(content)
+
+        # Calculate hash
+        sha256 = hashlib.sha256()
+        sha256.update(content)
+        package_hash = sha256.hexdigest()
+        package_size = len(content)
+
+        # Extract and validate
+        extract_dir = temp_dir / "extract"
+        extract_dir.mkdir()
+
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            # Check for path traversal
+            for member in zf.namelist():
+                member_path = extract_dir / member
+                if not member_path.resolve().is_relative_to(extract_dir.resolve()):
+                    raise HTTPException(status_code=400, detail=f"Unsafe path in zip: {member}")
+            zf.extractall(extract_dir)
+
+        # Find plugin.yaml
+        plugin_yaml_path = None
+        if (extract_dir / "plugin.yaml").exists():
+            plugin_yaml_path = extract_dir / "plugin.yaml"
+        else:
+            # Check one level deep
+            for subdir in extract_dir.iterdir():
+                if subdir.is_dir() and (subdir / "plugin.yaml").exists():
+                    plugin_yaml_path = subdir / "plugin.yaml"
+                    break
+
+        if not plugin_yaml_path:
+            raise HTTPException(status_code=400, detail="No plugin.yaml found in package")
+
+        # Parse plugin.yaml
+        with open(plugin_yaml_path) as f:
+            plugin_config = yaml.safe_load(f)
+
+        # Validate required fields
+        required_fields = ["name", "version", "description", "category", "engine"]
+        for field in required_fields:
+            if field not in plugin_config:
+                raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+
+        plugin_name = plugin_config["name"]
+        version = plugin_config["version"]
+
+        # Check if plugin exists
+        plugin_stmt = select(MarketplacePlugin).where(MarketplacePlugin.name == plugin_name)
+        plugin_result = await session.execute(plugin_stmt)
+        plugin = plugin_result.scalar_one_or_none()
+
+        if not plugin:
+            # Create new plugin
+            plugin = MarketplacePlugin(
+                name=plugin_name,
+                display_name=plugin_config.get("display_name", plugin_name),
+                author=current_user.username,
+                description=plugin_config.get("description"),
+                category=plugin_config.get("category"),
+                tags=plugin_config.get("tags", []),
+                homepage_url=plugin_config.get("homepage_url"),
+                repository_url=plugin_config.get("repository_url"),
+                license=plugin_config.get("license"),
+            )
+            session.add(plugin)
+            await session.flush()
+        else:
+            # Verify ownership
+            if plugin.author != current_user.username:
+                raise HTTPException(
+                    status_code=403, detail="You are not the author of this plugin"
+                )
+
+        # Check if version already exists
+        version_stmt = select(MarketplaceVersion).where(
+            MarketplaceVersion.plugin_id == plugin.id, MarketplaceVersion.version == version
+        )
+        version_result = await session.execute(version_stmt)
+        existing_version = version_result.scalar_one_or_none()
+
+        if existing_version:
+            raise HTTPException(
+                status_code=400, detail=f"Version {version} already exists for {plugin_name}"
+            )
+
+        # TODO: Upload to S3/MinIO - for now use placeholder URL
+        package_url = f"https://marketplace.netkitx.com/packages/{plugin_name}/{version}.zip"
+
+        # Create version
+        new_version = MarketplaceVersion(
+            plugin_id=plugin.id,
+            version=version,
+            changelog=plugin_config.get("changelog"),
+            package_url=package_url,
+            package_hash=package_hash,
+            package_size=package_size,
+            min_netkitx_version=plugin_config.get("requires", {}).get("netkitx"),
+        )
+        session.add(new_version)
+        await session.flush()
+
+        # Create dependencies
+        dependencies = plugin_config.get("dependencies", [])
+        for dep in dependencies:
+            if isinstance(dep, dict):
+                dep_obj = MarketplaceDependency(
+                    version_id=new_version.id,
+                    depends_on_plugin=dep["name"],
+                    version_constraint=dep.get("version", "*"),
+                    optional=dep.get("optional", False),
+                )
+                session.add(dep_obj)
+
+        await session.commit()
+
+        return PluginPublishResponse(
+            success=True,
+            plugin_name=plugin_name,
+            version=version,
+            message=f"Successfully published {plugin_name} version {version}",
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Publish failed: {e}")
+    finally:
+        # Cleanup temp directory
+        import shutil
+
+        if temp_dir.exists():
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+@router.delete("/plugins/{plugin_name}/versions/{version}")
+async def yank_version(
+    plugin_name: str,
+    version: str,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Yank a plugin version (mark as unavailable but don't delete)."""
+    # Get plugin
+    plugin_stmt = select(MarketplacePlugin).where(MarketplacePlugin.name == plugin_name)
+    plugin_result = await session.execute(plugin_stmt)
+    plugin = plugin_result.scalar_one_or_none()
+
+    if not plugin:
+        raise HTTPException(status_code=404, detail="Plugin not found")
+
+    # Verify ownership
+    if plugin.author != current_user.username:
+        raise HTTPException(status_code=403, detail="You are not the author of this plugin")
+
+    # Get version
+    version_stmt = select(MarketplaceVersion).where(
+        MarketplaceVersion.plugin_id == plugin.id, MarketplaceVersion.version == version
+    )
+    version_result = await session.execute(version_stmt)
+    version_obj = version_result.scalar_one_or_none()
+
+    if not version_obj:
+        raise HTTPException(status_code=404, detail="Version not found")
+
+    # Yank version
+    version_obj.yanked = True
+    await session.commit()
+
+    return {"success": True, "message": f"Version {version} of {plugin_name} has been yanked"}
+

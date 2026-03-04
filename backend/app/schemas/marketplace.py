@@ -148,3 +148,26 @@ class MarketplaceReviewResponse(MarketplaceReviewCreate):
 
     class Config:
         from_attributes = True
+
+
+class PluginPublishRequest(BaseModel):
+    """Plugin publish request metadata."""
+
+    display_name: str = Field(..., max_length=255)
+    description: Optional[str] = None
+    category: Optional[str] = Field(None, max_length=50)
+    tags: Optional[list[str]] = None
+    homepage_url: Optional[str] = None
+    repository_url: Optional[str] = None
+    license: Optional[str] = Field(None, max_length=50)
+    changelog: Optional[str] = None
+
+
+class PluginPublishResponse(BaseModel):
+    """Plugin publish response."""
+
+    success: bool
+    plugin_name: str
+    version: str
+    message: str
+
