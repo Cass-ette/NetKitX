@@ -1,6 +1,7 @@
 """Test configuration and fixtures."""
 
 import pytest
+import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
@@ -13,11 +14,11 @@ from app.core.database import Base, get_session
 TEST_DATABASE_URL = "postgresql+asyncpg://netkitx:netkitx@localhost:5432/netkitx_test"
 
 # Create test engine
-test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+test_engine = create_async_engine(TEST_DATABASE_URL, echo=False, pool_pre_ping=True)
 TestSessionLocal = sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
 
 
-@pytest.fixture(scope="session")
+@pytest_asyncio.fixture(scope="function", autouse=True)
 async def setup_database():
     """Create test database tables."""
     async with test_engine.begin() as conn:
@@ -27,7 +28,7 @@ async def setup_database():
         await conn.run_sync(Base.metadata.drop_all)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def db_session(setup_database):
     """Get test database session."""
     async with TestSessionLocal() as session:
@@ -35,7 +36,7 @@ async def db_session(setup_database):
         await session.rollback()
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def client(db_session):
     """Get test HTTP client."""
 
