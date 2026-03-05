@@ -13,6 +13,7 @@ from app.core.deps import get_current_user
 from app.models.user import User
 from app.models.ai_settings import AISettings
 from app.schemas.ai import AISettingsUpdate, AISettingsResponse, AIAnalyzeRequest, AIChatRequest
+from app.schemas.agent import AgentRequest
 from app.services.ai_service import (
     encrypt_key,
     decrypt_key,
@@ -172,6 +173,49 @@ async def chat(
 
     return StreamingResponse(
         _stream_ai(ai.provider, api_key, ai.model, messages),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@router.post("/agent")
+async def agent(
+    body: AgentRequest,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    ai = await _get_ai_settings(session, user.id)
+    if not ai:
+        raise HTTPException(status_code=400, detail="AI not configured")
+
+    api_key = decrypt_key(ai.api_key_enc)
+
+    from app.services.agent_service import run_agent_loop
+
+    confirm = None
+    if body.confirm_action is not None:
+        confirm = {
+            "approved": body.confirm_action.approved,
+            "action": body.confirm_action.action,
+        }
+
+    async def event_stream():
+        async for evt in run_agent_loop(
+            provider=ai.provider,
+            api_key=api_key,
+            model=ai.model,
+            messages=list(body.messages),
+            agent_mode=body.agent_mode,
+            security_mode=body.security_mode,
+            lang=body.lang,
+            max_turns=body.max_turns,
+            confirm_action=confirm,
+        ):
+            yield f"data: {json.dumps(evt, default=str)}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        event_stream(),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     # Marketplace
     VERIFIED_PUBLISHERS: list[str] = []
 
+    # Agent
+    AGENT_MAX_TURNS: int = 0  # 0 = unlimited
+    AGENT_COMMAND_TIMEOUT: int = 30
+
     # CORS
     ALLOWED_ORIGINS: list[str] = ["http://localhost:3000"]
 

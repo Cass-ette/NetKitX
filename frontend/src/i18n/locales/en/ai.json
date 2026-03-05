@@ -25,5 +25,20 @@
   "providerClaude": "Claude (Anthropic)",
   "providerDeepseek": "DeepSeek",
   "modeDefense": "Defense",
-  "modeOffense": "Offense"
+  "modeOffense": "Offense",
+  "agentChat": "Chat",
+  "agentSemiAuto": "Semi-Auto",
+  "agentFullAuto": "Full-Auto",
+  "agentTerminal": "Terminal",
+  "agentTurn": "Turn {{turn}}/{{max}}",
+  "agentTurnUnlimited": "Turn {{turn}}",
+  "agentStop": "Stop",
+  "agentWaiting": "Waiting for confirmation…",
+  "agentExecuting": "Executing",
+  "agentDone": "Done",
+  "actionExecute": "Execute",
+  "actionSkip": "Skip",
+  "actionProposed": "Proposed",
+  "viewTask": "View Task",
+  "maxTurnsReached": "Reached maximum turn limit ({{max}} turns). Send a new message to continue."
 }

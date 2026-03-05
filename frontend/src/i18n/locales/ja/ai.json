@@ -25,5 +25,20 @@
   "providerClaude": "Claude (Anthropic)",
   "providerDeepseek": "DeepSeek",
   "modeDefense": "防御モード",
-  "modeOffense": "攻撃モード"
+  "modeOffense": "攻撃モード",
+  "agentChat": "チャット",
+  "agentSemiAuto": "半自動",
+  "agentFullAuto": "全自動",
+  "agentTerminal": "ターミナル",
+  "agentTurn": "ターン {{turn}}/{{max}}",
+  "agentTurnUnlimited": "ターン {{turn}}",
+  "agentStop": "停止",
+  "agentWaiting": "確認待ち…",
+  "agentExecuting": "実行中",
+  "agentDone": "完了",
+  "actionExecute": "実行",
+  "actionSkip": "スキップ",
+  "actionProposed": "提案中",
+  "viewTask": "タスクを表示",
+  "maxTurnsReached": "最大ターン数に達しました ({{max}} ターン)。続行するには新しいメッセージを送信してください。"
 }

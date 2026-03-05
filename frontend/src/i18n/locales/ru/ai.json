@@ -25,5 +25,20 @@
   "providerClaude": "Claude (Anthropic)",
   "providerDeepseek": "DeepSeek",
   "modeDefense": "Защита",
-  "modeOffense": "Атака"
+  "modeOffense": "Атака",
+  "agentChat": "Чат",
+  "agentSemiAuto": "Полуавто",
+  "agentFullAuto": "Полностью авто",
+  "agentTerminal": "Терминал",
+  "agentTurn": "Ход {{turn}}/{{max}}",
+  "agentTurnUnlimited": "Ход {{turn}}",
+  "agentStop": "Стоп",
+  "agentWaiting": "Ожидание подтверждения…",
+  "agentExecuting": "Выполняется",
+  "agentDone": "Готово",
+  "actionExecute": "Выполнить",
+  "actionSkip": "Пропустить",
+  "actionProposed": "Предложено",
+  "viewTask": "Просмотр задачи",
+  "maxTurnsReached": "Достигнут лимит ходов ({{max}} ходов). Отправьте новое сообщение для продолжения."
 }

@@ -25,5 +25,20 @@
   "providerClaude": "Claude (Anthropic)",
   "providerDeepseek": "DeepSeek",
   "modeDefense": "방어 모드",
-  "modeOffense": "공격 모드"
+  "modeOffense": "공격 모드",
+  "agentChat": "채팅",
+  "agentSemiAuto": "반자동",
+  "agentFullAuto": "전자동",
+  "agentTerminal": "터미널",
+  "agentTurn": "턴 {{turn}}/{{max}}",
+  "agentTurnUnlimited": "턴 {{turn}}",
+  "agentStop": "중지",
+  "agentWaiting": "확인 대기 중…",
+  "agentExecuting": "실행 중",
+  "agentDone": "완료",
+  "actionExecute": "실행",
+  "actionSkip": "건너뛰기",
+  "actionProposed": "제안됨",
+  "viewTask": "작업 보기",
+  "maxTurnsReached": "최대 턴 제한에 도달했습니다 ({{max}} 턴). 계속하려면 새 메시지를 보내세요."
 }

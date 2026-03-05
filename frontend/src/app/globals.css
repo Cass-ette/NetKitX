@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -123,4 +124,14 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Enhanced code block visibility */
+.prose pre {
+  @apply border border-border shadow-sm;
+  background-color: oklch(0.95 0 0) !important;
+}
+
+.dark .prose pre {
+  background-color: oklch(0.22 0 0) !important;
 }

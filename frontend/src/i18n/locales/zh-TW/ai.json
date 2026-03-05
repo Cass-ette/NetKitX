@@ -25,5 +25,18 @@
   "providerClaude": "Claude (Anthropic)",
   "providerDeepseek": "DeepSeek",
   "modeDefense": "防禦模式",
-  "modeOffense": "進攻模式"
+  "modeOffense": "進攻模式",
+  "agentChat": "對話",
+  "agentSemiAuto": "半自動",
+  "agentFullAuto": "全自動",
+  "agentTerminal": "終端機",
+  "agentTurn": "第 {{turn}}/{{max}} 輪",
+  "agentStop": "停止",
+  "agentWaiting": "等待確認…",
+  "agentExecuting": "執行中",
+  "agentDone": "完成",
+  "actionExecute": "執行",
+  "actionSkip": "跳過",
+  "actionProposed": "待確認",
+  "viewTask": "查看任務"
 }

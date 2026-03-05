@@ -25,5 +25,20 @@
   "providerClaude": "Claude (Anthropic)",
   "providerDeepseek": "DeepSeek",
   "modeDefense": "防御模式",
-  "modeOffense": "进攻模式"
+  "modeOffense": "进攻模式",
+  "agentChat": "对话",
+  "agentSemiAuto": "半自动",
+  "agentFullAuto": "全自动",
+  "agentTerminal": "终端",
+  "agentTurn": "第 {{turn}}/{{max}} 轮",
+  "agentTurnUnlimited": "第 {{turn}} 轮",
+  "agentStop": "停止",
+  "agentWaiting": "等待确认…",
+  "agentExecuting": "执行中",
+  "agentDone": "完成",
+  "actionExecute": "执行",
+  "actionSkip": "跳过",
+  "actionProposed": "待确认",
+  "viewTask": "查看任务",
+  "maxTurnsReached": "已达到最大轮次限制 ({{max}} 轮)。如需继续，请发送新消息。"
 }
