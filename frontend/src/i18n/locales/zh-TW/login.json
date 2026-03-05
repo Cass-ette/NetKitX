@@ -1,0 +1,15 @@
+{
+  "signInTitle": "登入 NetKitX",
+  "createAccountTitle": "建立帳號",
+  "username": "使用者名稱",
+  "email": "電子郵件",
+  "password": "密碼",
+  "signIn": "登入",
+  "register": "註冊",
+  "loading": "載入中...",
+  "alreadyHaveAccount": "已有帳號？",
+  "dontHaveAccount": "沒有帳號？",
+  "signInLink": "登入",
+  "registerLink": "註冊",
+  "somethingWentWrong": "發生錯誤"
+}

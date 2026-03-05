@@ -1,0 +1,15 @@
+{
+  "title": "儀表板",
+  "subtitle": "NetKitX 安全工具包總覽",
+  "toolsAvailable": "可用工具",
+  "registeredTools": "已註冊工具",
+  "totalTasks": "總任務數",
+  "tasksCreated": "已建立任務",
+  "running": "執行中",
+  "tasksInProgress": "進行中的任務",
+  "plugins": "外掛",
+  "loadedPlugins": "已載入外掛",
+  "recentTasks": "近期任務",
+  "noTasksYet": "尚無任務。前往{{toolsLink}}開始掃描。",
+  "toolsLinkText": "工具"
+}

@@ -1,0 +1,13 @@
+{
+  "title": "設定",
+  "subtitle": "系統組態",
+  "apiConnection": "API 連線",
+  "backendUrl": "後端網址",
+  "status": "狀態",
+  "connected": "已連線",
+  "about": "關於",
+  "extensibleToolkit": "可擴充的網路安全工具包",
+  "version": "版本 {{version}}",
+  "pluginDirectory": "外掛目錄：",
+  "engineDirectory": "引擎目錄："
+}

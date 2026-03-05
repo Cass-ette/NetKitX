@@ -1,0 +1,21 @@
+{
+  "title": "工具",
+  "subtitle": "可用的安全工具",
+  "loadingTools": "載入工具中...",
+  "noToolsLoaded": "未載入工具。請檢查外掛設定。",
+  "params": "{{count}} 個參數",
+  "parameters": "參數",
+  "run": "執行",
+  "running": "執行中...",
+  "starting": "啟動中...",
+  "export": "匯出",
+  "htmlReport": "HTML 報告",
+  "pdfReport": "PDF 報告",
+  "terminal": "終端機",
+  "collapse": "收合",
+  "expand": "展開",
+  "results": "結果 ({{count}})",
+  "toolNotFound": "找不到工具",
+  "failedToCreateTask": "建立任務失敗",
+  "failedToExport": "匯出報告失敗"
+}

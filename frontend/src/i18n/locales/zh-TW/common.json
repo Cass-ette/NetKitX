@@ -1,0 +1,17 @@
+{
+  "navigation": "導覽",
+  "dashboard": "儀表板",
+  "tools": "工具",
+  "tasks": "任務",
+  "plugins": "外掛",
+  "marketplace": "外掛市集",
+  "topology": "拓撲",
+  "settings": "設定",
+  "logout": "登出",
+  "loading": "載入中...",
+  "error": "錯誤",
+  "status_done": "已完成",
+  "status_failed": "失敗",
+  "status_running": "執行中",
+  "status_pending": "等待中"
+}

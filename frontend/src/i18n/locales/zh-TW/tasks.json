@@ -1,0 +1,13 @@
+{
+  "title": "任務",
+  "subtitle": "任務執行歷史",
+  "id": "ID",
+  "plugin": "外掛",
+  "status": "狀態",
+  "created": "建立時間",
+  "duration": "耗時",
+  "results": "結果",
+  "noTasksYet": "尚無任務。前往{{toolsLink}}執行掃描。",
+  "toolsLinkText": "工具",
+  "runningDuration": "執行中..."
+}

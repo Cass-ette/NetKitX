@@ -1,0 +1,18 @@
+{
+  "title": "網路拓撲",
+  "subtitle": "將掃描結果視覺化為網路圖",
+  "selectCompletedTask": "選擇已完成的任務",
+  "hosts": "{{count}} 台主機",
+  "connections": "{{count}} 個連線",
+  "topologyGraph": "拓撲圖",
+  "loadingTopology": "載入拓撲中...",
+  "noCompletedTasks": "找不到已完成的任務。請先執行掃描。",
+  "noTopologyData": "此任務無拓撲資料。",
+  "ports": "連接埠：",
+  "results": "{{count}} 個結果",
+  "type": "類型",
+  "host": "主機",
+  "openPorts": "開放連接埠 ({{count}})",
+  "services": "服務 ({{count}})",
+  "totalResults": "總結果數"
+}

@@ -1,0 +1,18 @@
+{
+  "title": "外掛",
+  "subtitle": "上傳、管理及設定外掛",
+  "uploadHint": "將外掛 .zip 檔案拖放至此處，或點擊瀏覽",
+  "uploading": "上傳中...",
+  "chooseFile": "選擇檔案",
+  "active": "已啟用",
+  "disabled": "已停用",
+  "enabled": "啟用",
+  "disabledLabel": "停用",
+  "confirm": "確認",
+  "cancel": "取消",
+  "delete": "刪除",
+  "noPluginsInstalled": "尚未安裝外掛。",
+  "uploadFailed": "上傳失敗",
+  "toggleFailed": "切換失敗",
+  "deleteFailed": "刪除失敗"
+}

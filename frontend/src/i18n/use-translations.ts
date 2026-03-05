@@ -21,6 +21,16 @@ import zhCN_marketplace from "./locales/zh-CN/marketplace.json";
 import zhCN_topology from "./locales/zh-CN/topology.json";
 import zhCN_settings from "./locales/zh-CN/settings.json";
 
+import zhTW_common from "./locales/zh-TW/common.json";
+import zhTW_login from "./locales/zh-TW/login.json";
+import zhTW_dashboard from "./locales/zh-TW/dashboard.json";
+import zhTW_tools from "./locales/zh-TW/tools.json";
+import zhTW_tasks from "./locales/zh-TW/tasks.json";
+import zhTW_plugins from "./locales/zh-TW/plugins.json";
+import zhTW_marketplace from "./locales/zh-TW/marketplace.json";
+import zhTW_topology from "./locales/zh-TW/topology.json";
+import zhTW_settings from "./locales/zh-TW/settings.json";
+
 import ja_common from "./locales/ja/common.json";
 import ja_login from "./locales/ja/login.json";
 import ja_dashboard from "./locales/ja/dashboard.json";
@@ -106,6 +116,17 @@ const messages: Record<Locale, Record<Namespace, Messages>> = {
     marketplace: zhCN_marketplace,
     topology: zhCN_topology,
     settings: zhCN_settings,
+  },
+  "zh-TW": {
+    common: zhTW_common,
+    login: zhTW_login,
+    dashboard: zhTW_dashboard,
+    tools: zhTW_tools,
+    tasks: zhTW_tasks,
+    plugins: zhTW_plugins,
+    marketplace: zhTW_marketplace,
+    topology: zhTW_topology,
+    settings: zhTW_settings,
   },
   ja: {
     common: ja_common,
