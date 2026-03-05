@@ -74,9 +74,11 @@ class FileUpload(PluginBase):
                 filename = test["filename"]
                 content = test["content"]
                 ct = test["content_type"]
+                # Sanitize filename for logging (PostgreSQL JSONB rejects \x00)
+                safe_name = filename.replace("\x00", "\\0")
 
                 yield PluginEvent(type="log", data={
-                    "msg": f"\n  [{i+1}/{total}] {name}: {filename} ({ct})"
+                    "msg": f"\n  [{i+1}/{total}] {name}: {safe_name} ({ct})"
                 })
 
                 try:
@@ -111,7 +113,7 @@ class FileUpload(PluginBase):
                         found += 1
                         yield PluginEvent(type="result", data={
                             "test": name,
-                            "filename": filename,
+                            "filename": safe_name,
                             "content_type": ct,
                             "status": status,
                             "accessible": "Yes" if accessible else "Unknown",
