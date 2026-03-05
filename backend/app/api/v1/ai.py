@@ -20,6 +20,7 @@ from app.services.ai_service import (
     stream_claude,
     stream_deepseek,
     get_system_prompt,
+    get_lang_reminder,
 )
 
 logger = logging.getLogger(__name__)
@@ -137,6 +138,7 @@ async def analyze(
     user_content = "\n\n".join(context_parts) if context_parts else "No data provided."
     if body.custom_prompt:
         user_content = f"{body.custom_prompt}\n\n---\n\n{user_content}"
+    user_content += get_lang_reminder(body.lang)
 
     messages = [
         {"role": "system", "content": get_system_prompt(body.mode, body.lang)},

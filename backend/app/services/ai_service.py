@@ -63,8 +63,23 @@ def get_system_prompt(mode: str, lang: str = "en") -> str:
         prompt = DEFENSE_SYSTEM_PROMPT
     if lang and lang != "en":
         lang_name = LANG_MAP.get(lang, lang)
-        prompt += f"\n\nIMPORTANT: You MUST respond in {lang_name}. All analysis, explanations, and recommendations must be written in {lang_name}."
+        lang_prefix = (
+            f"[LANGUAGE REQUIREMENT] You MUST write your ENTIRE response in {lang_name}, "
+            f"regardless of the language of the input data. Even if the user provides English "
+            f"scan results, tool output, or technical data, your analysis and explanations "
+            f"MUST be in {lang_name}. Technical terms, commands, and code can stay in English, "
+            f"but all surrounding text must be in {lang_name}.\n\n"
+        )
+        prompt = lang_prefix + prompt
     return prompt
+
+
+def get_lang_reminder(lang: str) -> str:
+    """Return a short reminder to append to user content for non-English locales."""
+    if not lang or lang == "en":
+        return ""
+    lang_name = LANG_MAP.get(lang, lang)
+    return f"\n\n[Reminder: respond in {lang_name}]"
 
 
 def _derive_fernet_key() -> bytes:
