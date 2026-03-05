@@ -10,6 +10,7 @@ import {
   Settings,
   Shield,
   Store,
+  Network,
 } from "lucide-react";
 import {
   Sidebar,
@@ -29,6 +30,7 @@ const navItems = [
   { label: "Tasks", href: "/tasks", icon: ListTodo },
   { label: "Plugins", href: "/plugins", icon: Puzzle },
   { label: "Marketplace", href: "/marketplace", icon: Store },
+  { label: "Topology", href: "/topology", icon: Network },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 

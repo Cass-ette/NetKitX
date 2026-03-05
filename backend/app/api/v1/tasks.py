@@ -36,17 +36,20 @@ async def _run_plugin(task_id: int, plugin_name: str, params: dict):
 
     try:
         results = []
+        logs = []
         async for event in plugin.execute(params):
             await manager.send_event(tid, {"type": event.type, "data": event.data})
             if event.type == "result":
                 results.append(event.data)
+            elif event.type == "log":
+                logs.append(event.data.get("msg", str(event.data)))
             elif event.type == "error":
                 async with async_session() as session:
                     await update_task_status(session, task_id, "failed", {"error": event.data})
                 return
 
         async with async_session() as session:
-            await update_task_status(session, task_id, "done", {"items": results})
+            await update_task_status(session, task_id, "done", {"items": results, "logs": logs})
         await manager.send_event(
             tid, {"type": "status", "data": {"status": "done", "items_count": len(results)}}
         )
@@ -95,3 +98,18 @@ async def get_one(
     if not task or task.created_by != user.id:
         raise HTTPException(status_code=404, detail="Task not found")
     return task
+
+
+@router.get("/{task_id}/logs")
+async def get_logs(
+    task_id: int,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Return historical logs for a completed or running task."""
+    task = await get_task(session, task_id)
+    if not task or task.created_by != user.id:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    logs = (task.result or {}).get("logs", [])
+    return {"task_id": task_id, "status": task.status, "logs": logs}

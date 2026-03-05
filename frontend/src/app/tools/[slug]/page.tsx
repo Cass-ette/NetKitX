@@ -17,8 +17,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Play, Loader2 } from "lucide-react";
+import { Play, Loader2, Download, FileText, FileDown } from "lucide-react";
 import type { PluginMeta, Task } from "@/types";
+import { TaskTerminal } from "@/components/terminal/task-terminal";
+import { API_BASE } from "@/lib/api";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface WSEvent {
   type: string;
@@ -37,9 +45,10 @@ export default function ToolDetailPage({
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState<{ percent: number; msg: string } | null>(null);
   const [results, setResults] = useState<Record<string, unknown>[]>([]);
-  const [logs, setLogs] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [taskStatus, setTaskStatus] = useState<string | null>(null);
+  const [taskId, setTaskId] = useState<number | null>(null);
+  const [terminalOpen, setTerminalOpen] = useState(false);
 
   // Fetch tool metadata
   useEffect(() => {
@@ -62,10 +71,10 @@ export default function ToolDetailPage({
     if (!tool || !token) return;
     setRunning(true);
     setResults([]);
-    setLogs([]);
     setError(null);
     setProgress({ percent: 0, msg: "Starting..." });
     setTaskStatus("pending");
+    setTerminalOpen(true);
 
     try {
       // Create task
@@ -74,6 +83,8 @@ export default function ToolDetailPage({
         token,
         body: JSON.stringify({ plugin_name: tool.name, params: formData }),
       });
+
+      setTaskId(task.id);
 
       // Connect WebSocket for real-time updates
       const ws = connectTaskWS(
@@ -90,7 +101,7 @@ export default function ToolDetailPage({
               setResults((prev) => [...prev, event.data]);
               break;
             case "log":
-              setLogs((prev) => [...prev, (event.data.msg as string) || JSON.stringify(event.data)]);
+              // Handled by TaskTerminal component
               break;
             case "status":
               setTaskStatus(event.data.status as string);
@@ -115,6 +126,32 @@ export default function ToolDetailPage({
     }
   }, [tool, token, formData]);
 
+  const handleExport = useCallback(
+    (format: "html" | "pdf") => {
+      if (!taskId || !token) return;
+      const url = `${API_BASE}/api/v1/reports/${taskId}/export?format=${format}`;
+      const a = document.createElement("a");
+      a.href = url;
+      a.target = "_blank";
+      // For PDF, use fetch to add auth header and trigger download
+      fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+        .then((res) => {
+          if (!res.ok) throw new Error("Export failed");
+          return res.blob();
+        })
+        .then((blob) => {
+          const blobUrl = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = blobUrl;
+          link.download = `report-${taskId}.${format}`;
+          link.click();
+          URL.revokeObjectURL(blobUrl);
+        })
+        .catch(() => setError("Failed to export report"));
+    },
+    [taskId, token],
+  );
+
   if (error && !tool) {
     return <p className="text-destructive">{error}</p>;
   }
@@ -136,6 +173,26 @@ export default function ToolDetailPage({
             <Badge variant="outline">v{tool.version}</Badge>
           </div>
         </div>
+        {taskStatus === "done" && taskId && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Download className="mr-2 h-4 w-4" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => handleExport("html")}>
+                <FileText className="mr-2 h-4 w-4" />
+                HTML Report
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport("pdf")}>
+                <FileDown className="mr-2 h-4 w-4" />
+                PDF Report
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
       {/* Parameter Form */}
@@ -223,15 +280,20 @@ export default function ToolDetailPage({
         </Card>
       )}
 
-      {/* Logs */}
-      {logs.length > 0 && (
+      {/* Terminal Panel */}
+      {taskId && (
         <Card>
-          <CardHeader><CardTitle>Logs</CardTitle></CardHeader>
-          <CardContent>
-            <pre className="max-h-40 overflow-auto rounded bg-muted p-3 text-xs">
-              {logs.join("\n")}
-            </pre>
-          </CardContent>
+          <CardHeader className="cursor-pointer" onClick={() => setTerminalOpen(!terminalOpen)}>
+            <CardTitle className="flex items-center justify-between">
+              <span>Terminal</span>
+              <Badge variant="outline">{terminalOpen ? "Collapse" : "Expand"}</Badge>
+            </CardTitle>
+          </CardHeader>
+          {terminalOpen && (
+            <CardContent>
+              <TaskTerminal taskId={taskId} />
+            </CardContent>
+          )}
         </Card>
       )}
 
