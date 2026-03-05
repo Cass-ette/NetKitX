@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     PLUGINS_DIR: str = "plugins"
     ENGINES_DIR: str = "engines/bin"
 
+    # Marketplace
+    VERIFIED_PUBLISHERS: list[str] = []
+
     # CORS
     ALLOWED_ORIGINS: list[str] = ["http://localhost:3000"]
 

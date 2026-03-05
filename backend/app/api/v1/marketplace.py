@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_session
-from app.core.deps import get_current_user
+from app.core.deps import get_admin_user, get_current_user, is_official_publisher
 from app.models import (
     MarketplaceDependency,
     MarketplacePlugin,
@@ -513,6 +513,7 @@ async def publish_plugin(
                 homepage_url=plugin_config.get("homepage_url"),
                 repository_url=plugin_config.get("repository_url"),
                 license=plugin_config.get("license"),
+                verified=is_official_publisher(current_user),
             )
             session.add(plugin)
             await session.flush()
@@ -520,6 +521,9 @@ async def publish_plugin(
             # Verify ownership
             if plugin.author != current_user.username:
                 raise HTTPException(status_code=403, detail="You are not the author of this plugin")
+            # Upgrade to verified if publisher is now official
+            if not plugin.verified and is_official_publisher(current_user):
+                plugin.verified = True
 
         # Check if version already exists
         version_stmt = select(MarketplaceVersion).where(
@@ -665,13 +669,11 @@ async def list_reports(
     status: Optional[str] = Query(None, pattern="^(pending|reviewing|resolved|rejected)$"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_admin_user),
     session: AsyncSession = Depends(get_session),
 ):
     """List security reports (admin only)."""
-    # TODO: Add admin check
-    # For now, only show user's own reports
-    stmt = select(MarketplaceReport).where(MarketplaceReport.reporter_id == current_user.id)
+    stmt = select(MarketplaceReport)
 
     if status:
         stmt = stmt.where(MarketplaceReport.status == status)
@@ -682,3 +684,43 @@ async def list_reports(
     reports = result.scalars().all()
 
     return reports
+
+
+@router.put("/plugins/{plugin_name}/verify")
+async def verify_plugin(
+    plugin_name: str,
+    current_user: User = Depends(get_admin_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Mark a plugin as verified (admin only)."""
+    stmt = select(MarketplacePlugin).where(MarketplacePlugin.name == plugin_name)
+    result = await session.execute(stmt)
+    plugin = result.scalar_one_or_none()
+
+    if not plugin:
+        raise HTTPException(status_code=404, detail="Plugin not found")
+
+    plugin.verified = True
+    await session.commit()
+
+    return {"success": True, "message": f"Plugin {plugin_name} is now verified"}
+
+
+@router.delete("/plugins/{plugin_name}/verify")
+async def unverify_plugin(
+    plugin_name: str,
+    current_user: User = Depends(get_admin_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Remove verified status from a plugin (admin only)."""
+    stmt = select(MarketplacePlugin).where(MarketplacePlugin.name == plugin_name)
+    result = await session.execute(stmt)
+    plugin = result.scalar_one_or_none()
+
+    if not plugin:
+        raise HTTPException(status_code=404, detail="Plugin not found")
+
+    plugin.verified = False
+    await session.commit()
+
+    return {"success": True, "message": f"Plugin {plugin_name} is no longer verified"}
