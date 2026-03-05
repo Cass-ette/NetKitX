@@ -41,3 +41,15 @@ export interface User {
   email: string;
   role: "admin" | "user";
 }
+
+export interface AISettings {
+  provider: string;
+  api_key_masked: string;
+  model: string;
+  configured: boolean;
+}
+
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}

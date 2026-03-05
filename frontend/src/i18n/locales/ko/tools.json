@@ -17,5 +17,6 @@
   "results": "결과 ({{count}})",
   "toolNotFound": "도구를 찾을 수 없습니다",
   "failedToCreateTask": "작업 생성에 실패했습니다",
-  "failedToExport": "보고서 내보내기에 실패했습니다"
+  "failedToExport": "보고서 내보내기에 실패했습니다",
+  "aiAnalyze": "AI 분석"
 }

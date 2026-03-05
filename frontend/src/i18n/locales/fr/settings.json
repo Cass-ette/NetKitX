@@ -9,5 +9,14 @@
   "extensibleToolkit": "Boîte à outils de sécurité réseau extensible",
   "version": "Version {{version}}",
   "pluginDirectory": "Répertoire des plugins :",
-  "engineDirectory": "Répertoire des moteurs :"
+  "engineDirectory": "Répertoire des moteurs :",
+  "aiConfig": "Configuration IA",
+  "aiConfigDesc": "Configurer le fournisseur IA pour l'analyse de vulnérabilités",
+  "aiProvider": "Fournisseur",
+  "aiApiKey": "Clé API",
+  "aiModel": "Modèle",
+  "aiSave": "Enregistrer",
+  "aiDelete": "Supprimer",
+  "aiSaved": "Configuration IA enregistrée",
+  "aiDeleted": "Configuration IA supprimée"
 }

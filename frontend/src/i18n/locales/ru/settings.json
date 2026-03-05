@@ -9,5 +9,14 @@
   "extensibleToolkit": "Расширяемый набор инструментов сетевой безопасности",
   "version": "Версия {{version}}",
   "pluginDirectory": "Каталог плагинов:",
-  "engineDirectory": "Каталог движков:"
+  "engineDirectory": "Каталог движков:",
+  "aiConfig": "Настройка ИИ",
+  "aiConfigDesc": "Настройте провайдера ИИ для анализа уязвимостей",
+  "aiProvider": "Провайдер",
+  "aiApiKey": "API-ключ",
+  "aiModel": "Модель",
+  "aiSave": "Сохранить",
+  "aiDelete": "Удалить",
+  "aiSaved": "Настройки ИИ сохранены",
+  "aiDeleted": "Настройки ИИ удалены"
 }

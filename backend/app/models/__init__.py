@@ -10,6 +10,7 @@ from app.models.marketplace import (
     MarketplaceReview,
     MarketplaceReport,
 )
+from app.models.ai_settings import AISettings
 
 __all__ = [
     "User",
@@ -22,4 +23,5 @@ __all__ = [
     "UserInstalledPlugin",
     "MarketplaceReview",
     "MarketplaceReport",
+    "AISettings",
 ]

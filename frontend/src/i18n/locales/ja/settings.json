@@ -9,5 +9,14 @@
   "extensibleToolkit": "拡張可能なネットワークセキュリティツールキット",
   "version": "バージョン {{version}}",
   "pluginDirectory": "プラグインディレクトリ：",
-  "engineDirectory": "エンジンディレクトリ："
+  "engineDirectory": "エンジンディレクトリ：",
+  "aiConfig": "AI設定",
+  "aiConfigDesc": "脆弱性分析のためにAIプロバイダーを設定",
+  "aiProvider": "プロバイダー",
+  "aiApiKey": "APIキー",
+  "aiModel": "モデル",
+  "aiSave": "保存",
+  "aiDelete": "削除",
+  "aiSaved": "AI設定を保存しました",
+  "aiDeleted": "AI設定を削除しました"
 }

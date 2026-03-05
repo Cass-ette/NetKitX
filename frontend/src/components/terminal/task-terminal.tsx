@@ -26,6 +26,8 @@ export function TaskTerminal({ taskId }: TaskTerminalProps) {
       try { term.writeln(data); } catch { /* terminal disposed or renderer not ready */ }
     };
 
+    const container = containerRef.current;
+
     const term = new Terminal({
       disableStdin: true,
       fontSize: 13,
@@ -41,17 +43,24 @@ export function TaskTerminal({ taskId }: TaskTerminalProps) {
 
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
-    term.open(containerRef.current);
 
-    // fit() can throw if renderer isn't ready yet
-    try { fitAddon.fit(); } catch { /* renderer not ready */ }
+    // Delay term.open() to next animation frame so the container is fully laid out.
+    // Without this, xterm's internal Viewport calls syncScrollArea before the
+    // renderer is initialized, causing "_renderer.value is undefined".
+    const rafId = requestAnimationFrame(() => {
+      if (disposed) return;
+      try {
+        term.open(container);
+        fitAddon.fit();
+      } catch { /* renderer not ready */ }
+    });
 
     termRef.current = term;
 
     const resizeObserver = new ResizeObserver(() => {
       try { fitAddon.fit(); } catch { /* terminal disposed or renderer not ready */ }
     });
-    resizeObserver.observe(containerRef.current);
+    resizeObserver.observe(container);
 
     // Fetch historical logs
     if (token) {
@@ -98,6 +107,7 @@ export function TaskTerminal({ taskId }: TaskTerminalProps) {
 
     return () => {
       disposed = true;
+      cancelAnimationFrame(rafId);
       resizeObserver.disconnect();
       ws.close();
       term.dispose();

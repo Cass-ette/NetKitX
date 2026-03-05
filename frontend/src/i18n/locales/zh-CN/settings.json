@@ -9,5 +9,14 @@
   "extensibleToolkit": "可扩展的网络安全工具包",
   "version": "版本 {{version}}",
   "pluginDirectory": "插件目录：",
-  "engineDirectory": "引擎目录："
+  "engineDirectory": "引擎目录：",
+  "aiConfig": "AI 配置",
+  "aiConfigDesc": "配置 AI 服务商以进行漏洞分析",
+  "aiProvider": "服务商",
+  "aiApiKey": "API 密钥",
+  "aiModel": "模型",
+  "aiSave": "保存",
+  "aiDelete": "删除",
+  "aiSaved": "AI 配置已保存",
+  "aiDeleted": "AI 配置已删除"
 }

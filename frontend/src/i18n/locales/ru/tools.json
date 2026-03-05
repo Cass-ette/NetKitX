@@ -17,5 +17,6 @@
   "results": "Результаты ({{count}})",
   "toolNotFound": "Инструмент не найден",
   "failedToCreateTask": "Не удалось создать задачу",
-  "failedToExport": "Не удалось экспортировать отчёт"
+  "failedToExport": "Не удалось экспортировать отчёт",
+  "aiAnalyze": "ИИ-анализ"
 }

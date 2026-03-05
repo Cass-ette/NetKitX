@@ -11,6 +11,7 @@ import {
   Shield,
   Store,
   Network,
+  Bot,
 } from "lucide-react";
 import {
   Sidebar,
@@ -33,6 +34,7 @@ const navItems: { key: string; href: string; icon: LucideIcon }[] = [
   { key: "plugins", href: "/plugins", icon: Puzzle },
   { key: "marketplace", href: "/marketplace", icon: Store },
   { key: "topology", href: "/topology", icon: Network },
+  { key: "aiChat", href: "/ai-chat", icon: Bot },
   { key: "settings", href: "/settings", icon: Settings },
 ];
 

@@ -9,5 +9,14 @@
   "extensibleToolkit": "Extensible Network Security Toolkit",
   "version": "Version {{version}}",
   "pluginDirectory": "Plugin directory:",
-  "engineDirectory": "Engine directory:"
+  "engineDirectory": "Engine directory:",
+  "aiConfig": "AI Configuration",
+  "aiConfigDesc": "Configure your AI provider for vulnerability analysis",
+  "aiProvider": "Provider",
+  "aiApiKey": "API Key",
+  "aiModel": "Model",
+  "aiSave": "Save",
+  "aiDelete": "Delete",
+  "aiSaved": "AI settings saved",
+  "aiDeleted": "AI settings deleted"
 }

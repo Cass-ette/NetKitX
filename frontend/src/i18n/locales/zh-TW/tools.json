@@ -17,5 +17,6 @@
   "results": "結果 ({{count}})",
   "toolNotFound": "找不到工具",
   "failedToCreateTask": "建立任務失敗",
-  "failedToExport": "匯出報告失敗"
+  "failedToExport": "匯出報告失敗",
+  "aiAnalyze": "AI 分析"
 }

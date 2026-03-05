@@ -17,5 +17,6 @@
   "results": "結果 ({{count}})",
   "toolNotFound": "ツールが見つかりません",
   "failedToCreateTask": "タスクの作成に失敗しました",
-  "failedToExport": "レポートのエクスポートに失敗しました"
+  "failedToExport": "レポートのエクスポートに失敗しました",
+  "aiAnalyze": "AI分析"
 }

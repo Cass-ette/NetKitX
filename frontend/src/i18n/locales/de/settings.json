@@ -9,5 +9,14 @@
   "extensibleToolkit": "Erweiterbares Netzwerk-Sicherheits-Toolkit",
   "version": "Version {{version}}",
   "pluginDirectory": "Plugin-Verzeichnis:",
-  "engineDirectory": "Engine-Verzeichnis:"
+  "engineDirectory": "Engine-Verzeichnis:",
+  "aiConfig": "KI-Konfiguration",
+  "aiConfigDesc": "KI-Anbieter für Schwachstellenanalyse konfigurieren",
+  "aiProvider": "Anbieter",
+  "aiApiKey": "API-Schlüssel",
+  "aiModel": "Modell",
+  "aiSave": "Speichern",
+  "aiDelete": "Löschen",
+  "aiSaved": "KI-Einstellungen gespeichert",
+  "aiDeleted": "KI-Einstellungen gelöscht"
 }

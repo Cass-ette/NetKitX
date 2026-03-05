@@ -9,5 +9,14 @@
   "extensibleToolkit": "可擴充的網路安全工具包",
   "version": "版本 {{version}}",
   "pluginDirectory": "外掛目錄：",
-  "engineDirectory": "引擎目錄："
+  "engineDirectory": "引擎目錄：",
+  "aiConfig": "AI 組態",
+  "aiConfigDesc": "組態 AI 服務商以進行漏洞分析",
+  "aiProvider": "服務商",
+  "aiApiKey": "API 金鑰",
+  "aiModel": "模型",
+  "aiSave": "儲存",
+  "aiDelete": "刪除",
+  "aiSaved": "AI 組態已儲存",
+  "aiDeleted": "AI 組態已刪除"
 }

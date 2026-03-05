@@ -17,5 +17,6 @@
   "results": "Results ({{count}})",
   "toolNotFound": "Tool not found",
   "failedToCreateTask": "Failed to create task",
-  "failedToExport": "Failed to export report"
+  "failedToExport": "Failed to export report",
+  "aiAnalyze": "AI Analyze"
 }

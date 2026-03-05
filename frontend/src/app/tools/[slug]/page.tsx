@@ -17,9 +17,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Play, Loader2, Download, FileText, FileDown } from "lucide-react";
+import { Play, Loader2, Download, FileText, FileDown, Bot } from "lucide-react";
 import type { PluginMeta, Task } from "@/types";
 import { TaskTerminal } from "@/components/terminal/task-terminal";
+import { AIAnalysisSheet } from "@/components/ai/ai-analysis-sheet";
 import { API_BASE } from "@/lib/api";
 import {
   DropdownMenu,
@@ -52,6 +53,7 @@ export default function ToolDetailPage({
   const [taskStatus, setTaskStatus] = useState<string | null>(null);
   const [taskId, setTaskId] = useState<number | null>(null);
   const [terminalOpen, setTerminalOpen] = useState(false);
+  const [aiSheetOpen, setAiSheetOpen] = useState(false);
 
   // Fetch tool metadata
   useEffect(() => {
@@ -174,7 +176,12 @@ export default function ToolDetailPage({
           </div>
         </div>
         {taskStatus === "done" && taskId && (
-          <DropdownMenu>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setAiSheetOpen(true)}>
+              <Bot className="mr-2 h-4 w-4" />
+              {t("aiAnalyze")}
+            </Button>
+            <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline">
                 <Download className="mr-2 h-4 w-4" />
@@ -192,6 +199,7 @@ export default function ToolDetailPage({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
         )}
       </div>
 
@@ -336,6 +344,20 @@ export default function ToolDetailPage({
             </pre>
           </CardContent>
         </Card>
+      )}
+
+      {/* AI Analysis Sheet */}
+      {taskId && (
+        <AIAnalysisSheet
+          open={aiSheetOpen}
+          onOpenChange={setAiSheetOpen}
+          taskId={taskId}
+          resultPreview={
+            results.length > 0
+              ? JSON.stringify(results, null, 2).slice(0, 2000)
+              : undefined
+          }
+        />
       )}
     </div>
   );
