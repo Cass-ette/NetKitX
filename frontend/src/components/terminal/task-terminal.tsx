@@ -20,6 +20,12 @@ export function TaskTerminal({ taskId }: TaskTerminalProps) {
   const initTerminal = useCallback(() => {
     if (!containerRef.current || termRef.current) return;
 
+    let disposed = false;
+    const safeWriteln = (term: Terminal, data: string) => {
+      if (disposed) return;
+      try { term.writeln(data); } catch { /* terminal disposed or renderer not ready */ }
+    };
+
     const term = new Terminal({
       disableStdin: true,
       fontSize: 13,
@@ -54,11 +60,11 @@ export function TaskTerminal({ taskId }: TaskTerminalProps) {
       })
         .then(({ logs }) => {
           for (const line of logs) {
-            term.writeln(line);
+            safeWriteln(term, line);
           }
         })
         .catch(() => {
-          term.writeln("\x1b[31m[Failed to load historical logs]\x1b[0m");
+          safeWriteln(term, "\x1b[31m[Failed to load historical logs]\x1b[0m");
         });
     }
 
@@ -68,18 +74,19 @@ export function TaskTerminal({ taskId }: TaskTerminalProps) {
       (event) => {
         if (event.type === "log") {
           const msg = (event.data.msg as string) || JSON.stringify(event.data);
-          term.writeln(msg);
+          safeWriteln(term, msg);
         } else if (event.type === "status") {
           const status = event.data.status as string;
           if (status === "done") {
-            term.writeln("\x1b[32m[Task completed]\x1b[0m");
+            safeWriteln(term, "\x1b[32m[Task completed]\x1b[0m");
           } else if (status === "failed") {
-            term.writeln("\x1b[31m[Task failed]\x1b[0m");
+            safeWriteln(term, "\x1b[31m[Task failed]\x1b[0m");
           } else if (status === "running") {
-            term.writeln("\x1b[36m[Task started]\x1b[0m");
+            safeWriteln(term, "\x1b[36m[Task started]\x1b[0m");
           }
         } else if (event.type === "error") {
-          term.writeln(
+          safeWriteln(
+            term,
             `\x1b[31m[Error] ${(event.data.error as string) || "Unknown error"}\x1b[0m`,
           );
         }
@@ -90,6 +97,7 @@ export function TaskTerminal({ taskId }: TaskTerminalProps) {
     );
 
     return () => {
+      disposed = true;
       resizeObserver.disconnect();
       ws.close();
       term.dispose();
