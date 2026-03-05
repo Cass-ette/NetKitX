@@ -23,5 +23,7 @@
   "deletedSuccess": "AI 配置已删除",
   "savedSuccess": "AI 配置已保存",
   "providerClaude": "Claude (Anthropic)",
-  "providerDeepseek": "DeepSeek"
+  "providerDeepseek": "DeepSeek",
+  "modeDefense": "防御模式",
+  "modeOffense": "进攻模式"
 }

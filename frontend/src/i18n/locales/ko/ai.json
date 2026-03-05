@@ -23,5 +23,7 @@
   "deletedSuccess": "AI 설정이 삭제되었습니다",
   "savedSuccess": "AI 설정이 저장되었습니다",
   "providerClaude": "Claude (Anthropic)",
-  "providerDeepseek": "DeepSeek"
+  "providerDeepseek": "DeepSeek",
+  "modeDefense": "방어 모드",
+  "modeOffense": "공격 모드"
 }

@@ -23,5 +23,7 @@
   "deletedSuccess": "Настройка ИИ удалена",
   "savedSuccess": "Настройка ИИ сохранена",
   "providerClaude": "Claude (Anthropic)",
-  "providerDeepseek": "DeepSeek"
+  "providerDeepseek": "DeepSeek",
+  "modeDefense": "Защита",
+  "modeOffense": "Атака"
 }

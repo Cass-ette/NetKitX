@@ -23,5 +23,7 @@
   "deletedSuccess": "Configuration IA supprimée",
   "savedSuccess": "Configuration IA enregistrée",
   "providerClaude": "Claude (Anthropic)",
-  "providerDeepseek": "DeepSeek"
+  "providerDeepseek": "DeepSeek",
+  "modeDefense": "Défense",
+  "modeOffense": "Attaque"
 }

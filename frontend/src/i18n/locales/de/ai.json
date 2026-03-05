@@ -23,5 +23,7 @@
   "deletedSuccess": "KI-Konfiguration gelöscht",
   "savedSuccess": "KI-Konfiguration gespeichert",
   "providerClaude": "Claude (Anthropic)",
-  "providerDeepseek": "DeepSeek"
+  "providerDeepseek": "DeepSeek",
+  "modeDefense": "Verteidigung",
+  "modeOffense": "Angriff"
 }

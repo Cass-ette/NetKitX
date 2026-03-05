@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Bot, Send, Loader2, Settings, User } from "lucide-react";
+import { Bot, Send, Loader2, Settings, User, Shield, Swords } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { API_BASE } from "@/lib/api";
 import { useTranslations } from "@/i18n/use-translations";
@@ -19,6 +19,7 @@ export default function AIChatPage() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<"defense" | "offense">("offense");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -47,6 +48,7 @@ export default function AIChatPage() {
         },
         body: JSON.stringify({
           messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+          mode,
         }),
         signal: abortRef.current.signal,
       });
@@ -108,7 +110,7 @@ export default function AIChatPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, input, messages, loading]);
+  }, [token, input, messages, loading, mode]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -135,8 +137,26 @@ export default function AIChatPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
-      <div className="mb-4">
+      <div className="mb-4 flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">{t("chat")}</h1>
+        <div className="flex items-center gap-1 rounded-lg border p-1">
+          <Button
+            variant={mode === "defense" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setMode("defense")}
+          >
+            <Shield className="mr-1 h-4 w-4" />
+            {t("modeDefense")}
+          </Button>
+          <Button
+            variant={mode === "offense" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setMode("offense")}
+          >
+            <Swords className="mr-1 h-4 w-4" />
+            {t("modeOffense")}
+          </Button>
+        </div>
       </div>
 
       {/* Messages */}

@@ -23,5 +23,7 @@
   "deletedSuccess": "AI 組態已刪除",
   "savedSuccess": "AI 組態已儲存",
   "providerClaude": "Claude (Anthropic)",
-  "providerDeepseek": "DeepSeek"
+  "providerDeepseek": "DeepSeek",
+  "modeDefense": "防禦模式",
+  "modeOffense": "進攻模式"
 }

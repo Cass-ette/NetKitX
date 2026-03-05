@@ -20,7 +20,9 @@ class AIAnalyzeRequest(BaseModel):
     task_id: int | None = None
     content: str = ""
     custom_prompt: str | None = None
+    mode: str = "defense"  # "defense" | "offense"
 
 
 class AIChatRequest(BaseModel):
     messages: list[dict[str, str]]  # [{role: "user", content: "..."}]
+    mode: str = "defense"  # "defense" | "offense"

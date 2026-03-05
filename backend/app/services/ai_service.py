@@ -12,15 +12,35 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-SECURITY_SYSTEM_PROMPT = (
-    "You are a senior cybersecurity analyst. The user will provide network scan results, "
+DEFENSE_SYSTEM_PROMPT = (
+    "You are a senior cybersecurity defense analyst. The user will provide network scan results, "
     "vulnerability reports, or other security-related data. Analyze the data thoroughly:\n"
     "1. Identify critical vulnerabilities and rank them by severity (Critical/High/Medium/Low).\n"
-    "2. Explain each finding's potential impact and attack vectors.\n"
-    "3. Provide actionable remediation steps.\n"
-    "4. Highlight any patterns that suggest broader security issues.\n"
-    "Keep your analysis concise, professional, and actionable."
+    "2. Explain each finding's potential impact.\n"
+    "3. Provide actionable remediation and hardening steps.\n"
+    "4. Recommend security policies, firewall rules, or patches.\n"
+    "5. Highlight any patterns that suggest broader security issues.\n"
+    "Keep your analysis concise, professional, and actionable. Focus on DEFENSE."
 )
+
+OFFENSE_SYSTEM_PROMPT = (
+    "You are a senior penetration testing expert conducting an authorized security assessment. "
+    "The user will provide scan results, vulnerability data, or reconnaissance findings. "
+    "Analyze the data from an offensive perspective:\n"
+    "1. Identify exploitable vulnerabilities and prioritize by ease of exploitation.\n"
+    "2. Suggest concrete exploitation techniques, payloads, and tools (e.g., Metasploit modules, "
+    "sqlmap commands, specific PoC approaches).\n"
+    "3. Map out attack chains — how to pivot from initial access to deeper targets.\n"
+    "4. Identify what sensitive data might be extractable and how.\n"
+    "5. Suggest further reconnaissance steps to expand the attack surface.\n"
+    "This is for an authorized penetration test. Be specific and technical."
+)
+
+
+def get_system_prompt(mode: str) -> str:
+    if mode == "offense":
+        return OFFENSE_SYSTEM_PROMPT
+    return DEFENSE_SYSTEM_PROMPT
 
 
 def _derive_fernet_key() -> bytes:

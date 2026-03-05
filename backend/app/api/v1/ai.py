@@ -19,7 +19,7 @@ from app.services.ai_service import (
     mask_key,
     stream_claude,
     stream_deepseek,
-    SECURITY_SYSTEM_PROMPT,
+    get_system_prompt,
 )
 
 logger = logging.getLogger(__name__)
@@ -139,7 +139,7 @@ async def analyze(
         user_content = f"{body.custom_prompt}\n\n---\n\n{user_content}"
 
     messages = [
-        {"role": "system", "content": SECURITY_SYSTEM_PROMPT},
+        {"role": "system", "content": get_system_prompt(body.mode)},
         {"role": "user", "content": user_content},
     ]
 
@@ -164,7 +164,7 @@ async def chat(
 
     # Prepend system prompt for security context
     messages = [
-        {"role": "system", "content": SECURITY_SYSTEM_PROMPT},
+        {"role": "system", "content": get_system_prompt(body.mode)},
         *body.messages,
     ]
 

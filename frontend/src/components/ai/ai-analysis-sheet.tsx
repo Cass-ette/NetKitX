@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Bot, Settings } from "lucide-react";
+import { Loader2, Bot, Settings, Shield, Swords } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { API_BASE } from "@/lib/api";
 import { useTranslations } from "@/i18n/use-translations";
@@ -35,6 +35,7 @@ export function AIAnalysisSheet({
   const [response, setResponse] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<"defense" | "offense">("offense");
   const abortRef = useRef<AbortController | null>(null);
 
   const handleAnalyze = useCallback(async () => {
@@ -56,6 +57,7 @@ export function AIAnalysisSheet({
           task_id: taskId,
           content: "",
           custom_prompt: customPrompt || undefined,
+          mode,
         }),
         signal: abortRef.current.signal,
       });
@@ -105,7 +107,7 @@ export function AIAnalysisSheet({
     } finally {
       setLoading(false);
     }
-  }, [token, taskId, customPrompt]);
+  }, [token, taskId, customPrompt, mode]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -118,6 +120,28 @@ export function AIAnalysisSheet({
         </SheetHeader>
 
         <div className="mt-4 space-y-4">
+          {/* Mode selector */}
+          <div className="flex items-center gap-1 rounded-lg border p-1">
+            <Button
+              variant={mode === "defense" ? "default" : "ghost"}
+              size="sm"
+              className="flex-1"
+              onClick={() => setMode("defense")}
+            >
+              <Shield className="mr-1 h-4 w-4" />
+              {t("modeDefense")}
+            </Button>
+            <Button
+              variant={mode === "offense" ? "default" : "ghost"}
+              size="sm"
+              className="flex-1"
+              onClick={() => setMode("offense")}
+            >
+              <Swords className="mr-1 h-4 w-4" />
+              {t("modeOffense")}
+            </Button>
+          </div>
+
           {/* Result preview */}
           {resultPreview && (
             <div>
