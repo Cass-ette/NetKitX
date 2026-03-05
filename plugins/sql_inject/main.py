@@ -1,6 +1,6 @@
 import re
 import time
-from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+from urllib.parse import urlparse, parse_qs, urlencode, urlunparse, quote
 from typing import Any, AsyncIterator
 
 import httpx
@@ -431,32 +431,40 @@ class SqlInject(PluginBase):
             return position.upper()
         return position
 
+    def _safe_hdr(self, value: str) -> str:
+        """Percent-encode non-latin-1 characters so httpx can encode the header."""
+        try:
+            value.encode("latin-1")
+            return value
+        except UnicodeEncodeError:
+            return quote(value, safe=r" !\"#$%&'()*+,-./:;<=>?@[\]^_`{|}~")
+
     def _build(self, ctx, position, target, payload):
         """Build (url, body, headers) with payload injected at position."""
         req_url = ctx.url.replace("*", "") if "*" in ctx.url else ctx.url
         req_body = ctx.post_data.replace("*", "") if ctx.post_data else None
         headers: dict[str, str] = {}
         if ctx.cookie:
-            headers["Cookie"] = ctx.cookie.replace("*", "")
+            headers["Cookie"] = self._safe_hdr(ctx.cookie.replace("*", ""))
         if ctx.user_agent:
-            headers["User-Agent"] = ctx.user_agent.replace("*", "")
+            headers["User-Agent"] = self._safe_hdr(ctx.user_agent.replace("*", ""))
         if ctx.referer:
-            headers["Referer"] = ctx.referer.replace("*", "")
+            headers["Referer"] = self._safe_hdr(ctx.referer.replace("*", ""))
         if ctx.xff:
-            headers["X-Forwarded-For"] = ctx.xff.replace("*", "")
+            headers["X-Forwarded-For"] = self._safe_hdr(ctx.xff.replace("*", ""))
 
         if position == "url":
             req_url = target.replace("*", payload)
         elif position == "body":
             req_body = target.replace("*", payload)
         elif position == "cookie":
-            headers["Cookie"] = target.replace("*", payload)
+            headers["Cookie"] = self._safe_hdr(target.replace("*", payload))
         elif position == "user-agent":
-            headers["User-Agent"] = target.replace("*", payload)
+            headers["User-Agent"] = self._safe_hdr(target.replace("*", payload))
         elif position == "referer":
-            headers["Referer"] = target.replace("*", payload)
+            headers["Referer"] = self._safe_hdr(target.replace("*", payload))
         elif position == "x-forwarded-for":
-            headers["X-Forwarded-For"] = target.replace("*", payload)
+            headers["X-Forwarded-For"] = self._safe_hdr(target.replace("*", payload))
 
         return req_url, req_body, headers
 
