@@ -56,19 +56,19 @@ export default function ToolDetailPage({
   // Fetch tool metadata
   useEffect(() => {
     api<PluginMeta>(`/api/v1/tools/${slug}`, { token: token || undefined })
-      .then((t) => {
-        setTool(t);
+      .then((meta) => {
+        setTool(meta);
         // Initialize form defaults
         const defaults: Record<string, string | number> = {};
-        for (const p of t.params) {
+        for (const p of meta.params) {
           if (p.default !== undefined && p.default !== null) {
             defaults[p.name] = p.default as string | number;
           }
         }
         setFormData(defaults);
       })
-      .catch(() => setError(t("toolNotFound")));
-  }, [slug, token, t]);
+      .catch(() => setError("Tool not found"));
+  }, [slug, token]);
 
   const handleRun = useCallback(async () => {
     if (!tool || !token) return;
