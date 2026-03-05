@@ -1,15 +1,15 @@
 {
-  "title": "Dashboard",
-  "subtitle": "NetKitX Security Toolkit Overview",
-  "toolsAvailable": "Tools Available",
-  "registeredTools": "registered tools",
-  "totalTasks": "Total Tasks",
-  "tasksCreated": "tasks created",
-  "running": "Running",
-  "tasksInProgress": "tasks in progress",
-  "plugins": "Plugins",
-  "loadedPlugins": "loaded plugins",
-  "recentTasks": "Recent Tasks",
-  "noTasksYet": "No tasks yet. Go to {{toolsLink}} to start a scan.",
-  "toolsLinkText": "Tools"
+  "title": "대시보드",
+  "subtitle": "NetKitX 보안 도구 개요",
+  "toolsAvailable": "사용 가능한 도구",
+  "registeredTools": "등록된 도구",
+  "totalTasks": "전체 작업",
+  "tasksCreated": "생성된 작업",
+  "running": "실행 중",
+  "tasksInProgress": "진행 중인 작업",
+  "plugins": "플러그인",
+  "loadedPlugins": "로드된 플러그인",
+  "recentTasks": "최근 작업",
+  "noTasksYet": "아직 작업이 없습니다. {{toolsLink}}에서 스캔을 시작하세요.",
+  "toolsLinkText": "도구"
 }

@@ -1,13 +1,13 @@
 {
-  "title": "Settings",
-  "subtitle": "System configuration",
-  "apiConnection": "API Connection",
-  "backendUrl": "Backend URL",
-  "status": "Status",
-  "connected": "Connected",
-  "about": "About",
-  "extensibleToolkit": "Extensible Network Security Toolkit",
-  "version": "Version {{version}}",
-  "pluginDirectory": "Plugin directory:",
-  "engineDirectory": "Engine directory:"
+  "title": "Настройки",
+  "subtitle": "Конфигурация системы",
+  "apiConnection": "API-подключение",
+  "backendUrl": "URL бэкенда",
+  "status": "Статус",
+  "connected": "Подключено",
+  "about": "О программе",
+  "extensibleToolkit": "Расширяемый набор инструментов сетевой безопасности",
+  "version": "Версия {{version}}",
+  "pluginDirectory": "Каталог плагинов:",
+  "engineDirectory": "Каталог движков:"
 }

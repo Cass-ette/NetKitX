@@ -1,13 +1,13 @@
 {
-  "title": "Tasks",
-  "subtitle": "Task execution history",
+  "title": "タスク",
+  "subtitle": "タスク実行履歴",
   "id": "ID",
-  "plugin": "Plugin",
-  "status": "Status",
-  "created": "Created",
-  "duration": "Duration",
-  "results": "Results",
-  "noTasksYet": "No tasks yet. Go to {{toolsLink}} to run a scan.",
-  "toolsLinkText": "Tools",
-  "runningDuration": "running..."
+  "plugin": "プラグイン",
+  "status": "ステータス",
+  "created": "作成日時",
+  "duration": "所要時間",
+  "results": "結果",
+  "noTasksYet": "タスクはまだありません。{{toolsLink}}でスキャンを実行してください。",
+  "toolsLinkText": "ツール",
+  "runningDuration": "実行中..."
 }

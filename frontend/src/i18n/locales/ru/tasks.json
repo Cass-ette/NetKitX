@@ -1,13 +1,13 @@
 {
-  "title": "Tasks",
-  "subtitle": "Task execution history",
+  "title": "Задачи",
+  "subtitle": "История выполнения задач",
   "id": "ID",
-  "plugin": "Plugin",
-  "status": "Status",
-  "created": "Created",
-  "duration": "Duration",
-  "results": "Results",
-  "noTasksYet": "No tasks yet. Go to {{toolsLink}} to run a scan.",
-  "toolsLinkText": "Tools",
-  "runningDuration": "running..."
+  "plugin": "Плагин",
+  "status": "Статус",
+  "created": "Создано",
+  "duration": "Длительность",
+  "results": "Результаты",
+  "noTasksYet": "Задач пока нет. Перейдите в {{toolsLink}}, чтобы запустить сканирование.",
+  "toolsLinkText": "Инструменты",
+  "runningDuration": "Выполняется..."
 }

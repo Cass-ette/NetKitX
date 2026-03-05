@@ -1,15 +1,15 @@
 {
   "title": "Dashboard",
-  "subtitle": "NetKitX Security Toolkit Overview",
-  "toolsAvailable": "Tools Available",
-  "registeredTools": "registered tools",
-  "totalTasks": "Total Tasks",
-  "tasksCreated": "tasks created",
-  "running": "Running",
-  "tasksInProgress": "tasks in progress",
+  "subtitle": "NetKitX Sicherheits-Toolkit Übersicht",
+  "toolsAvailable": "Verfügbare Werkzeuge",
+  "registeredTools": "Registrierte Werkzeuge",
+  "totalTasks": "Aufgaben gesamt",
+  "tasksCreated": "Erstellte Aufgaben",
+  "running": "Laufend",
+  "tasksInProgress": "Aufgaben in Bearbeitung",
   "plugins": "Plugins",
-  "loadedPlugins": "loaded plugins",
-  "recentTasks": "Recent Tasks",
-  "noTasksYet": "No tasks yet. Go to {{toolsLink}} to start a scan.",
-  "toolsLinkText": "Tools"
+  "loadedPlugins": "Geladene Plugins",
+  "recentTasks": "Letzte Aufgaben",
+  "noTasksYet": "Noch keine Aufgaben. Gehen Sie zu {{toolsLink}}, um einen Scan zu starten.",
+  "toolsLinkText": "Werkzeuge"
 }

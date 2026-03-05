@@ -1,13 +1,13 @@
 {
-  "title": "Settings",
-  "subtitle": "System configuration",
-  "apiConnection": "API Connection",
-  "backendUrl": "Backend URL",
-  "status": "Status",
-  "connected": "Connected",
-  "about": "About",
-  "extensibleToolkit": "Extensible Network Security Toolkit",
+  "title": "Paramètres",
+  "subtitle": "Configuration du système",
+  "apiConnection": "Connexion API",
+  "backendUrl": "URL du backend",
+  "status": "Statut",
+  "connected": "Connecté",
+  "about": "À propos",
+  "extensibleToolkit": "Boîte à outils de sécurité réseau extensible",
   "version": "Version {{version}}",
-  "pluginDirectory": "Plugin directory:",
-  "engineDirectory": "Engine directory:"
+  "pluginDirectory": "Répertoire des plugins :",
+  "engineDirectory": "Répertoire des moteurs :"
 }

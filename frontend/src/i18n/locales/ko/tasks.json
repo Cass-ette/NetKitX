@@ -1,13 +1,13 @@
 {
-  "title": "Tasks",
-  "subtitle": "Task execution history",
+  "title": "작업",
+  "subtitle": "작업 실행 기록",
   "id": "ID",
-  "plugin": "Plugin",
-  "status": "Status",
-  "created": "Created",
-  "duration": "Duration",
-  "results": "Results",
-  "noTasksYet": "No tasks yet. Go to {{toolsLink}} to run a scan.",
-  "toolsLinkText": "Tools",
-  "runningDuration": "running..."
+  "plugin": "플러그인",
+  "status": "상태",
+  "created": "생성일",
+  "duration": "소요 시간",
+  "results": "결과",
+  "noTasksYet": "아직 작업이 없습니다. {{toolsLink}}에서 스캔을 실행하세요.",
+  "toolsLinkText": "도구",
+  "runningDuration": "실행 중..."
 }

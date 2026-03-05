@@ -1,15 +1,15 @@
 {
-  "signInTitle": "Sign in to NetKitX",
-  "createAccountTitle": "Create Account",
-  "username": "Username",
-  "email": "Email",
-  "password": "Password",
-  "signIn": "Sign In",
-  "register": "Register",
-  "loading": "Loading...",
-  "alreadyHaveAccount": "Already have an account?",
-  "dontHaveAccount": "Don't have an account?",
-  "signInLink": "Sign in",
-  "registerLink": "Register",
-  "somethingWentWrong": "Something went wrong"
+  "signInTitle": "NetKitX にログイン",
+  "createAccountTitle": "アカウント作成",
+  "username": "ユーザー名",
+  "email": "メールアドレス",
+  "password": "パスワード",
+  "signIn": "ログイン",
+  "register": "登録",
+  "loading": "読み込み中...",
+  "alreadyHaveAccount": "既にアカウントをお持ちですか？",
+  "dontHaveAccount": "アカウントをお持ちでないですか？",
+  "signInLink": "ログイン",
+  "registerLink": "登録",
+  "somethingWentWrong": "エラーが発生しました"
 }

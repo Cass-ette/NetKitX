@@ -1,15 +1,15 @@
 {
-  "signInTitle": "Sign in to NetKitX",
-  "createAccountTitle": "Create Account",
-  "username": "Username",
-  "email": "Email",
-  "password": "Password",
-  "signIn": "Sign In",
-  "register": "Register",
-  "loading": "Loading...",
-  "alreadyHaveAccount": "Already have an account?",
-  "dontHaveAccount": "Don't have an account?",
-  "signInLink": "Sign in",
-  "registerLink": "Register",
-  "somethingWentWrong": "Something went wrong"
+  "signInTitle": "Вход в NetKitX",
+  "createAccountTitle": "Создать аккаунт",
+  "username": "Имя пользователя",
+  "email": "Электронная почта",
+  "password": "Пароль",
+  "signIn": "Войти",
+  "register": "Зарегистрироваться",
+  "loading": "Загрузка...",
+  "alreadyHaveAccount": "Уже есть аккаунт?",
+  "dontHaveAccount": "Нет аккаунта?",
+  "signInLink": "Войти",
+  "registerLink": "Зарегистрироваться",
+  "somethingWentWrong": "Что-то пошло не так"
 }

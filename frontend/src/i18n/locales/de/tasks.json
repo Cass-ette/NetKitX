@@ -1,13 +1,13 @@
 {
-  "title": "Tasks",
-  "subtitle": "Task execution history",
+  "title": "Aufgaben",
+  "subtitle": "Aufgabenausführungsverlauf",
   "id": "ID",
   "plugin": "Plugin",
   "status": "Status",
-  "created": "Created",
-  "duration": "Duration",
-  "results": "Results",
-  "noTasksYet": "No tasks yet. Go to {{toolsLink}} to run a scan.",
-  "toolsLinkText": "Tools",
-  "runningDuration": "running..."
+  "created": "Erstellt",
+  "duration": "Dauer",
+  "results": "Ergebnisse",
+  "noTasksYet": "Noch keine Aufgaben. Gehen Sie zu {{toolsLink}}, um einen Scan auszuführen.",
+  "toolsLinkText": "Werkzeuge",
+  "runningDuration": "Läuft..."
 }

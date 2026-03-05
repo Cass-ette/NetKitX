@@ -1,15 +1,15 @@
 {
-  "signInTitle": "Sign in to NetKitX",
-  "createAccountTitle": "Create Account",
-  "username": "Username",
-  "email": "Email",
-  "password": "Password",
-  "signIn": "Sign In",
-  "register": "Register",
-  "loading": "Loading...",
-  "alreadyHaveAccount": "Already have an account?",
-  "dontHaveAccount": "Don't have an account?",
-  "signInLink": "Sign in",
-  "registerLink": "Register",
-  "somethingWentWrong": "Something went wrong"
+  "signInTitle": "NetKitX 로그인",
+  "createAccountTitle": "계정 만들기",
+  "username": "사용자 이름",
+  "email": "이메일",
+  "password": "비밀번호",
+  "signIn": "로그인",
+  "register": "회원가입",
+  "loading": "로딩 중...",
+  "alreadyHaveAccount": "이미 계정이 있으신가요?",
+  "dontHaveAccount": "계정이 없으신가요?",
+  "signInLink": "로그인",
+  "registerLink": "회원가입",
+  "somethingWentWrong": "문제가 발생했습니다"
 }

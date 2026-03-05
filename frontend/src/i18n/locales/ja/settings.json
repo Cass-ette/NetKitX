@@ -1,13 +1,13 @@
 {
-  "title": "Settings",
-  "subtitle": "System configuration",
-  "apiConnection": "API Connection",
-  "backendUrl": "Backend URL",
-  "status": "Status",
-  "connected": "Connected",
-  "about": "About",
-  "extensibleToolkit": "Extensible Network Security Toolkit",
-  "version": "Version {{version}}",
-  "pluginDirectory": "Plugin directory:",
-  "engineDirectory": "Engine directory:"
+  "title": "設定",
+  "subtitle": "システム設定",
+  "apiConnection": "API 接続",
+  "backendUrl": "バックエンド URL",
+  "status": "ステータス",
+  "connected": "接続済み",
+  "about": "について",
+  "extensibleToolkit": "拡張可能なネットワークセキュリティツールキット",
+  "version": "バージョン {{version}}",
+  "pluginDirectory": "プラグインディレクトリ：",
+  "engineDirectory": "エンジンディレクトリ："
 }
