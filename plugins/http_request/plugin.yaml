@@ -1,0 +1,50 @@
+name: http-request
+version: 1.0.0
+description: HTTP 请求工具 — 自定义请求方法/头/Cookie，查看完整响应链
+category: utils
+engine: python
+
+params:
+  - name: url
+    label: 目标 URL
+    type: string
+    required: true
+    placeholder: "http://example.com/api"
+  - name: method
+    label: 请求方法
+    type: select
+    options: ["GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS", "PATCH"]
+    default: "GET"
+  - name: headers
+    label: 自定义 Header（JSON）
+    type: string
+    placeholder: '{"X-Custom": "value"}'
+  - name: cookies
+    label: Cookie
+    type: string
+    placeholder: "session=abc123; token=xyz"
+  - name: body
+    label: 请求 Body
+    type: string
+    placeholder: '{"key": "value"}'
+  - name: auth_user
+    label: Basic Auth 用户名
+    type: string
+  - name: auth_pass
+    label: Basic Auth 密码
+    type: string
+  - name: follow_redirects
+    label: 跟随跳转
+    type: select
+    options: ["true", "false"]
+    default: "false"
+
+output:
+  type: table
+  columns:
+    - { key: "step", label: "步骤" }
+    - { key: "method", label: "方法" }
+    - { key: "url", label: "URL" }
+    - { key: "status", label: "状态码" }
+    - { key: "headers", label: "响应头" }
+    - { key: "body_preview", label: "响应体(前500字)" }

@@ -1,0 +1,38 @@
+name: sql-inject
+version: 1.0.0
+description: SQL 注入检测 — 自动检测整数型/字符型/报错/布尔盲注/时间盲注
+category: vuln
+engine: python
+
+params:
+  - name: url
+    label: 目标 URL（用 * 标记注入点）
+    type: string
+    required: true
+    placeholder: "http://example.com/page?id=1*"
+  - name: method
+    label: 请求方法
+    type: select
+    options: ["GET", "POST"]
+    default: "GET"
+  - name: post_data
+    label: POST 数据（用 * 标记注入点）
+    type: string
+    placeholder: "username=admin*&password=123"
+  - name: cookie
+    label: Cookie（用 * 标记注入点）
+    type: string
+    placeholder: "session=abc*"
+  - name: timeout
+    label: 超时(秒)
+    type: number
+    default: 10
+
+output:
+  type: table
+  columns:
+    - { key: "param", label: "参数" }
+    - { key: "position", label: "注入位置" }
+    - { key: "type", label: "注入类型" }
+    - { key: "payload", label: "Payload" }
+    - { key: "evidence", label: "依据" }

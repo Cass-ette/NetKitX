@@ -1,0 +1,33 @@
+name: dir-scan
+version: 1.0.0
+description: 目录扫描 — 字典爆破发现隐藏路径
+category: recon
+engine: python
+
+params:
+  - name: url
+    label: 目标 URL
+    type: string
+    required: true
+    placeholder: "http://example.com"
+  - name: concurrency
+    label: 并发数
+    type: number
+    default: 30
+  - name: timeout
+    label: 超时(秒)
+    type: number
+    default: 5
+  - name: status_filter
+    label: 状态码过滤
+    type: string
+    default: "200,301,302,403"
+    placeholder: "200,301,302,403"
+
+output:
+  type: table
+  columns:
+    - { key: "url", label: "URL" }
+    - { key: "status", label: "状态码" }
+    - { key: "size", label: "大小" }
+    - { key: "title", label: "标题" }

@@ -1,0 +1,27 @@
+name: subdomain-enum
+version: 1.0.0
+description: 子域名枚举 — DNS 字典爆破发现子域名
+category: recon
+engine: python
+
+params:
+  - name: domain
+    label: 目标域名
+    type: string
+    required: true
+    placeholder: "example.com"
+  - name: concurrency
+    label: 并发数
+    type: number
+    default: 50
+  - name: timeout
+    label: 超时(秒)
+    type: number
+    default: 3
+
+output:
+  type: table
+  columns:
+    - { key: "subdomain", label: "子域名" }
+    - { key: "host", label: "IP 地址" }
+    - { key: "status", label: "状态" }

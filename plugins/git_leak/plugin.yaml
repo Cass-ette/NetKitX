@@ -1,0 +1,23 @@
+name: git-leak
+version: 1.0.0
+description: Git 泄露检测 — 探测 .git/ 目录泄露
+category: recon
+engine: python
+
+params:
+  - name: url
+    label: 目标 URL
+    type: string
+    required: true
+    placeholder: "http://example.com"
+  - name: timeout
+    label: 超时(秒)
+    type: number
+    default: 10
+
+output:
+  type: table
+  columns:
+    - { key: "url", label: "URL" }
+    - { key: "status", label: "状态" }
+    - { key: "detail", label: "详情" }

@@ -1,0 +1,38 @@
+name: brute-force
+version: 1.0.0
+description: 弱口令检测 — 多协议弱密码爆破（SSH/FTP/MySQL/Redis/PostgreSQL）
+category: vuln
+engine: python
+
+params:
+  - name: host
+    label: 目标地址
+    type: string
+    required: true
+    placeholder: "192.168.1.1"
+  - name: service
+    label: 服务类型
+    type: select
+    options: ["ssh", "ftp", "mysql", "redis", "postgresql"]
+    required: true
+  - name: port
+    label: 端口（留空使用默认）
+    type: number
+  - name: username
+    label: 用户名（多个用逗号分隔）
+    type: string
+    default: "root,admin"
+  - name: concurrency
+    label: 并发数
+    type: number
+    default: 5
+
+output:
+  type: table
+  columns:
+    - { key: "host", label: "主机" }
+    - { key: "service", label: "服务" }
+    - { key: "port", label: "端口" }
+    - { key: "username", label: "用户名" }
+    - { key: "password", label: "密码" }
+    - { key: "status", label: "状态" }

@@ -1,0 +1,29 @@
+name: dns-lookup
+version: 1.0.0
+description: DNS 记录查询 — 查询 A/AAAA/MX/CNAME/TXT/NS/SOA 记录
+category: recon
+engine: python
+
+params:
+  - name: domain
+    label: 目标域名
+    type: string
+    required: true
+    placeholder: "example.com"
+  - name: record_types
+    label: 记录类型
+    type: string
+    default: "A,AAAA,MX,CNAME,TXT,NS,SOA"
+    placeholder: "A,AAAA,MX,CNAME,TXT,NS,SOA"
+  - name: nameserver
+    label: DNS 服务器（可选）
+    type: string
+    placeholder: "8.8.8.8"
+
+output:
+  type: table
+  columns:
+    - { key: "domain", label: "域名" }
+    - { key: "type", label: "记录类型" }
+    - { key: "value", label: "值" }
+    - { key: "ttl", label: "TTL" }
