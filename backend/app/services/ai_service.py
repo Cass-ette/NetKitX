@@ -47,6 +47,8 @@ def mask_key(plaintext: str) -> str:
 async def stream_claude(
     api_key: str, model: str, messages: list[dict[str, str]]
 ) -> AsyncIterator[str]:
+    import json
+
     system_msg = None
     chat_messages = []
     for m in messages:
@@ -64,80 +66,86 @@ async def stream_claude(
     if system_msg:
         body["system"] = system_msg
 
-    async with httpx.AsyncClient(timeout=120) as client:
-        async with client.stream(
-            "POST",
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "x-api-key": api_key,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json",
-            },
-            json=body,
-        ) as resp:
-            if resp.status_code != 200:
-                error_body = await resp.aread()
-                logger.error("Claude API error %s: %s", resp.status_code, error_body[:500])
-                yield f"[API Error {resp.status_code}]"
-                return
-            async for line in resp.aiter_lines():
-                if not line.startswith("data: "):
-                    continue
-                data = line[6:]
-                if data == "[DONE]":
-                    break
-                import json
-
-                try:
-                    event = json.loads(data)
-                except json.JSONDecodeError:
-                    continue
-                if event.get("type") == "content_block_delta":
-                    delta = event.get("delta", {})
-                    text = delta.get("text", "")
-                    if text:
-                        yield text
+    try:
+        async with httpx.AsyncClient(timeout=120) as client:
+            async with client.stream(
+                "POST",
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": api_key,
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json",
+                },
+                json=body,
+            ) as resp:
+                if resp.status_code != 200:
+                    error_body = await resp.aread()
+                    logger.error("Claude API error %s: %s", resp.status_code, error_body[:500])
+                    yield f"[API Error {resp.status_code}]"
+                    return
+                async for line in resp.aiter_lines():
+                    if not line.startswith("data: "):
+                        continue
+                    data = line[6:]
+                    if data == "[DONE]":
+                        break
+                    try:
+                        event = json.loads(data)
+                    except json.JSONDecodeError:
+                        continue
+                    if event.get("type") == "content_block_delta":
+                        delta = event.get("delta", {})
+                        text = delta.get("text", "")
+                        if text:
+                            yield text
+    except Exception as e:
+        logger.error("Claude stream error: %s", e)
+        yield f"[Error: {e}]"
 
 
 async def stream_deepseek(
     api_key: str, model: str, messages: list[dict[str, str]]
 ) -> AsyncIterator[str]:
+    import json
+
     body = {
         "model": model,
         "stream": True,
         "messages": messages,
     }
 
-    async with httpx.AsyncClient(timeout=120) as client:
-        async with client.stream(
-            "POST",
-            "https://api.deepseek.com/chat/completions",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            json=body,
-        ) as resp:
-            if resp.status_code != 200:
-                error_body = await resp.aread()
-                logger.error("DeepSeek API error %s: %s", resp.status_code, error_body[:500])
-                yield f"[API Error {resp.status_code}]"
-                return
-            async for line in resp.aiter_lines():
-                if not line.startswith("data: "):
-                    continue
-                data = line[6:]
-                if data == "[DONE]":
-                    break
-                import json
-
-                try:
-                    event = json.loads(data)
-                except json.JSONDecodeError:
-                    continue
-                choices = event.get("choices", [])
-                if choices:
-                    delta = choices[0].get("delta", {})
-                    text = delta.get("content", "")
-                    if text:
-                        yield text
+    try:
+        async with httpx.AsyncClient(timeout=120) as client:
+            async with client.stream(
+                "POST",
+                "https://api.deepseek.com/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json=body,
+            ) as resp:
+                if resp.status_code != 200:
+                    error_body = await resp.aread()
+                    logger.error("DeepSeek API error %s: %s", resp.status_code, error_body[:500])
+                    yield f"[API Error {resp.status_code}]"
+                    return
+                async for line in resp.aiter_lines():
+                    if not line.startswith("data: "):
+                        continue
+                    data = line[6:]
+                    if data == "[DONE]":
+                        break
+                    try:
+                        event = json.loads(data)
+                    except json.JSONDecodeError:
+                        continue
+                    choices = event.get("choices", [])
+                    if choices:
+                        delta = choices[0].get("delta", {})
+                        text = delta.get("content", "")
+                        if text:
+                            yield text
+    except Exception as e:
+        logger.error("DeepSeek stream error: %s", e)
+        yield f"[Error: {e}]"
