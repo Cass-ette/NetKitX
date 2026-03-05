@@ -127,7 +127,7 @@ export default function ToolDetailPage({
       setError(err instanceof Error ? err.message : t("failedToCreateTask"));
       setRunning(false);
     }
-  }, [tool, token, formData]);
+  }, [tool, token, formData, t]);
 
   const handleExport = useCallback(
     (format: "html" | "pdf") => {
@@ -149,7 +149,7 @@ export default function ToolDetailPage({
         })
         .catch(() => setError(t("failedToExport")));
     },
-    [taskId, token],
+    [taskId, token, t],
   );
 
   if (error && !tool) {

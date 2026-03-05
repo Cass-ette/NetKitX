@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { useLocaleStore } from "./store";
 import type { Locale } from "./config";
 
@@ -198,13 +199,16 @@ function interpolate(
 export function useTranslations(namespace: Namespace) {
   const locale = useLocaleStore((s) => s.locale);
 
-  const t = (key: string, params?: Record<string, string | number>): string => {
-    const value =
-      messages[locale]?.[namespace]?.[key] ??
-      messages.en[namespace]?.[key] ??
-      key;
-    return interpolate(value, params);
-  };
+  const t = useCallback(
+    (key: string, params?: Record<string, string | number>): string => {
+      const value =
+        messages[locale]?.[namespace]?.[key] ??
+        messages.en[namespace]?.[key] ??
+        key;
+      return interpolate(value, params);
+    },
+    [locale, namespace],
+  );
 
   return { t, locale };
 }
