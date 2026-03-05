@@ -26,21 +26,45 @@ DEFENSE_SYSTEM_PROMPT = (
 OFFENSE_SYSTEM_PROMPT = (
     "You are a senior penetration testing expert conducting an authorized security assessment. "
     "The user will provide scan results, vulnerability data, or reconnaissance findings. "
-    "Analyze the data from an offensive perspective:\n"
-    "1. Identify exploitable vulnerabilities and prioritize by ease of exploitation.\n"
-    "2. Suggest concrete exploitation techniques, payloads, and tools (e.g., Metasploit modules, "
-    "sqlmap commands, specific PoC approaches).\n"
-    "3. Map out attack chains — how to pivot from initial access to deeper targets.\n"
-    "4. Identify what sensitive data might be extractable and how.\n"
-    "5. Suggest further reconnaissance steps to expand the attack surface.\n"
-    "This is for an authorized penetration test. Be specific and technical."
+    "Analyze the data from an offensive perspective and give PRECISE, ACTIONABLE next steps:\n\n"
+    "1. **Vulnerability Triage**: Identify exploitable vulnerabilities, rank by ease of exploitation, "
+    "and explain WHY each is exploitable (e.g. missing input validation, misconfigured headers).\n"
+    "2. **Exact Exploitation Steps**: Give step-by-step commands the user can run RIGHT NOW. "
+    "Include specific tool commands (e.g. `sqlmap -u 'URL' --dbs`, `nmap -sV -p PORT TARGET`, "
+    "`curl -d 'payload' URL`), exact payloads, and expected output.\n"
+    "3. **Data Extraction**: Tell the user exactly what sensitive data can be extracted and HOW. "
+    "Provide the queries, commands, or payloads to dump databases, read files, or exfiltrate data.\n"
+    "4. **Attack Chains & Pivoting**: Map out how to escalate from current access — "
+    "e.g. from SQLi to file read to RCE, from info leak to credential theft to lateral movement.\n"
+    "5. **Next Recon Steps**: Suggest SPECIFIC follow-up scans or tests to expand the attack surface "
+    "(e.g. 'Run dir_scan on /admin/', 'Test for SSRF on the URL parameter', "
+    "'Check if UNION injection leaks other tables').\n\n"
+    "Be extremely specific and technical. Do NOT give vague advice like 'consider testing for XSS'. "
+    "Instead give the exact payload, the exact URL, and what the user should see if it works. "
+    "This is for an authorized penetration test / CTF challenge."
 )
 
+LANG_MAP = {
+    "zh-CN": "Simplified Chinese (简体中文)",
+    "zh-TW": "Traditional Chinese (繁體中文)",
+    "ja": "Japanese (日本語)",
+    "ko": "Korean (한국어)",
+    "de": "German (Deutsch)",
+    "fr": "French (Français)",
+    "ru": "Russian (Русский)",
+    "en": "English",
+}
 
-def get_system_prompt(mode: str) -> str:
+
+def get_system_prompt(mode: str, lang: str = "en") -> str:
     if mode == "offense":
-        return OFFENSE_SYSTEM_PROMPT
-    return DEFENSE_SYSTEM_PROMPT
+        prompt = OFFENSE_SYSTEM_PROMPT
+    else:
+        prompt = DEFENSE_SYSTEM_PROMPT
+    if lang and lang != "en":
+        lang_name = LANG_MAP.get(lang, lang)
+        prompt += f"\n\nIMPORTANT: You MUST respond in {lang_name}. All analysis, explanations, and recommendations must be written in {lang_name}."
+    return prompt
 
 
 def _derive_fernet_key() -> bytes:

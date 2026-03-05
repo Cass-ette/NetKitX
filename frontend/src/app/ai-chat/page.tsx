@@ -14,7 +14,7 @@ import type { ChatMessage } from "@/types";
 
 export default function AIChatPage() {
   const token = useAuth((s) => s.token);
-  const { t } = useTranslations("ai");
+  const { t, locale } = useTranslations("ai");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -49,6 +49,7 @@ export default function AIChatPage() {
         body: JSON.stringify({
           messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
           mode,
+          lang: locale,
         }),
         signal: abortRef.current.signal,
       });
@@ -110,7 +111,7 @@ export default function AIChatPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, input, messages, loading, mode]);
+  }, [token, input, messages, loading, mode, locale]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {

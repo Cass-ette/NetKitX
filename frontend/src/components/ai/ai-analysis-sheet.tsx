@@ -30,7 +30,7 @@ export function AIAnalysisSheet({
   resultPreview,
 }: AIAnalysisSheetProps) {
   const token = useAuth((s) => s.token);
-  const { t } = useTranslations("ai");
+  const { t, locale } = useTranslations("ai");
   const [customPrompt, setCustomPrompt] = useState("");
   const [response, setResponse] = useState("");
   const [loading, setLoading] = useState(false);
@@ -58,6 +58,7 @@ export function AIAnalysisSheet({
           content: "",
           custom_prompt: customPrompt || undefined,
           mode,
+          lang: locale,
         }),
         signal: abortRef.current.signal,
       });
@@ -107,7 +108,7 @@ export function AIAnalysisSheet({
     } finally {
       setLoading(false);
     }
-  }, [token, taskId, customPrompt, mode]);
+  }, [token, taskId, customPrompt, mode, locale]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>

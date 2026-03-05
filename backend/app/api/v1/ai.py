@@ -139,7 +139,7 @@ async def analyze(
         user_content = f"{body.custom_prompt}\n\n---\n\n{user_content}"
 
     messages = [
-        {"role": "system", "content": get_system_prompt(body.mode)},
+        {"role": "system", "content": get_system_prompt(body.mode, body.lang)},
         {"role": "user", "content": user_content},
     ]
 
@@ -164,7 +164,7 @@ async def chat(
 
     # Prepend system prompt for security context
     messages = [
-        {"role": "system", "content": get_system_prompt(body.mode)},
+        {"role": "system", "content": get_system_prompt(body.mode, body.lang)},
         *body.messages,
     ]
 
