@@ -7,6 +7,10 @@
 - **插件化架构** — Python 和 Go 双引擎支持，热加载无需重启
 - **Web UI 管理** — 拖拽上传插件、实时启用/禁用、一键删除
 - **实时任务执行** — WebSocket 推送进度和结果，支持并发任务
+- **报告导出** — 任务结果一键导出为 PDF 或 HTML，包含参数、统计和结果表格
+- **内嵌终端** — xterm.js 实时展示执行日志，支持历史日志回溯
+- **网络拓扑可视化** — 扫描结果自动生成交互式网络关系图（React Flow + dagre 自动布局）
+- **插件市场** — 发布、搜索、安装插件，内置依赖解析和安全扫描
 - **多种输出格式** — 表格、JSON、终端、图表
 - **用户认证** — JWT 认证，基于角色的权限控制
 - **高性能引擎** — Go 编译的独立二进制，适合大规模扫描
@@ -147,13 +151,15 @@ NetKitX/
 │   │   ├── core/        # 核心功能（数据库、认证、配置）
 │   │   ├── models/      # SQLAlchemy 模型
 │   │   ├── plugins/     # 插件系统
+│   │   ├── marketplace/ # 插件市场（版本管理、依赖解析、安全扫描）
 │   │   ├── schemas/     # Pydantic 模式
-│   │   └── services/    # 业务逻辑
+│   │   ├── services/    # 业务逻辑（报告导出、拓扑构建）
+│   │   └── templates/   # Jinja2 报告模板
 │   └── pyproject.toml
 ├── frontend/            # Next.js 前端
 │   ├── src/
-│   │   ├── app/         # 页面路由
-│   │   ├── components/  # UI 组件
+│   │   ├── app/         # 页面路由（含 /topology 拓扑页）
+│   │   ├── components/  # UI 组件（含 terminal、topology）
 │   │   ├── lib/         # 工具函数
 │   │   └── types/       # TypeScript 类型
 │   └── package.json
@@ -166,7 +172,10 @@ NetKitX/
 │   └── pkg/             # Go 包
 ├── docs/                # 文档
 │   ├── architecture.md
-│   └── plugin-development.md
+│   ├── plugin-development.md
+│   ├── ci-cd.md
+│   ├── plugin-marketplace-design.md
+│   └── marketplace-usage.md
 └── docker-compose.yml
 ```
 
@@ -188,6 +197,9 @@ NetKitX/
 | `/api/v1/tools` | GET | 列出可用工具（已启用插件） |
 | `/api/v1/tasks` | POST | 创建任务 |
 | `/api/v1/tasks/{id}` | GET | 获取任务状态 |
+| `/api/v1/tasks/{id}/logs` | GET | 获取任务历史日志 |
+| `/api/v1/reports/{id}/export` | GET | 导出报告（`?format=html\|pdf`） |
+| `/api/v1/topology/tasks/{id}` | GET | 获取任务拓扑图数据 |
 | `/api/v1/ws/tasks/{id}` | WS | 实时任务更新 |
 
 ## 开发
@@ -279,4 +291,7 @@ MIT License
 
 - [架构设计文档](./docs/architecture.md)
 - [插件开发指南](./docs/plugin-development.md)
+- [CI/CD 配置](./docs/ci-cd.md)
+- [插件市场设计](./docs/plugin-marketplace-design.md)
+- [市场使用指南](./docs/marketplace-usage.md)
 - [问题反馈](https://github.com/Cass-ette/NetKitX/issues)
