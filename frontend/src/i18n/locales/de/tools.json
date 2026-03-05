@@ -1,0 +1,21 @@
+{
+  "title": "Tools",
+  "subtitle": "Available security tools",
+  "loadingTools": "Loading tools...",
+  "noToolsLoaded": "No tools loaded. Check plugin configuration.",
+  "params": "{{count}} params",
+  "parameters": "Parameters",
+  "run": "Run",
+  "running": "Running...",
+  "starting": "Starting...",
+  "export": "Export",
+  "htmlReport": "HTML Report",
+  "pdfReport": "PDF Report",
+  "terminal": "Terminal",
+  "collapse": "Collapse",
+  "expand": "Expand",
+  "results": "Results ({{count}})",
+  "toolNotFound": "Tool not found",
+  "failedToCreateTask": "Failed to create task",
+  "failedToExport": "Failed to export report"
+}

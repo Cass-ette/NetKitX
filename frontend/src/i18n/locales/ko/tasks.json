@@ -1,0 +1,13 @@
+{
+  "title": "Tasks",
+  "subtitle": "Task execution history",
+  "id": "ID",
+  "plugin": "Plugin",
+  "status": "Status",
+  "created": "Created",
+  "duration": "Duration",
+  "results": "Results",
+  "noTasksYet": "No tasks yet. Go to {{toolsLink}} to run a scan.",
+  "toolsLinkText": "Tools",
+  "runningDuration": "running..."
+}

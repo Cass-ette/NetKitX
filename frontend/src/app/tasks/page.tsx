@@ -15,9 +15,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { Task } from "@/types";
+import { useTranslations } from "@/i18n/use-translations";
 
 export default function TasksPage() {
   const token = useAuth((s) => s.token);
+  const { t, locale } = useTranslations("tasks");
+  const { t: tc } = useTranslations("common");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,28 +35,30 @@ export default function TasksPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Tasks</h1>
-        <p className="text-muted-foreground">Task execution history</p>
+        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+        <p className="text-muted-foreground">{t("subtitle")}</p>
       </div>
 
       <Card>
         <CardContent className="pt-6">
           {loading ? (
-            <p className="text-muted-foreground">Loading...</p>
+            <p className="text-muted-foreground">{tc("loading")}</p>
           ) : tasks.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No tasks yet. Go to <Link href="/tools" className="text-primary underline">Tools</Link> to run a scan.
+              {t("noTasksYet").split("{{toolsLink}}")[0]}
+              <Link href="/tools" className="text-primary underline">{t("toolsLinkText")}</Link>
+              {t("noTasksYet").split("{{toolsLink}}")[1]}
             </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Plugin</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Duration</TableHead>
-                  <TableHead>Results</TableHead>
+                  <TableHead>{t("id")}</TableHead>
+                  <TableHead>{t("plugin")}</TableHead>
+                  <TableHead>{t("status")}</TableHead>
+                  <TableHead>{t("created")}</TableHead>
+                  <TableHead>{t("duration")}</TableHead>
+                  <TableHead>{t("results")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -62,7 +67,7 @@ export default function TasksPage() {
                     task.started_at && task.finished_at
                       ? `${((new Date(task.finished_at).getTime() - new Date(task.started_at).getTime()) / 1000).toFixed(1)}s`
                       : task.status === "running"
-                        ? "running..."
+                        ? t("runningDuration")
                         : "-";
                   const resultCount =
                     task.result && "items" in task.result
@@ -80,11 +85,11 @@ export default function TasksPage() {
                             task.status === "running" ? "secondary" : "outline"
                           }
                         >
-                          {task.status}
+                          {tc(`status_${task.status}`)}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-xs">
-                        {new Date(task.created_at).toLocaleString()}
+                        {new Date(task.created_at).toLocaleString(locale)}
                       </TableCell>
                       <TableCell>{duration}</TableCell>
                       <TableCell>{resultCount}</TableCell>

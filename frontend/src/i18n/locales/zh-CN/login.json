@@ -1,0 +1,15 @@
+{
+  "signInTitle": "登录 NetKitX",
+  "createAccountTitle": "创建账户",
+  "username": "用户名",
+  "email": "邮箱",
+  "password": "密码",
+  "signIn": "登录",
+  "register": "注册",
+  "loading": "加载中...",
+  "alreadyHaveAccount": "已有账户？",
+  "dontHaveAccount": "没有账户？",
+  "signInLink": "登录",
+  "registerLink": "注册",
+  "somethingWentWrong": "出了点问题"
+}

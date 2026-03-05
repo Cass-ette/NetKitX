@@ -7,9 +7,11 @@ import { useAuth } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { PluginMeta } from "@/types";
+import { useTranslations } from "@/i18n/use-translations";
 
 export default function ToolsPage() {
   const token = useAuth((s) => s.token);
+  const { t } = useTranslations("tools");
   const [tools, setTools] = useState<PluginMeta[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -23,14 +25,14 @@ export default function ToolsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Tools</h1>
-        <p className="text-muted-foreground">Available security tools</p>
+        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+        <p className="text-muted-foreground">{t("subtitle")}</p>
       </div>
 
       {loading ? (
-        <p className="text-muted-foreground">Loading tools...</p>
+        <p className="text-muted-foreground">{t("loadingTools")}</p>
       ) : tools.length === 0 ? (
-        <p className="text-muted-foreground">No tools loaded. Check plugin configuration.</p>
+        <p className="text-muted-foreground">{t("noToolsLoaded")}</p>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {tools.map((tool) => (
@@ -47,7 +49,7 @@ export default function ToolsPage() {
                   <div className="flex gap-2">
                     <Badge variant="outline">{tool.engine}</Badge>
                     <Badge variant="outline">v{tool.version}</Badge>
-                    <Badge variant="outline">{tool.params.length} params</Badge>
+                    <Badge variant="outline">{t("params", { count: tool.params.length })}</Badge>
                   </div>
                 </CardContent>
               </Card>

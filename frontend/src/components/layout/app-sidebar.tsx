@@ -23,19 +23,22 @@ import {
   SidebarGroupLabel,
   SidebarGroupContent,
 } from "@/components/ui/sidebar";
+import { useTranslations } from "@/i18n/use-translations";
+import type { LucideIcon } from "lucide-react";
 
-const navItems = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Tools", href: "/tools", icon: Wrench },
-  { label: "Tasks", href: "/tasks", icon: ListTodo },
-  { label: "Plugins", href: "/plugins", icon: Puzzle },
-  { label: "Marketplace", href: "/marketplace", icon: Store },
-  { label: "Topology", href: "/topology", icon: Network },
-  { label: "Settings", href: "/settings", icon: Settings },
+const navItems: { key: string; href: string; icon: LucideIcon }[] = [
+  { key: "dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { key: "tools", href: "/tools", icon: Wrench },
+  { key: "tasks", href: "/tasks", icon: ListTodo },
+  { key: "plugins", href: "/plugins", icon: Puzzle },
+  { key: "marketplace", href: "/marketplace", icon: Store },
+  { key: "topology", href: "/topology", icon: Network },
+  { key: "settings", href: "/settings", icon: Settings },
 ];
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { t } = useTranslations("common");
 
   return (
     <Sidebar>
@@ -47,7 +50,7 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel>{t("navigation")}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map((item) => (
@@ -55,7 +58,7 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)}>
                     <Link href={item.href}>
                       <item.icon className="h-4 w-4" />
-                      <span>{item.label}</span>
+                      <span>{t(item.key)}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

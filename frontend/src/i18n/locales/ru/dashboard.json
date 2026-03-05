@@ -1,0 +1,15 @@
+{
+  "title": "Dashboard",
+  "subtitle": "NetKitX Security Toolkit Overview",
+  "toolsAvailable": "Tools Available",
+  "registeredTools": "registered tools",
+  "totalTasks": "Total Tasks",
+  "tasksCreated": "tasks created",
+  "running": "Running",
+  "tasksInProgress": "tasks in progress",
+  "plugins": "Plugins",
+  "loadedPlugins": "loaded plugins",
+  "recentTasks": "Recent Tasks",
+  "noTasksYet": "No tasks yet. Go to {{toolsLink}} to start a scan.",
+  "toolsLinkText": "Tools"
+}

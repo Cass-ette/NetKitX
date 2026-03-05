@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { useTranslations } from "@/i18n/use-translations";
 
 interface Task {
   id: number;
@@ -37,6 +38,7 @@ interface TopologyData {
 
 export default function TopologyPage() {
   const token = useAuth((s) => s.token);
+  const { t, locale } = useTranslations("topology");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [topology, setTopology] = useState<TopologyData | null>(null);
@@ -72,9 +74,9 @@ export default function TopologyPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Network Topology</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
         <p className="text-muted-foreground">
-          Visualize scan results as a network graph
+          {t("subtitle")}
         </p>
       </div>
 
@@ -84,12 +86,12 @@ export default function TopologyPage() {
           onValueChange={setSelectedTaskId}
         >
           <SelectTrigger className="w-[400px]">
-            <SelectValue placeholder="Select a completed task" />
+            <SelectValue placeholder={t("selectCompletedTask")} />
           </SelectTrigger>
           <SelectContent>
             {tasks.map((task) => (
               <SelectItem key={task.id} value={String(task.id)}>
-                #{task.id} — {task.plugin_name} ({new Date(task.created_at).toLocaleDateString()})
+                #{task.id} — {task.plugin_name} ({new Date(task.created_at).toLocaleDateString(locale)})
               </SelectItem>
             ))}
           </SelectContent>
@@ -98,10 +100,10 @@ export default function TopologyPage() {
         {topology && (
           <div className="flex gap-2">
             <Badge variant="outline">
-              {topology.nodes.filter((n) => n.type === "host").length} hosts
+              {t("hosts", { count: topology.nodes.filter((n) => n.type === "host").length })}
             </Badge>
             <Badge variant="outline">
-              {topology.edges.length} connections
+              {t("connections", { count: topology.edges.length })}
             </Badge>
           </div>
         )}
@@ -109,21 +111,21 @@ export default function TopologyPage() {
 
       <Card className="overflow-hidden">
         <CardHeader>
-          <CardTitle>Topology Graph</CardTitle>
+          <CardTitle>{t("topologyGraph")}</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="h-[600px]">
             {isPending ? (
               <div className="flex h-full items-center justify-center text-muted-foreground">
-                Loading topology...
+                {t("loadingTopology")}
               </div>
             ) : topology && topology.nodes.length > 0 ? (
               <TopologyGraph data={topology} />
             ) : (
               <div className="flex h-full items-center justify-center text-muted-foreground">
                 {tasks.length === 0
-                  ? "No completed tasks found. Run a scan first."
-                  : "No topology data for this task."}
+                  ? t("noCompletedTasks")
+                  : t("noTopologyData")}
               </div>
             )}
           </div>

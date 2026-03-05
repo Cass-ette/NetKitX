@@ -1,0 +1,15 @@
+{
+  "signInTitle": "Sign in to NetKitX",
+  "createAccountTitle": "Create Account",
+  "username": "Username",
+  "email": "Email",
+  "password": "Password",
+  "signIn": "Sign In",
+  "register": "Register",
+  "loading": "Loading...",
+  "alreadyHaveAccount": "Already have an account?",
+  "dontHaveAccount": "Don't have an account?",
+  "signInLink": "Sign in",
+  "registerLink": "Register",
+  "somethingWentWrong": "Something went wrong"
+}

@@ -27,6 +27,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useTranslations } from "@/i18n/use-translations";
 
 interface WSEvent {
   type: string;
@@ -40,6 +41,8 @@ export default function ToolDetailPage({
 }) {
   const { slug } = use(params);
   const token = useAuth((s) => s.token);
+  const { t } = useTranslations("tools");
+  const { t: tc } = useTranslations("common");
   const [tool, setTool] = useState<PluginMeta | null>(null);
   const [formData, setFormData] = useState<Record<string, string | number>>({});
   const [running, setRunning] = useState(false);
@@ -64,15 +67,15 @@ export default function ToolDetailPage({
         }
         setFormData(defaults);
       })
-      .catch(() => setError("Tool not found"));
-  }, [slug, token]);
+      .catch(() => setError(t("toolNotFound")));
+  }, [slug, token, t]);
 
   const handleRun = useCallback(async () => {
     if (!tool || !token) return;
     setRunning(true);
     setResults([]);
     setError(null);
-    setProgress({ percent: 0, msg: "Starting..." });
+    setProgress({ percent: 0, msg: t("starting") });
     setTaskStatus("pending");
     setTerminalOpen(true);
 
@@ -121,18 +124,15 @@ export default function ToolDetailPage({
         () => setRunning(false),
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create task");
+      setError(err instanceof Error ? err.message : t("failedToCreateTask"));
       setRunning(false);
     }
-  }, [tool, token, formData]);
+  }, [tool, token, formData, t]);
 
   const handleExport = useCallback(
     (format: "html" | "pdf") => {
       if (!taskId || !token) return;
       const url = `${API_BASE}/api/v1/reports/${taskId}/export?format=${format}`;
-      const a = document.createElement("a");
-      a.href = url;
-      a.target = "_blank";
       // For PDF, use fetch to add auth header and trigger download
       fetch(url, { headers: { Authorization: `Bearer ${token}` } })
         .then((res) => {
@@ -147,16 +147,16 @@ export default function ToolDetailPage({
           link.click();
           URL.revokeObjectURL(blobUrl);
         })
-        .catch(() => setError("Failed to export report"));
+        .catch(() => setError(t("failedToExport")));
     },
-    [taskId, token],
+    [taskId, token, t],
   );
 
   if (error && !tool) {
     return <p className="text-destructive">{error}</p>;
   }
   if (!tool) {
-    return <p className="text-muted-foreground">Loading...</p>;
+    return <p className="text-muted-foreground">{tc("loading")}</p>;
   }
 
   const columns = tool.output?.columns || [];
@@ -178,17 +178,17 @@ export default function ToolDetailPage({
             <DropdownMenuTrigger asChild>
               <Button variant="outline">
                 <Download className="mr-2 h-4 w-4" />
-                Export
+                {t("export")}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               <DropdownMenuItem onClick={() => handleExport("html")}>
                 <FileText className="mr-2 h-4 w-4" />
-                HTML Report
+                {t("htmlReport")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleExport("pdf")}>
                 <FileDown className="mr-2 h-4 w-4" />
-                PDF Report
+                {t("pdfReport")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -198,7 +198,7 @@ export default function ToolDetailPage({
       {/* Parameter Form */}
       <Card>
         <CardHeader>
-          <CardTitle>Parameters</CardTitle>
+          <CardTitle>{t("parameters")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2">
@@ -238,9 +238,9 @@ export default function ToolDetailPage({
           </div>
           <Button onClick={handleRun} disabled={running} className="mt-4">
             {running ? (
-              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Running...</>
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t("running")}</>
             ) : (
-              <><Play className="mr-2 h-4 w-4" /> Run</>
+              <><Play className="mr-2 h-4 w-4" /> {t("run")}</>
             )}
           </Button>
         </CardContent>
@@ -263,7 +263,7 @@ export default function ToolDetailPage({
               </div>
               {taskStatus && (
                 <Badge variant={taskStatus === "done" ? "default" : taskStatus === "failed" ? "destructive" : "secondary"}>
-                  {taskStatus}
+                  {tc(`status_${taskStatus}`)}
                 </Badge>
               )}
             </div>
@@ -285,8 +285,8 @@ export default function ToolDetailPage({
         <Card>
           <CardHeader className="cursor-pointer" onClick={() => setTerminalOpen(!terminalOpen)}>
             <CardTitle className="flex items-center justify-between">
-              <span>Terminal</span>
-              <Badge variant="outline">{terminalOpen ? "Collapse" : "Expand"}</Badge>
+              <span>{t("terminal")}</span>
+              <Badge variant="outline">{terminalOpen ? t("collapse") : t("expand")}</Badge>
             </CardTitle>
           </CardHeader>
           {terminalOpen && (
@@ -301,7 +301,7 @@ export default function ToolDetailPage({
       {results.length > 0 && columns.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Results ({results.length})</CardTitle>
+            <CardTitle>{t("results", { count: results.length })}</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
@@ -329,7 +329,7 @@ export default function ToolDetailPage({
       {/* JSON fallback if no columns defined */}
       {results.length > 0 && columns.length === 0 && (
         <Card>
-          <CardHeader><CardTitle>Results ({results.length})</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t("results", { count: results.length })}</CardTitle></CardHeader>
           <CardContent>
             <pre className="max-h-96 overflow-auto rounded bg-muted p-3 text-xs">
               {JSON.stringify(results, null, 2)}

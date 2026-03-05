@@ -1,0 +1,15 @@
+{
+  "title": "仪表盘",
+  "subtitle": "NetKitX 安全工具包概览",
+  "toolsAvailable": "可用工具",
+  "registeredTools": "已注册工具",
+  "totalTasks": "总任务数",
+  "tasksCreated": "已创建任务",
+  "running": "运行中",
+  "tasksInProgress": "进行中的任务",
+  "plugins": "插件",
+  "loadedPlugins": "已加载插件",
+  "recentTasks": "最近任务",
+  "noTasksYet": "暂无任务。前往{{toolsLink}}开始扫描。",
+  "toolsLinkText": "工具"
+}

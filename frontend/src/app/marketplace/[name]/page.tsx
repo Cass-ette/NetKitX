@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Download, Star, CheckCircle, ArrowLeft, Package } from "lucide-react";
+import { useTranslations } from "@/i18n/use-translations";
 
 interface PluginVersion {
   id: number;
@@ -54,6 +55,7 @@ export default function PluginDetailPage() {
   const params = useParams();
   const router = useRouter();
   const token = useAuth((s) => s.token);
+  const { t, locale } = useTranslations("marketplace");
   const pluginName = params.name as string;
 
   const [plugin, setPlugin] = useState<PluginDetail | null>(null);
@@ -80,7 +82,7 @@ export default function PluginDetailPage() {
       setSelectedVersion(data.latest_version || data.versions.find(v => !v.yanked)?.version);
     } catch (error) {
       console.error("Failed to load plugin:", error);
-      setError("Plugin not found");
+      setError(t("pluginNotFound"));
     }
   };
 
@@ -110,7 +112,7 @@ export default function PluginDetailPage() {
       setInstalledPlugins(result.installed);
       setInstallSuccess(true);
     } catch (err) {
-      setError((err as Error).message || "Installation failed");
+      setError((err as Error).message || t("installationFailed"));
     } finally {
       setInstalling(false);
     }
@@ -123,7 +125,7 @@ export default function PluginDetailPage() {
           <CardContent className="py-12 text-center">
             <p className="text-muted-foreground">{error}</p>
             <Button className="mt-4" onClick={() => router.push("/marketplace")}>
-              Back to Marketplace
+              {t("backToMarketplace")}
             </Button>
           </CardContent>
         </Card>
@@ -134,7 +136,7 @@ export default function PluginDetailPage() {
   if (!plugin) {
     return (
       <div className="container mx-auto p-6">
-        <div className="text-center py-12">Loading...</div>
+        <div className="text-center py-12">{t("loadingPlugins")}</div>
       </div>
     );
   }
@@ -150,10 +152,10 @@ export default function PluginDetailPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {installing ? "Installing Plugin" : "Installation Complete"}
+              {installing ? t("installingPlugin") : t("installationComplete")}
             </DialogTitle>
             <DialogDescription>
-              {installing ? "Please wait while we install the plugin and its dependencies..." : "Plugin installed successfully!"}
+              {installing ? t("installingWait") : t("installSuccess")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -164,7 +166,7 @@ export default function PluginDetailPage() {
             )}
             {installSuccess && installedPlugins.length > 0 && (
               <div className="space-y-2">
-                <p className="text-sm font-medium">Installed plugins:</p>
+                <p className="text-sm font-medium">{t("installedPlugins")}</p>
                 {installedPlugins.map((p, i) => (
                   <div key={i} className="flex items-center justify-between text-sm">
                     <span>{p.plugin}</span>
@@ -172,7 +174,7 @@ export default function PluginDetailPage() {
                   </div>
                 ))}
                 <Button className="w-full mt-4" onClick={() => router.push("/plugins")}>
-                  Go to My Plugins
+                  {t("goToMyPlugins")}
                 </Button>
               </div>
             )}
@@ -183,7 +185,7 @@ export default function PluginDetailPage() {
       <div className="container mx-auto p-6 space-y-6">
       <Button variant="ghost" onClick={() => router.push("/marketplace")}>
         <ArrowLeft className="mr-2 h-4 w-4" />
-        Back to Marketplace
+        {t("backToMarketplace")}
       </Button>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -199,7 +201,7 @@ export default function PluginDetailPage() {
                       <CheckCircle className="h-6 w-6 text-blue-500" />
                     )}
                   </CardTitle>
-                  <p className="text-muted-foreground mt-2">by {plugin.author}</p>
+                  <p className="text-muted-foreground mt-2">{t("by", { author: plugin.author })}</p>
                 </div>
               </div>
             </CardHeader>
@@ -220,12 +222,12 @@ export default function PluginDetailPage() {
               <div className="flex items-center gap-6 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1">
                   <Download className="h-4 w-4" />
-                  {plugin.downloads.toLocaleString()} downloads
+                  {plugin.downloads.toLocaleString()} {t("downloads")}
                 </div>
                 {plugin.rating && (
                   <div className="flex items-center gap-1">
                     <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    {plugin.rating.toFixed(1)} rating
+                    {plugin.rating.toFixed(1)} {t("rating")}
                   </div>
                 )}
                 {plugin.license && (
@@ -245,7 +247,7 @@ export default function PluginDetailPage() {
                       rel="noopener noreferrer"
                       className="text-sm text-blue-500 hover:underline"
                     >
-                      Homepage
+                      {t("homepage")}
                     </a>
                   )}
                   {plugin.repository_url && (
@@ -255,7 +257,7 @@ export default function PluginDetailPage() {
                       rel="noopener noreferrer"
                       className="text-sm text-blue-500 hover:underline"
                     >
-                      Repository
+                      {t("repository")}
                     </a>
                   )}
                 </div>
@@ -266,7 +268,7 @@ export default function PluginDetailPage() {
           {/* Versions */}
           <Card>
             <CardHeader>
-              <CardTitle>Versions</CardTitle>
+              <CardTitle>{t("versions")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -278,11 +280,11 @@ export default function PluginDetailPage() {
                         <div className="flex items-center gap-2">
                           <Badge>{version.version}</Badge>
                           {version.version === plugin.latest_version && (
-                            <Badge variant="secondary">Latest</Badge>
+                            <Badge variant="secondary">{t("latest")}</Badge>
                           )}
                         </div>
                         <span className="text-sm text-muted-foreground">
-                          {new Date(version.published_at).toLocaleDateString()}
+                          {new Date(version.published_at).toLocaleDateString(locale)}
                         </span>
                       </div>
                       {version.changelog && (
@@ -302,14 +304,14 @@ export default function PluginDetailPage() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Install</CardTitle>
+              <CardTitle>{t("install")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <label className="text-sm font-medium mb-2 block">Version</label>
+                <label className="text-sm font-medium mb-2 block">{t("version")}</label>
                 <Select value={selectedVersion || undefined} onValueChange={setSelectedVersion}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select version" />
+                    <SelectValue placeholder={t("selectVersion")} />
                   </SelectTrigger>
                   <SelectContent>
                     {plugin.versions
@@ -317,7 +319,7 @@ export default function PluginDetailPage() {
                       .map((v) => (
                         <SelectItem key={v.id} value={v.version}>
                           {v.version}
-                          {v.version === plugin.latest_version && " (Latest)"}
+                          {v.version === plugin.latest_version && ` (${t("latest")})`}
                         </SelectItem>
                       ))}
                   </SelectContent>
@@ -329,7 +331,7 @@ export default function PluginDetailPage() {
                 onClick={handleInstall}
                 disabled={installing || !selectedVersion}
               >
-                {installing ? "Installing..." : "Install Plugin"}
+                {installing ? t("installing") : t("installPlugin")}
               </Button>
 
               {error && (
@@ -337,7 +339,7 @@ export default function PluginDetailPage() {
               )}
 
               <p className="text-xs text-muted-foreground">
-                This will install the plugin and all its dependencies.
+                {t("installDependencies")}
               </p>
             </CardContent>
           </Card>

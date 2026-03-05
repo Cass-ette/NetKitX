@@ -1,0 +1,17 @@
+{
+  "navigation": "Navigation",
+  "dashboard": "Dashboard",
+  "tools": "Tools",
+  "tasks": "Tasks",
+  "plugins": "Plugins",
+  "marketplace": "Marketplace",
+  "topology": "Topology",
+  "settings": "Settings",
+  "logout": "Logout",
+  "loading": "Loading...",
+  "error": "Error",
+  "status_done": "done",
+  "status_failed": "failed",
+  "status_running": "running",
+  "status_pending": "pending"
+}

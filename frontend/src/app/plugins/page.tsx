@@ -8,9 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import type { PluginMeta } from "@/types";
+import { useTranslations } from "@/i18n/use-translations";
 
 export default function PluginsPage() {
   const token = useAuth((s) => s.token);
+  const { t } = useTranslations("plugins");
+  const { t: tc } = useTranslations("common");
   const [plugins, setPlugins] = useState<PluginMeta[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -41,7 +44,7 @@ export default function PluginsPage() {
       await apiUpload("/api/v1/plugins/upload", file, token);
       fetchPlugins();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Upload failed");
+      alert(e instanceof Error ? e.message : t("uploadFailed"));
     } finally {
       setUploading(false);
     }
@@ -70,7 +73,7 @@ export default function PluginsPage() {
       });
       fetchPlugins();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Toggle failed");
+      alert(e instanceof Error ? e.message : t("toggleFailed"));
     }
   };
 
@@ -84,15 +87,15 @@ export default function PluginsPage() {
       setDeleteConfirm(null);
       fetchPlugins();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Delete failed");
+      alert(e instanceof Error ? e.message : t("deleteFailed"));
     }
   };
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Plugins</h1>
-        <p className="text-muted-foreground">Upload, manage, and configure plugins</p>
+        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+        <p className="text-muted-foreground">{t("subtitle")}</p>
       </div>
 
       {/* Upload zone */}
@@ -112,9 +115,7 @@ export default function PluginsPage() {
             }`}
           >
             <p className="mb-2 text-sm text-muted-foreground">
-              {uploading
-                ? "Uploading..."
-                : "Drag & drop a plugin .zip file here, or click to browse"}
+              {uploading ? t("uploading") : t("uploadHint")}
             </p>
             <input
               ref={fileInputRef}
@@ -129,7 +130,7 @@ export default function PluginsPage() {
               disabled={uploading}
               onClick={() => fileInputRef.current?.click()}
             >
-              Choose File
+              {t("chooseFile")}
             </Button>
           </div>
         </CardContent>
@@ -137,9 +138,9 @@ export default function PluginsPage() {
 
       {/* Plugin list */}
       {loading ? (
-        <p className="text-muted-foreground">Loading...</p>
+        <p className="text-muted-foreground">{tc("loading")}</p>
       ) : plugins.length === 0 ? (
-        <p className="text-muted-foreground">No plugins installed.</p>
+        <p className="text-muted-foreground">{t("noPluginsInstalled")}</p>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {plugins.map((p) => (
@@ -148,7 +149,7 @@ export default function PluginsPage() {
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg">{p.name}</CardTitle>
                   <Badge variant={p.enabled !== false ? "default" : "secondary"}>
-                    {p.enabled !== false ? "active" : "disabled"}
+                    {p.enabled !== false ? t("active") : t("disabled")}
                   </Badge>
                 </div>
               </CardHeader>
@@ -168,7 +169,7 @@ export default function PluginsPage() {
                       }
                     />
                     <span className="text-sm text-muted-foreground">
-                      {p.enabled !== false ? "Enabled" : "Disabled"}
+                      {p.enabled !== false ? t("enabled") : t("disabledLabel")}
                     </span>
                   </div>
                   {deleteConfirm === p.name ? (
@@ -178,14 +179,14 @@ export default function PluginsPage() {
                         size="xs"
                         onClick={() => handleDelete(p.name)}
                       >
-                        Confirm
+                        {t("confirm")}
                       </Button>
                       <Button
                         variant="outline"
                         size="xs"
                         onClick={() => setDeleteConfirm(null)}
                       >
-                        Cancel
+                        {t("cancel")}
                       </Button>
                     </div>
                   ) : (
@@ -195,7 +196,7 @@ export default function PluginsPage() {
                       onClick={() => setDeleteConfirm(p.name)}
                       className="text-destructive hover:text-destructive"
                     >
-                      Delete
+                      {t("delete")}
                     </Button>
                   )}
                 </div>

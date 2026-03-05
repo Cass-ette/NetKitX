@@ -1,0 +1,18 @@
+{
+  "title": "插件",
+  "subtitle": "上传、管理和配置插件",
+  "uploadHint": "拖放插件 .zip 文件到此处，或点击浏览",
+  "uploading": "上传中...",
+  "chooseFile": "选择文件",
+  "active": "已启用",
+  "disabled": "已禁用",
+  "enabled": "启用",
+  "disabledLabel": "禁用",
+  "confirm": "确认",
+  "cancel": "取消",
+  "delete": "删除",
+  "noPluginsInstalled": "未安装插件。",
+  "uploadFailed": "上传失败",
+  "toggleFailed": "切换失败",
+  "deleteFailed": "删除失败"
+}

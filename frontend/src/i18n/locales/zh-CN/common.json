@@ -1,0 +1,17 @@
+{
+  "navigation": "导航",
+  "dashboard": "仪表盘",
+  "tools": "工具",
+  "tasks": "任务",
+  "plugins": "插件",
+  "marketplace": "插件市场",
+  "topology": "拓扑",
+  "settings": "设置",
+  "logout": "退出登录",
+  "loading": "加载中...",
+  "error": "错误",
+  "status_done": "已完成",
+  "status_failed": "失败",
+  "status_running": "运行中",
+  "status_pending": "等待中"
+}

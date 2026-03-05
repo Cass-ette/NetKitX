@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Download, Star, Search, CheckCircle } from "lucide-react";
+import { useTranslations } from "@/i18n/use-translations";
 
 interface MarketplacePlugin {
   id: number;
@@ -32,6 +33,7 @@ interface MarketplacePlugin {
 
 export default function MarketplacePage() {
   const token = useAuth((s) => s.token);
+  const { t } = useTranslations("marketplace");
   const [plugins, setPlugins] = useState<MarketplacePlugin[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,13 +81,13 @@ export default function MarketplacePage() {
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Plugin Marketplace</h1>
+          <h1 className="text-3xl font-bold">{t("title")}</h1>
           <p className="text-muted-foreground">
-            Discover and install plugins to extend NetKitX
+            {t("subtitle")}
           </p>
         </div>
         <Link href="/plugins">
-          <Button variant="outline">My Plugins</Button>
+          <Button variant="outline">{t("myPlugins")}</Button>
         </Link>
       </div>
 
@@ -96,7 +98,7 @@ export default function MarketplacePage() {
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search plugins..."
+                placeholder={t("searchPlugins")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
@@ -104,10 +106,10 @@ export default function MarketplacePage() {
             </div>
             <Select value={selectedCategory || "all"} onValueChange={(value) => setSelectedCategory(value === "all" ? "" : value)}>
               <SelectTrigger className="w-48">
-                <SelectValue placeholder="All Categories" />
+                <SelectValue placeholder={t("allCategories")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
+                <SelectItem value="all">{t("allCategories")}</SelectItem>
                 {categories.map((cat) => (
                   <SelectItem key={cat} value={cat}>
                     {cat}
@@ -120,7 +122,7 @@ export default function MarketplacePage() {
               onClick={() => setVerifiedOnly(!verifiedOnly)}
             >
               <CheckCircle className="mr-2 h-4 w-4" />
-              Verified Only
+              {t("verifiedOnly")}
             </Button>
           </div>
         </CardContent>
@@ -128,11 +130,11 @@ export default function MarketplacePage() {
 
       {/* Plugin Grid */}
       {loading ? (
-        <div className="text-center py-12">Loading plugins...</div>
+        <div className="text-center py-12">{t("loadingPlugins")}</div>
       ) : plugins.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            No plugins found. Try adjusting your filters.
+            {t("noPluginsFound")}
           </CardContent>
         </Card>
       ) : (
@@ -150,7 +152,7 @@ export default function MarketplacePage() {
                         )}
                       </CardTitle>
                       <p className="text-sm text-muted-foreground mt-1">
-                        by {plugin.author}
+                        {t("by", { author: plugin.author })}
                       </p>
                     </div>
                   </div>

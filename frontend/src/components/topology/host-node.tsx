@@ -2,6 +2,7 @@
 
 import { Handle, Position } from "@xyflow/react";
 import { Monitor } from "lucide-react";
+import { useTranslations } from "@/i18n/use-translations";
 
 interface HostNodeData {
   label: string;
@@ -11,6 +12,8 @@ interface HostNodeData {
 }
 
 export function HostNode({ data }: { data: HostNodeData }) {
+  const { t } = useTranslations("topology");
+
   return (
     <div className="rounded-lg border bg-card px-4 py-3 shadow-sm min-w-[160px]">
       <Handle type="target" position={Position.Top} className="!bg-primary" />
@@ -20,7 +23,7 @@ export function HostNode({ data }: { data: HostNodeData }) {
       </div>
       {data.ports.length > 0 && (
         <div className="text-xs text-muted-foreground">
-          Ports: {data.ports.slice(0, 5).join(", ")}
+          {t("ports")} {data.ports.slice(0, 5).join(", ")}
           {data.ports.length > 5 && ` +${data.ports.length - 5}`}
         </div>
       )}

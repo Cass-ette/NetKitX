@@ -1,0 +1,18 @@
+{
+  "title": "Network Topology",
+  "subtitle": "Visualize scan results as a network graph",
+  "selectCompletedTask": "Select a completed task",
+  "hosts": "{{count}} hosts",
+  "connections": "{{count}} connections",
+  "topologyGraph": "Topology Graph",
+  "loadingTopology": "Loading topology...",
+  "noCompletedTasks": "No completed tasks found. Run a scan first.",
+  "noTopologyData": "No topology data for this task.",
+  "ports": "Ports:",
+  "results": "{{count}} results",
+  "type": "Type",
+  "host": "Host",
+  "openPorts": "Open Ports ({{count}})",
+  "services": "Services ({{count}})",
+  "totalResults": "Total Results"
+}

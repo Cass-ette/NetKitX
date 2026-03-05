@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Wrench, ListTodo, Puzzle, Activity } from "lucide-react";
 import type { Task } from "@/types";
+import { useTranslations } from "@/i18n/use-translations";
 
 interface Stats {
   tools_count: number;
@@ -18,6 +19,8 @@ interface Stats {
 
 export default function DashboardPage() {
   const token = useAuth((s) => s.token);
+  const { t, locale } = useTranslations("dashboard");
+  const { t: tc } = useTranslations("common");
   const [stats, setStats] = useState<Stats | null>(null);
   const [recentTasks, setRecentTasks] = useState<Task[]>([]);
 
@@ -30,64 +33,66 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">NetKitX Security Toolkit Overview</p>
+        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+        <p className="text-muted-foreground">{t("subtitle")}</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tools Available</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("toolsAvailable")}</CardTitle>
             <Wrench className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.tools_count ?? "..."}</div>
-            <p className="text-xs text-muted-foreground">registered tools</p>
+            <p className="text-xs text-muted-foreground">{t("registeredTools")}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Tasks</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("totalTasks")}</CardTitle>
             <ListTodo className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.tasks_total ?? "..."}</div>
-            <p className="text-xs text-muted-foreground">tasks created</p>
+            <p className="text-xs text-muted-foreground">{t("tasksCreated")}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Running</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("running")}</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.tasks_running ?? "..."}</div>
-            <p className="text-xs text-muted-foreground">tasks in progress</p>
+            <p className="text-xs text-muted-foreground">{t("tasksInProgress")}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Plugins</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("plugins")}</CardTitle>
             <Puzzle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.plugins_count ?? "..."}</div>
-            <p className="text-xs text-muted-foreground">loaded plugins</p>
+            <p className="text-xs text-muted-foreground">{t("loadedPlugins")}</p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Recent Tasks</CardTitle>
+          <CardTitle>{t("recentTasks")}</CardTitle>
         </CardHeader>
         <CardContent>
           {recentTasks.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No tasks yet. Go to <Link href="/tools" className="text-primary underline">Tools</Link> to start a scan.
+              {t("noTasksYet").split("{{toolsLink}}")[0]}
+              <Link href="/tools" className="text-primary underline">{t("toolsLinkText")}</Link>
+              {t("noTasksYet").split("{{toolsLink}}")[1]}
             </p>
           ) : (
             <div className="space-y-2">
@@ -99,12 +104,12 @@ export default function DashboardPage() {
                       task.status === "failed" ? "destructive" :
                       task.status === "running" ? "secondary" : "outline"
                     }>
-                      {task.status}
+                      {tc(`status_${task.status}`)}
                     </Badge>
                     <span className="text-sm font-medium">{task.plugin_name}</span>
                   </div>
                   <span className="text-xs text-muted-foreground">
-                    {new Date(task.created_at).toLocaleString()}
+                    {new Date(task.created_at).toLocaleString(locale)}
                   </span>
                 </div>
               ))}

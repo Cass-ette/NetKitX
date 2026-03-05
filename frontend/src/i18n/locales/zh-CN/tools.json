@@ -1,0 +1,21 @@
+{
+  "title": "工具",
+  "subtitle": "可用的安全工具",
+  "loadingTools": "加载工具中...",
+  "noToolsLoaded": "未加载工具。请检查插件配置。",
+  "params": "{{count}} 个参数",
+  "parameters": "参数",
+  "run": "运行",
+  "running": "运行中...",
+  "starting": "启动中...",
+  "export": "导出",
+  "htmlReport": "HTML 报告",
+  "pdfReport": "PDF 报告",
+  "terminal": "终端",
+  "collapse": "收起",
+  "expand": "展开",
+  "results": "结果 ({{count}})",
+  "toolNotFound": "未找到工具",
+  "failedToCreateTask": "创建任务失败",
+  "failedToExport": "导出报告失败"
+}

@@ -1,0 +1,13 @@
+{
+  "title": "设置",
+  "subtitle": "系统配置",
+  "apiConnection": "API 连接",
+  "backendUrl": "后端地址",
+  "status": "状态",
+  "connected": "已连接",
+  "about": "关于",
+  "extensibleToolkit": "可扩展的网络安全工具包",
+  "version": "版本 {{version}}",
+  "pluginDirectory": "插件目录：",
+  "engineDirectory": "引擎目录："
+}

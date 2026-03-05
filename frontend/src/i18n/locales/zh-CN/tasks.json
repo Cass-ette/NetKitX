@@ -1,0 +1,13 @@
+{
+  "title": "任务",
+  "subtitle": "任务执行历史",
+  "id": "ID",
+  "plugin": "插件",
+  "status": "状态",
+  "created": "创建时间",
+  "duration": "耗时",
+  "results": "结果",
+  "noTasksYet": "暂无任务。前往{{toolsLink}}运行扫描。",
+  "toolsLinkText": "工具",
+  "runningDuration": "运行中..."
+}

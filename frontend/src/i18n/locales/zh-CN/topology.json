@@ -1,0 +1,18 @@
+{
+  "title": "网络拓扑",
+  "subtitle": "将扫描结果可视化为网络图",
+  "selectCompletedTask": "选择已完成的任务",
+  "hosts": "{{count}} 台主机",
+  "connections": "{{count}} 个连接",
+  "topologyGraph": "拓扑图",
+  "loadingTopology": "加载拓扑中...",
+  "noCompletedTasks": "未找到已完成的任务。请先运行扫描。",
+  "noTopologyData": "该任务无拓扑数据。",
+  "ports": "端口：",
+  "results": "{{count}} 个结果",
+  "type": "类型",
+  "host": "主机",
+  "openPorts": "开放端口 ({{count}})",
+  "services": "服务 ({{count}})",
+  "totalResults": "总结果数"
+}

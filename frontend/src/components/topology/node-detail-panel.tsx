@@ -7,6 +7,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
+import { useTranslations } from "@/i18n/use-translations";
 
 interface NodeData {
   id: string;
@@ -21,6 +22,8 @@ interface NodeDetailPanelProps {
 }
 
 export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
+  const { t } = useTranslations("topology");
+
   if (!node) return null;
 
   const ports = (node.data.ports as number[]) || [];
@@ -35,21 +38,21 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
         </SheetHeader>
         <div className="mt-6 space-y-4">
           <div>
-            <h4 className="text-sm font-medium text-muted-foreground mb-1">Type</h4>
+            <h4 className="text-sm font-medium text-muted-foreground mb-1">{t("type")}</h4>
             <Badge>{node.type}</Badge>
           </div>
 
           {node.type === "host" && (
             <>
               <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-1">Host</h4>
+                <h4 className="text-sm font-medium text-muted-foreground mb-1">{t("host")}</h4>
                 <p className="font-mono text-sm">{host}</p>
               </div>
 
               {ports.length > 0 && (
                 <div>
                   <h4 className="text-sm font-medium text-muted-foreground mb-2">
-                    Open Ports ({ports.length})
+                    {t("openPorts", { count: ports.length })}
                   </h4>
                   <div className="flex flex-wrap gap-1">
                     {ports.map((port) => (
@@ -64,7 +67,7 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
               {services.length > 0 && (
                 <div>
                   <h4 className="text-sm font-medium text-muted-foreground mb-2">
-                    Services ({services.length})
+                    {t("services", { count: services.length })}
                   </h4>
                   <div className="flex flex-wrap gap-1">
                     {services.map((svc) => (
@@ -80,7 +83,7 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
 
           {node.type === "scanner" && (
             <div>
-              <h4 className="text-sm font-medium text-muted-foreground mb-1">Total Results</h4>
+              <h4 className="text-sm font-medium text-muted-foreground mb-1">{t("totalResults")}</h4>
               <p className="text-2xl font-bold">
                 {(node.data.total_results as number) || 0}
               </p>
