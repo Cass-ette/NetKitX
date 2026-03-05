@@ -36,12 +36,14 @@ export function TaskTerminal({ taskId }: TaskTerminalProps) {
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
     term.open(containerRef.current);
-    fitAddon.fit();
+
+    // fit() can throw if renderer isn't ready yet
+    try { fitAddon.fit(); } catch { /* renderer not ready */ }
 
     termRef.current = term;
 
     const resizeObserver = new ResizeObserver(() => {
-      fitAddon.fit();
+      try { fitAddon.fit(); } catch { /* terminal disposed or renderer not ready */ }
     });
     resizeObserver.observe(containerRef.current);
 
