@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -21,7 +22,22 @@ async def lifespan(app: FastAPI):
     count = load_all_plugins(settings.PLUGINS_DIR, settings.ENGINES_DIR)
     logger.info(f"Loaded {count} plugins")
 
+    # Background task: clean up idle sandbox containers every 5 minutes
+    async def _cleanup_loop():
+        while True:
+            await asyncio.sleep(5 * 60)
+            try:
+                from app.services.container_service import cleanup_idle_containers
+
+                cleanup_idle_containers()
+            except Exception as e:
+                logger.error("Container cleanup error: %s", e)
+
+    task = asyncio.create_task(_cleanup_loop())
+
     yield
+
+    task.cancel()
 
 
 app = FastAPI(

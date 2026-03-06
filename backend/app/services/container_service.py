@@ -2,6 +2,7 @@
 
 import logging
 import os
+import time
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -9,7 +10,10 @@ logger = logging.getLogger(__name__)
 SANDBOX_IMAGE = os.environ.get("SANDBOX_IMAGE", "netkitx-sandbox")
 SANDBOX_API_URL = os.environ.get("SANDBOX_API_URL", "http://127.0.0.1:8000")
 CONTAINER_PREFIX = "netkitx-user-"
-IDLE_TIMEOUT_MINUTES = 30
+IDLE_TIMEOUT_SECONDS = 30 * 60  # 30 minutes
+
+# Track last activity time per user_id
+_last_active: dict[int, float] = {}
 
 
 def _get_docker():
@@ -78,6 +82,8 @@ async def exec_in_container(user_id: int, command: str, token: str) -> dict[str,
     if not container_id:
         container_id = create_user_container(user_id, token)
 
+    _last_active[user_id] = time.monotonic()
+
     try:
         client = _get_docker()
         container = client.containers.get(container_id)
@@ -103,6 +109,7 @@ def destroy_user_container(user_id: int):
         client = _get_docker()
         container = client.containers.get(_container_name(user_id))
         container.remove(force=True)
+        _last_active.pop(user_id, None)
         logger.info("Destroyed sandbox container for user %s", user_id)
     except Exception:
         pass
@@ -124,18 +131,22 @@ def get_container_status(user_id: int) -> dict[str, Any]:
 
 
 def cleanup_idle_containers():
-    """Remove containers that haven't been used recently."""
+    """Remove sandbox containers idle for more than IDLE_TIMEOUT_SECONDS."""
+    now = time.monotonic()
     try:
         client = _get_docker()
         containers = client.containers.list(filters={"label": "netkitx.sandbox=true"})
         for c in containers:
             try:
-                c.reload()
-                # Check if idle based on last exec time (docker inspect)
-                info = client.api.inspect_container(c.id)
-                state = info.get("State", {})
-                if not state.get("Running"):
+                user_id_str = c.labels.get("netkitx.user_id", "")
+                if not user_id_str:
+                    continue
+                user_id = int(user_id_str)
+                last = _last_active.get(user_id, 0)
+                if now - last > IDLE_TIMEOUT_SECONDS:
                     c.remove(force=True)
+                    _last_active.pop(user_id, None)
+                    logger.info("Cleaned up idle container for user %s", user_id)
             except Exception:
                 pass
     except Exception as e:
