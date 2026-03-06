@@ -1,0 +1,22 @@
+name: ssl-check
+version: 1.0.0
+description: SSL/TLS Certificate Inspector - check certificate validity, expiry, issuer, SANs and weak configs
+category: recon
+engine: python
+
+params:
+  - name: target
+    label: Target Host
+    type: string
+    required: true
+    placeholder: "example.com"
+  - name: port
+    label: Port
+    type: number
+    default: 443
+
+output:
+  type: table
+  columns:
+    - { key: "field", label: "Field" }
+    - { key: "value", label: "Value" }
