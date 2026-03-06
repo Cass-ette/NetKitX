@@ -12,6 +12,7 @@ from app.services.ai_service import (
     get_lang_reminder,
     stream_claude,
     stream_deepseek,
+    stream_glm,
 )
 
 logger = logging.getLogger(__name__)
@@ -306,6 +307,8 @@ async def run_agent_loop(
             gen = stream_claude(api_key, model, full_messages)
         elif provider == "deepseek":
             gen = stream_deepseek(api_key, model, full_messages)
+        elif provider == "glm":
+            gen = stream_glm(api_key, model, full_messages)
         else:
             yield {"event": "text", "data": {"content": f"Unknown provider: {provider}"}}
             yield {"event": "done", "data": {"reason": "error"}}
