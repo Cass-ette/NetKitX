@@ -26,6 +26,7 @@ jobs:
             docker compose -f docker-compose.prod.yml up -d --build
             docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
             # 安装 CLI 到系统
+            pip3 install httpx -q 2>/dev/null || true
             cp /opt/NetKitX/cli/netkitx /usr/local/bin/netkitx
             chmod +x /usr/local/bin/netkitx
             echo "Deploy complete"
