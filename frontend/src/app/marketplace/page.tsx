@@ -98,7 +98,7 @@ export default function MarketplacePage() {
     try {
       const form = new FormData();
       form.append("file", publishFile);
-      const res = await fetch(`${API_BASE}/api/v1/publish`, {
+      const res = await fetch(`${API_BASE}/api/v1/marketplace/publish`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: form,
