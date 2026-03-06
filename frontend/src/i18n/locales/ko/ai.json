@@ -40,5 +40,8 @@
   "actionSkip": "건너뛰기",
   "actionProposed": "제안됨",
   "viewTask": "작업 보기",
-  "maxTurnsReached": "최대 턴 제한에 도달했습니다 ({{max}} 턴). 계속하려면 새 메시지를 보내세요."
+  "maxTurnsReached": "최대 턴 제한에 도달했습니다 ({{max}} 턴). 계속하려면 새 메시지를 보내세요.",
+  "openPanel": "AI 패널 열기",
+  "closePanel": "AI 패널 닫기",
+  "newChat": "새 채팅"
 }

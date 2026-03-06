@@ -40,5 +40,8 @@
   "actionSkip": "Skip",
   "actionProposed": "Proposed",
   "viewTask": "View Task",
-  "maxTurnsReached": "Reached maximum turn limit ({{max}} turns). Send a new message to continue."
+  "maxTurnsReached": "Reached maximum turn limit ({{max}} turns). Send a new message to continue.",
+  "openPanel": "Open AI Panel",
+  "closePanel": "Close AI Panel",
+  "newChat": "New Chat"
 }

@@ -40,5 +40,8 @@
   "actionSkip": "Ignorer",
   "actionProposed": "Proposé",
   "viewTask": "Voir la tâche",
-  "maxTurnsReached": "Limite de tours atteinte ({{max}} tours). Envoyez un nouveau message pour continuer."
+  "maxTurnsReached": "Limite de tours atteinte ({{max}} tours). Envoyez un nouveau message pour continuer.",
+  "openPanel": "Ouvrir le panneau IA",
+  "closePanel": "Fermer le panneau IA",
+  "newChat": "Nouveau chat"
 }

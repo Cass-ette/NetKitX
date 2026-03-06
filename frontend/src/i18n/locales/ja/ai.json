@@ -40,5 +40,8 @@
   "actionSkip": "スキップ",
   "actionProposed": "提案中",
   "viewTask": "タスクを表示",
-  "maxTurnsReached": "最大ターン数に達しました ({{max}} ターン)。続行するには新しいメッセージを送信してください。"
+  "maxTurnsReached": "最大ターン数に達しました ({{max}} ターン)。続行するには新しいメッセージを送信してください。",
+  "openPanel": "AIパネルを開く",
+  "closePanel": "AIパネルを閉じる",
+  "newChat": "新しいチャット"
 }

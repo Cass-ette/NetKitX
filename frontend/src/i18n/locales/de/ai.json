@@ -40,5 +40,8 @@
   "actionSkip": "Überspringen",
   "actionProposed": "Vorgeschlagen",
   "viewTask": "Aufgabe anzeigen",
-  "maxTurnsReached": "Maximale Rundenzahl erreicht ({{max}} Runden). Senden Sie eine neue Nachricht, um fortzufahren."
+  "maxTurnsReached": "Maximale Rundenzahl erreicht ({{max}} Runden). Senden Sie eine neue Nachricht, um fortzufahren.",
+  "openPanel": "KI-Panel öffnen",
+  "closePanel": "KI-Panel schließen",
+  "newChat": "Neuer Chat"
 }

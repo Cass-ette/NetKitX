@@ -129,9 +129,31 @@
 /* Enhanced code block visibility */
 .prose pre {
   @apply border border-border shadow-sm;
-  background-color: oklch(0.95 0 0) !important;
+  background-color: oklch(0.15 0 0) !important;
+  color: oklch(0.98 0 0) !important;
+  padding: 1rem !important;
 }
 
 .dark .prose pre {
-  background-color: oklch(0.22 0 0) !important;
+  background-color: oklch(0.10 0 0) !important;
+  color: oklch(0.98 0 0) !important;
+}
+
+/* Code inside pre should not have extra background */
+.prose pre code {
+  background-color: transparent !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  color: inherit !important;
+  font-size: inherit !important;
+}
+
+/* Inline code (not in pre) */
+.prose :not(pre) > code {
+  @apply bg-muted px-1 py-0.5 rounded text-xs;
+}
+
+.prose code::before,
+.prose code::after {
+  content: none !important;
 }
