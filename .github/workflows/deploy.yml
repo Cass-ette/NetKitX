@@ -1,0 +1,26 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 156.225.20.57
+          username: root
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/NetKitX
+            git pull origin develop
+            POSTGRES_PASSWORD=$(grep DATABASE_URL backend/.env | sed 's/.*netkitx:\(.*\)@db.*/\1/')
+            export POSTGRES_PASSWORD
+            docker compose -f docker-compose.prod.yml up -d --build
+            docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
+            echo "Deploy complete"
