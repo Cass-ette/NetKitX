@@ -2,7 +2,7 @@ from pydantic import BaseModel
 
 
 class AISettingsUpdate(BaseModel):
-    provider: str  # "claude" | "deepseek"
+    provider: str  # "claude" | "deepseek" | "glm"
     api_key: str  # plaintext, encrypted on save
     model: str
 

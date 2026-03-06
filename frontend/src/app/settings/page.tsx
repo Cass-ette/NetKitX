@@ -91,6 +91,7 @@ export default function SettingsPage() {
   const defaultModels: Record<string, string> = {
     claude: "claude-sonnet-4-20250514",
     deepseek: "deepseek-chat",
+    glm: "glm-4-flash",
   };
 
   return (
@@ -153,6 +154,7 @@ export default function SettingsPage() {
               <SelectContent>
                 <SelectItem value="claude">Claude (Anthropic)</SelectItem>
                 <SelectItem value="deepseek">DeepSeek</SelectItem>
+                <SelectItem value="glm">GLM (智谱 AI)</SelectItem>
               </SelectContent>
             </Select>
           </div>

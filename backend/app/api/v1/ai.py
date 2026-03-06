@@ -20,6 +20,7 @@ from app.services.ai_service import (
     mask_key,
     stream_claude,
     stream_deepseek,
+    stream_glm,
     get_system_prompt,
     get_lang_reminder,
 )
@@ -94,6 +95,8 @@ async def _stream_ai(provider: str, api_key: str, model: str, messages: list[dic
         gen = stream_claude(api_key, model, messages)
     elif provider == "deepseek":
         gen = stream_deepseek(api_key, model, messages)
+    elif provider == "glm":
+        gen = stream_glm(api_key, model, messages)
     else:
         yield f"data: {json.dumps({'error': 'Unknown provider'})}\n\n"
         return
