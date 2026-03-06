@@ -1,0 +1,250 @@
+#!/usr/bin/env python3
+"""NetKitX CLI — command-line interface for the NetKitX toolkit."""
+
+import argparse
+import json
+import os
+import sys
+import time
+
+try:
+    import httpx
+except ImportError:
+    print("Error: httpx not installed. Run: pip install httpx")
+    sys.exit(1)
+
+CONFIG_DIR = os.path.expanduser("~/.netkitx")
+CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
+DEFAULT_API = "http://127.0.0.1:8000"
+
+
+# ── config helpers ──────────────────────────────────────────────────────────
+
+def load_config() -> dict:
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE) as f:
+            return json.load(f)
+    return {"api": DEFAULT_API, "token": None}
+
+
+def save_config(cfg: dict):
+    os.makedirs(CONFIG_DIR, exist_ok=True)
+    with open(CONFIG_FILE, "w") as f:
+        json.dump(cfg, f, indent=2)
+
+
+def get_headers(cfg: dict) -> dict:
+    if not cfg.get("token"):
+        print("Not logged in. Run: netkitx login -u USER -p PASS")
+        sys.exit(1)
+    return {"Authorization": f"Bearer {cfg['token']}"}
+
+
+# ── commands ────────────────────────────────────────────────────────────────
+
+def cmd_login(args, cfg):
+    resp = httpx.post(
+        f"{cfg['api']}/api/v1/auth/login",
+        json={"username": args.username, "password": args.password},
+        timeout=10,
+    )
+    if resp.status_code != 200:
+        print(f"Login failed: {resp.text}")
+        sys.exit(1)
+    cfg["token"] = resp.json()["access_token"]
+    save_config(cfg)
+    print(f"Logged in as {args.username}")
+
+
+def cmd_plugins(args, cfg):
+    resp = httpx.get(
+        f"{cfg['api']}/api/v1/plugins",
+        headers=get_headers(cfg),
+        timeout=10,
+    )
+    if resp.status_code != 200:
+        print(f"Error: {resp.text}")
+        sys.exit(1)
+    plugins = resp.json()
+    if not plugins:
+        print("No plugins installed.")
+        return
+    print(f"{'NAME':<20} {'DISPLAY':<28} {'VERSION':<10} STATUS")
+    print("-" * 70)
+    for p in plugins:
+        status = "enabled" if p.get("enabled") else "disabled"
+        print(f"{p['name']:<20} {p.get('display_name',''):<28} {p.get('version',''):<10} {status}")
+
+
+def cmd_run(args, cfg):
+    # Parse extra --key value pairs into plugin params
+    params = {}
+    if args.params:
+        it = iter(args.params)
+        for k in it:
+            key = k.lstrip("-")
+            try:
+                val = next(it)
+            except StopIteration:
+                val = "true"
+            params[key] = val
+
+    resp = httpx.post(
+        f"{cfg['api']}/api/v1/tasks",
+        headers=get_headers(cfg),
+        json={"plugin": args.plugin, "params": params},
+        timeout=10,
+    )
+    if resp.status_code == 404:
+        print(f"Plugin '{args.plugin}' not found. Run 'netkitx plugins' to list available plugins.")
+        sys.exit(1)
+    if resp.status_code not in (200, 201):
+        print(f"Error {resp.status_code}: {resp.text}")
+        sys.exit(1)
+
+    task = resp.json()
+    task_id = task["id"]
+    print(f"Task started: {task_id}")
+
+    if args.no_wait:
+        print(f"Run 'netkitx result {task_id}' to check results.")
+        return
+
+    # Poll until done
+    print("Waiting for result", end="", flush=True)
+    for _ in range(120):
+        time.sleep(2)
+        print(".", end="", flush=True)
+        r = httpx.get(
+            f"{cfg['api']}/api/v1/tasks/{task_id}",
+            headers=get_headers(cfg),
+            timeout=10,
+        )
+        if r.status_code != 200:
+            continue
+        t = r.json()
+        status = t.get("status")
+        if status in ("done", "error", "failed"):
+            print()
+            _print_result(t)
+            return
+    print("\nTimeout. Run 'netkitx result " + task_id + "' later.")
+
+
+def cmd_result(args, cfg):
+    resp = httpx.get(
+        f"{cfg['api']}/api/v1/tasks/{args.task_id}",
+        headers=get_headers(cfg),
+        timeout=10,
+    )
+    if resp.status_code != 200:
+        print(f"Error: {resp.text}")
+        sys.exit(1)
+    _print_result(resp.json())
+
+
+def cmd_tasks(args, cfg):
+    resp = httpx.get(
+        f"{cfg['api']}/api/v1/tasks",
+        headers=get_headers(cfg),
+        timeout=10,
+    )
+    if resp.status_code != 200:
+        print(f"Error: {resp.text}")
+        sys.exit(1)
+    tasks = resp.json()
+    if not tasks:
+        print("No tasks.")
+        return
+    print(f"{'ID':<38} {'PLUGIN':<20} {'STATUS':<10} CREATED")
+    print("-" * 85)
+    for t in tasks[:20]:
+        print(f"{t['id']:<38} {t.get('plugin',''):<20} {t.get('status',''):<10} {t.get('created_at','')[:19]}")
+
+
+def cmd_config(args, cfg):
+    if args.api:
+        cfg["api"] = args.api.rstrip("/")
+        save_config(cfg)
+        print(f"API set to {cfg['api']}")
+    else:
+        print(f"API: {cfg['api']}")
+        print(f"Token: {'set' if cfg.get('token') else 'not set'}")
+
+
+def _print_result(task: dict):
+    status = task.get("status")
+    plugin = task.get("plugin", "")
+    print(f"Plugin : {plugin}")
+    print(f"Status : {status}")
+    result = task.get("result")
+    if result is None:
+        print("No result yet.")
+        return
+    if isinstance(result, str):
+        print(result)
+    elif isinstance(result, dict):
+        output = result.get("output") or result.get("stdout") or result.get("data")
+        if output:
+            print(output)
+        else:
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+    else:
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+
+
+# ── main ────────────────────────────────────────────────────────────────────
+
+def main():
+    parser = argparse.ArgumentParser(
+        prog="netkitx",
+        description="NetKitX CLI — network security toolkit",
+    )
+    sub = parser.add_subparsers(dest="command")
+
+    # login
+    p_login = sub.add_parser("login", help="Authenticate with NetKitX")
+    p_login.add_argument("-u", "--username", required=True)
+    p_login.add_argument("-p", "--password", required=True)
+
+    # plugins
+    sub.add_parser("plugins", help="List installed plugins")
+
+    # run
+    p_run = sub.add_parser("run", help="Run a plugin")
+    p_run.add_argument("plugin", help="Plugin name (e.g. portscan, sqlinject)")
+    p_run.add_argument("--no-wait", action="store_true", help="Don't wait for result")
+    p_run.add_argument("params", nargs=argparse.REMAINDER, help="Plugin params: --key value ...")
+
+    # result
+    p_result = sub.add_parser("result", help="Get task result")
+    p_result.add_argument("task_id")
+
+    # tasks
+    sub.add_parser("tasks", help="List recent tasks")
+
+    # config
+    p_cfg = sub.add_parser("config", help="Show or set config")
+    p_cfg.add_argument("--api", help="Set API base URL (e.g. http://wql.me)")
+
+    args = parser.parse_args()
+    cfg = load_config()
+
+    if args.command == "login":
+        cmd_login(args, cfg)
+    elif args.command == "plugins":
+        cmd_plugins(args, cfg)
+    elif args.command == "run":
+        cmd_run(args, cfg)
+    elif args.command == "result":
+        cmd_result(args, cfg)
+    elif args.command == "tasks":
+        cmd_tasks(args, cfg)
+    elif args.command == "config":
+        cmd_config(args, cfg)
+    else:
+        parser.print_help()
+
+
+if __name__ == "__main__":
+    main()
