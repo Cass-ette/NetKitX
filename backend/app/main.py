@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import init_db, get_session
 from app.core.events import manager
-from app.api.v1 import auth, tools, tasks, plugins, marketplace, reports, topology, ai
+from app.api.v1 import auth, tools, tasks, plugins, marketplace, reports, topology, ai, terminal
 from app.plugins.loader import load_all_plugins
 
 logger = logging.getLogger(__name__)
@@ -46,6 +46,7 @@ app.include_router(marketplace.router, prefix="/api/v1")
 app.include_router(reports.router, prefix="/api/v1/reports", tags=["reports"])
 app.include_router(topology.router, prefix="/api/v1/topology", tags=["topology"])
 app.include_router(ai.router, prefix="/api/v1/ai", tags=["ai"])
+app.include_router(terminal.router, prefix="/api/v1/terminal", tags=["terminal"])
 
 
 @app.get("/api/health")

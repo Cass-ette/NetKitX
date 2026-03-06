@@ -253,6 +253,8 @@ async def run_agent_loop(
     lang: str,
     max_turns: int,
     confirm_action: dict | None = None,
+    user_id: int | None = None,
+    user_token: str | None = None,
 ) -> AsyncIterator[dict]:
     """
     Main agent loop generator. Yields SSE event dicts.
@@ -272,7 +274,7 @@ async def run_agent_loop(
 
         if approved and action:
             yield {"event": "action_status", "data": {"status": "executing", "action": action}}
-            result = await _execute_action(action, agent_mode)
+            result = await _execute_action(action, agent_mode, user_id, user_token)
             yield {"event": "action_result", "data": {"result": result, "action": action}}
             # Inject result into messages
             result_text = format_action_result(action, result)
@@ -347,7 +349,7 @@ async def run_agent_loop(
 
         # Mode B/C: auto-execute
         yield {"event": "action_status", "data": {"status": "executing", "action": action}}
-        result = await _execute_action(action, agent_mode)
+        result = await _execute_action(action, agent_mode, user_id, user_token)
         yield {"event": "action_result", "data": {"result": result, "action": action}}
 
         # Inject into conversation
@@ -358,7 +360,12 @@ async def run_agent_loop(
     yield {"event": "done", "data": {"reason": "max_turns"}}
 
 
-async def _execute_action(action: dict[str, Any], agent_mode: str) -> dict[str, Any]:
+async def _execute_action(
+    action: dict[str, Any],
+    agent_mode: str,
+    user_id: int | None = None,
+    user_token: str | None = None,
+) -> dict[str, Any]:
     """Execute an action based on its type."""
     action_type = action.get("type", "")
 
@@ -367,8 +374,19 @@ async def _execute_action(action: dict[str, Any], agent_mode: str) -> dict[str, 
     elif action_type == "shell":
         if agent_mode != "terminal":
             return {"error": "Shell commands only allowed in terminal mode"}
-        from app.services.sandbox import execute_shell
+        from app.services.container_service import exec_in_container
+        from app.services.sandbox import is_command_safe
 
-        return await execute_shell(action.get("command", ""))
+        command = action.get("command", "")
+        safe, reason = is_command_safe(command)
+        if not safe:
+            return {"error": f"Command blocked: {reason}", "exit_code": -1}
+
+        if user_id and user_token:
+            return await exec_in_container(user_id, command, user_token)
+        else:
+            from app.services.sandbox import execute_shell
+
+            return await execute_shell(command)
     else:
         return {"error": f"Unknown action type: {action_type}"}

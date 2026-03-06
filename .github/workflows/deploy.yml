@@ -25,6 +25,9 @@ jobs:
             export POSTGRES_PASSWORD
             docker compose -f docker-compose.prod.yml up -d --build
             docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
+            # Build sandbox image (netkitx CLI must exist in sandbox/)
+            cp /opt/NetKitX/cli/netkitx /opt/NetKitX/sandbox/netkitx
+            docker build -t netkitx-sandbox /opt/NetKitX/sandbox/
             # 安装 CLI 到系统
             pip3 install httpx -q 2>/dev/null || true
             cp /opt/NetKitX/cli/netkitx /usr/local/bin/netkitx

@@ -27,6 +27,9 @@ backend/.env
 pgdata/
 redisdata/
 
+# Sandbox build artifacts (netkitx binary is copied at deploy time)
+sandbox/netkitx
+
 # Logs
 *.log
 

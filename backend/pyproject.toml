@@ -28,6 +28,7 @@ dependencies = [
     "asyncssh>=2.17.0",
     "aioftp>=0.22.0",
     "cryptography>=43.0.0",
+    "docker>=7.0.0",
 ]
 
 [project.optional-dependencies]

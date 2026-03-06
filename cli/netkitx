@@ -21,10 +21,16 @@ DEFAULT_API = "http://127.0.0.1:8000"
 # ── config helpers ──────────────────────────────────────────────────────────
 
 def load_config() -> dict:
+    cfg = {"api": DEFAULT_API, "token": None}
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE) as f:
-            return json.load(f)
-    return {"api": DEFAULT_API, "token": None}
+            cfg.update(json.load(f))
+    # Environment variables override config file
+    if os.environ.get("NETKITX_API"):
+        cfg["api"] = os.environ["NETKITX_API"]
+    if os.environ.get("NETKITX_TOKEN"):
+        cfg["token"] = os.environ["NETKITX_TOKEN"]
+    return cfg
 
 
 def save_config(cfg: dict):

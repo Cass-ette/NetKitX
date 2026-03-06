@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,6 +18,8 @@ import {
   Zap,
   Terminal,
   RotateCcw,
+  Play,
+  Square,
 } from "lucide-react";
 import { useAIChatStore } from "@/lib/ai-chat-store";
 import { useAIChat } from "@/hooks/use-ai-chat";
@@ -58,6 +60,52 @@ export function AIChatCore({ variant = "full" }: AIChatCoreProps) {
   } = useAIChat();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Container status for terminal mode
+  const [containerStatus, setContainerStatus] = useState<{exists: boolean; status?: string} | null>(null);
+  const [containerLoading, setContainerLoading] = useState(false);
+
+  const fetchContainerStatus = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/v1/terminal/session", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) setContainerStatus(await res.json());
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    if (agentMode === "terminal") fetchContainerStatus();
+  }, [agentMode, fetchContainerStatus]);
+
+  const handleStartContainer = async () => {
+    setContainerLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/v1/terminal/session", {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) setContainerStatus(await res.json());
+    } finally {
+      setContainerLoading(false);
+    }
+  };
+
+  const handleStopContainer = async () => {
+    setContainerLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      await fetch("/api/v1/terminal/session", {
+        method: "DELETE",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      setContainerStatus({ exists: false });
+    } finally {
+      setContainerLoading(false);
+    }
+  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -303,6 +351,28 @@ export function AIChatCore({ variant = "full" }: AIChatCoreProps) {
       {/* Error */}
       {error && error !== "not_configured" && (
         <p className={`text-sm text-destructive mb-2 ${isPanel ? "px-3" : ""}`}>{error}</p>
+      )}
+
+      {/* Container status banner (terminal mode only) */}
+      {agentMode === "terminal" && (
+        <div className={`flex items-center gap-2 py-1 px-2 rounded-md border text-sm mb-1 ${isPanel ? "mx-3" : ""} ${containerStatus?.status === "running" ? "border-green-500/30 bg-green-500/10" : "border-yellow-500/30 bg-yellow-500/10"}`}>
+          <Terminal className="h-3 w-3 shrink-0" />
+          <span className="text-muted-foreground flex-1">
+            Sandbox:{" "}
+            <Badge variant={containerStatus?.status === "running" ? "default" : "secondary"} className="text-xs h-4">
+              {containerStatus?.status ?? "unknown"}
+            </Badge>
+          </span>
+          {containerStatus?.status === "running" ? (
+            <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={handleStopContainer} disabled={containerLoading}>
+              {containerLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Square className="h-3 w-3" />}
+            </Button>
+          ) : (
+            <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={handleStartContainer} disabled={containerLoading}>
+              {containerLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+            </Button>
+          )}
+        </div>
       )}
 
       {/* Agent status bar */}

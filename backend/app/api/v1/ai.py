@@ -3,7 +3,7 @@
 import json
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -183,6 +183,7 @@ async def chat(
 
 @router.post("/agent")
 async def agent(
+    request: Request,
     body: AgentRequest,
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
@@ -202,6 +203,10 @@ async def agent(
             "action": body.confirm_action.action,
         }
 
+    # Extract raw JWT token for sandbox container auth
+    auth_header = request.headers.get("Authorization", "")
+    user_token = auth_header.removeprefix("Bearer ").strip() or None
+
     async def event_stream():
         async for evt in run_agent_loop(
             provider=ai.provider,
@@ -213,6 +218,8 @@ async def agent(
             lang=body.lang,
             max_turns=body.max_turns,
             confirm_action=confirm,
+            user_id=user.id,
+            user_token=user_token,
         ):
             yield f"data: {json.dumps(evt, default=str)}\n\n"
         yield "data: [DONE]\n\n"
