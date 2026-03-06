@@ -27,6 +27,8 @@ import { useTranslations } from "@/i18n/use-translations";
 import { stripActionTags } from "@/lib/agent-utils";
 import { AgentActionCard } from "@/components/ai/agent-action-card";
 import { AgentStatusBar } from "@/components/ai/agent-status-bar";
+import { useAuth } from "@/lib/auth";
+import { API_BASE } from "@/lib/api";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -61,19 +63,20 @@ export function AIChatCore({ variant = "full" }: AIChatCoreProps) {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const { token } = useAuth();
+
   // Container status for terminal mode
   const [containerStatus, setContainerStatus] = useState<{exists: boolean; status?: string} | null>(null);
   const [containerLoading, setContainerLoading] = useState(false);
 
   const fetchContainerStatus = useCallback(async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch("/api/v1/terminal/session", {
+      const res = await fetch(`${API_BASE}/api/v1/terminal/session`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (res.ok) setContainerStatus(await res.json());
     } catch { /* ignore */ }
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     if (agentMode === "terminal") fetchContainerStatus();
@@ -82,8 +85,7 @@ export function AIChatCore({ variant = "full" }: AIChatCoreProps) {
   const handleStartContainer = async () => {
     setContainerLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch("/api/v1/terminal/session", {
+      const res = await fetch(`${API_BASE}/api/v1/terminal/session`, {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -96,8 +98,7 @@ export function AIChatCore({ variant = "full" }: AIChatCoreProps) {
   const handleStopContainer = async () => {
     setContainerLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      await fetch("/api/v1/terminal/session", {
+      await fetch(`${API_BASE}/api/v1/terminal/session`, {
         method: "DELETE",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
