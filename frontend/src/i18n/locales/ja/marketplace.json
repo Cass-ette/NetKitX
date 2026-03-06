@@ -28,5 +28,9 @@
   "homepage": "ホームページ",
   "repository": "リポジトリ",
   "pluginNotFound": "プラグインが見つかりません",
-  "installationFailed": "インストールに失敗しました"
+  "installationFailed": "インストールに失敗しました",
+  "updateTo": "{{version}}にアップデート",
+  "installed": "インストール済み",
+  "currentVersion": "現在のバージョン",
+  "latestVersion": "最新バージョン"
 }

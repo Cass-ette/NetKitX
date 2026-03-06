@@ -33,6 +33,8 @@ from app.schemas.marketplace import (
     MarketplaceReviewResponse,
     MarketplaceVersionResponse,
     PluginPublishResponse,
+    PluginUpdateInfo,
+    UpdateCheckResponse,
     UserInstalledPluginResponse,
 )
 
@@ -724,3 +726,303 @@ async def unverify_plugin(
     await session.commit()
 
     return {"success": True, "message": f"Plugin {plugin_name} is no longer verified"}
+
+
+@router.get("/updates", response_model=UpdateCheckResponse)
+async def check_updates(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Check for available updates for user's installed plugins."""
+    from app.marketplace.version import Version
+
+    # Get user's installed plugins
+    installed_stmt = select(UserInstalledPlugin).where(
+        UserInstalledPlugin.user_id == current_user.id
+    )
+    installed_result = await session.execute(installed_stmt)
+    installed_plugins = installed_result.scalars().all()
+
+    updates = []
+
+    for installed in installed_plugins:
+        # Get plugin from marketplace
+        plugin_stmt = (
+            select(MarketplacePlugin)
+            .where(MarketplacePlugin.name == installed.plugin_name)
+            .options(selectinload(MarketplacePlugin.versions))
+        )
+        plugin_result = await session.execute(plugin_stmt)
+        plugin = plugin_result.scalar_one_or_none()
+
+        if not plugin:
+            continue
+
+        # Find latest non-yanked version
+        non_yanked = [v for v in plugin.versions if not v.yanked]
+        if not non_yanked:
+            continue
+
+        # Sort by version
+        try:
+            non_yanked.sort(key=lambda v: Version.parse(v.version), reverse=True)
+            latest_version_obj = non_yanked[0]
+
+            current_ver = Version.parse(installed.version)
+            latest_ver = Version.parse(latest_version_obj.version)
+
+            # Check if update available
+            if latest_ver > current_ver:
+                # Check for breaking changes (major version bump)
+                has_breaking = latest_ver.major > current_ver.major
+
+                updates.append(
+                    PluginUpdateInfo(
+                        plugin_name=installed.plugin_name,
+                        current_version=installed.version,
+                        latest_version=latest_version_obj.version,
+                        changelog=latest_version_obj.changelog,
+                        published_at=latest_version_obj.published_at,
+                        has_breaking_changes=has_breaking,
+                    )
+                )
+        except ValueError:
+            # Skip if version parsing fails
+            continue
+
+    return UpdateCheckResponse(
+        updates_available=len(updates),
+        plugins=updates,
+    )
+
+
+@router.post("/update/{plugin_name}")
+async def update_plugin(
+    plugin_name: str,
+    version: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Update a plugin to specified version (or latest)."""
+    from app.marketplace.installer import InstallError, PluginInstaller
+    from app.marketplace.resolver import Dependency, Package, resolve_dependencies
+    from app.marketplace.version import Version
+
+    # Check if plugin is installed
+    installed_stmt = select(UserInstalledPlugin).where(
+        UserInstalledPlugin.user_id == current_user.id,
+        UserInstalledPlugin.plugin_name == plugin_name,
+    )
+    installed_result = await session.execute(installed_stmt)
+    installed = installed_result.scalar_one_or_none()
+
+    if not installed:
+        raise HTTPException(status_code=404, detail="Plugin not installed")
+
+    # Get plugin from marketplace
+    plugin_stmt = (
+        select(MarketplacePlugin)
+        .where(MarketplacePlugin.name == plugin_name)
+        .options(selectinload(MarketplacePlugin.versions))
+    )
+    plugin_result = await session.execute(plugin_stmt)
+    plugin = plugin_result.scalar_one_or_none()
+
+    if not plugin:
+        raise HTTPException(status_code=404, detail="Plugin not found in marketplace")
+
+    # Determine target version
+    if version is None:
+        # Find latest non-yanked version
+        non_yanked = [v for v in plugin.versions if not v.yanked]
+        if not non_yanked:
+            raise HTTPException(status_code=404, detail="No available versions")
+
+        try:
+            non_yanked.sort(key=lambda v: Version.parse(v.version), reverse=True)
+            target_version = non_yanked[0].version
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid version format")
+    else:
+        target_version = version
+
+    # Check if already on target version
+    if installed.version == target_version:
+        return {"success": True, "message": "Already on target version", "version": target_version}
+
+    # Get all marketplace plugins and versions for resolver
+    all_plugins_stmt = select(MarketplacePlugin).options(
+        selectinload(MarketplacePlugin.versions).selectinload(MarketplaceVersion.dependencies)
+    )
+    all_plugins_result = await session.execute(all_plugins_stmt)
+    all_plugins = all_plugins_result.scalars().all()
+
+    # Build available packages dict for resolver
+    available_packages: dict[str, list[Package]] = {}
+    for mp in all_plugins:
+        packages = []
+        for mv in mp.versions:
+            if mv.yanked:
+                continue
+
+            deps = [
+                Dependency(
+                    plugin_name=dep.depends_on_plugin,
+                    constraint=dep.version_constraint,
+                    optional=dep.optional,
+                )
+                for dep in mv.dependencies
+            ]
+
+            packages.append(Package(name=mp.name, version=mv.version, dependencies=deps))
+
+        if packages:
+            available_packages[mp.name] = packages
+
+    # Resolve dependencies for target version
+    try:
+        resolve_dependencies(plugin_name, target_version, available_packages)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Dependency resolution failed: {e}")
+
+    # Install/update plugin
+    installer = PluginInstaller(session, current_user.id)
+
+    try:
+        # Get version info
+        version_stmt = (
+            select(MarketplaceVersion)
+            .join(MarketplacePlugin)
+            .where(
+                MarketplacePlugin.name == plugin_name,
+                MarketplaceVersion.version == target_version,
+            )
+        )
+        version_result = await session.execute(version_stmt)
+        version_obj = version_result.scalar_one_or_none()
+
+        if not version_obj:
+            raise HTTPException(status_code=404, detail=f"Version {target_version} not found")
+
+        # Install (will overwrite existing)
+        await installer.install(
+            plugin_name=plugin_name,
+            version=target_version,
+            package_url=version_obj.package_url,
+            package_hash=version_obj.package_hash,
+        )
+
+        return {
+            "success": True,
+            "message": f"Updated {plugin_name} to version {target_version}",
+            "version": target_version,
+        }
+
+    except InstallError as e:
+        raise HTTPException(status_code=500, detail=f"Update failed: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
+
+
+@router.post("/update-all")
+async def update_all_plugins(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Update all plugins with available updates."""
+    from app.marketplace.installer import InstallError, PluginInstaller
+    from app.marketplace.resolver import Dependency, Package
+
+    # Get updates
+    updates_response = await check_updates(current_user, session)
+
+    if updates_response.updates_available == 0:
+        return {"success": True, "message": "All plugins are up to date", "updated": []}
+
+    # Get all marketplace plugins and versions for resolver
+    all_plugins_stmt = select(MarketplacePlugin).options(
+        selectinload(MarketplacePlugin.versions).selectinload(MarketplaceVersion.dependencies)
+    )
+    all_plugins_result = await session.execute(all_plugins_stmt)
+    all_plugins = all_plugins_result.scalars().all()
+
+    # Build available packages dict
+    available_packages: dict[str, list[Package]] = {}
+    for mp in all_plugins:
+        packages = []
+        for mv in mp.versions:
+            if mv.yanked:
+                continue
+
+            deps = [
+                Dependency(
+                    plugin_name=dep.depends_on_plugin,
+                    constraint=dep.version_constraint,
+                    optional=dep.optional,
+                )
+                for dep in mv.dependencies
+            ]
+
+            packages.append(Package(name=mp.name, version=mv.version, dependencies=deps))
+
+        if packages:
+            available_packages[mp.name] = packages
+
+    installer = PluginInstaller(session, current_user.id)
+    updated = []
+    failed = []
+
+    # Update each plugin
+    for update_info in updates_response.plugins:
+        try:
+            # Get version info
+            version_stmt = (
+                select(MarketplaceVersion)
+                .join(MarketplacePlugin)
+                .where(
+                    MarketplacePlugin.name == update_info.plugin_name,
+                    MarketplaceVersion.version == update_info.latest_version,
+                )
+            )
+            version_result = await session.execute(version_stmt)
+            version_obj = version_result.scalar_one_or_none()
+
+            if not version_obj:
+                failed.append(
+                    {
+                        "plugin": update_info.plugin_name,
+                        "error": f"Version {update_info.latest_version} not found",
+                    }
+                )
+                continue
+
+            # Install (will overwrite existing)
+            await installer.install(
+                plugin_name=update_info.plugin_name,
+                version=update_info.latest_version,
+                package_url=version_obj.package_url,
+                package_hash=version_obj.package_hash,
+            )
+
+            updated.append(
+                {
+                    "plugin": update_info.plugin_name,
+                    "from_version": update_info.current_version,
+                    "to_version": update_info.latest_version,
+                }
+            )
+
+        except (InstallError, Exception) as e:
+            failed.append(
+                {
+                    "plugin": update_info.plugin_name,
+                    "error": str(e),
+                }
+            )
+
+    return {
+        "success": True,
+        "updated": updated,
+        "failed": failed,
+        "message": f"Updated {len(updated)} plugins, {len(failed)} failed",
+    }

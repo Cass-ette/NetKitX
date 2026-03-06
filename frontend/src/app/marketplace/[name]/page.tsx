@@ -64,6 +64,7 @@ export default function PluginDetailPage() {
   const [installSuccess, setInstallSuccess] = useState(false);
   const [installedPlugins, setInstalledPlugins] = useState<Array<{plugin: string, version: string}>>([]);
   const [error, setError] = useState<string>("");
+  const [installedVersion, setInstalledVersion] = useState<string | null>(null);
 
   useEffect(() => {
     if (pluginName) {
@@ -71,6 +72,23 @@ export default function PluginDetailPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pluginName, token]);
+
+  useEffect(() => {
+    const checkInstalled = async () => {
+      if (!token) return;
+      try {
+        const installed = await api<Array<{ plugin_name: string; version: string }>>(
+          "/api/v1/marketplace/installed",
+          { token }
+        );
+        const found = installed.find((p) => p.plugin_name === pluginName);
+        setInstalledVersion(found?.version || null);
+      } catch (err) {
+        console.error("Failed to check installed:", err);
+      }
+    };
+    checkInstalled();
+  }, [token, pluginName]);
 
   const loadPlugin = async () => {
     try {
@@ -89,6 +107,26 @@ export default function PluginDetailPage() {
   const handleInstall = async () => {
     if (!token) {
       router.push("/login");
+      return;
+    }
+
+    // If installed and updating to different version, use update endpoint
+    if (installedVersion && selectedVersion && selectedVersion !== installedVersion) {
+      setInstalling(true);
+      setError("");
+      try {
+        await api<{ success: boolean; message: string }>(
+          `/api/v1/marketplace/update/${pluginName}?version=${selectedVersion}`,
+          { token, method: "POST" }
+        );
+        setInstalledVersion(selectedVersion);
+        setInstallSuccess(true);
+        setInstalledPlugins([{ plugin: pluginName, version: selectedVersion }]);
+      } catch (err) {
+        setError((err as Error).message || t("installationFailed"));
+      } finally {
+        setInstalling(false);
+      }
       return;
     }
 
@@ -111,6 +149,7 @@ export default function PluginDetailPage() {
 
       setInstalledPlugins(result.installed);
       setInstallSuccess(true);
+      setInstalledVersion(selectedVersion || null);
     } catch (err) {
       setError((err as Error).message || t("installationFailed"));
     } finally {
@@ -282,6 +321,9 @@ export default function PluginDetailPage() {
                           {version.version === plugin.latest_version && (
                             <Badge variant="secondary">{t("latest")}</Badge>
                           )}
+                          {version.version === installedVersion && (
+                            <Badge variant="outline">{t("installed")}</Badge>
+                          )}
                         </div>
                         <span className="text-sm text-muted-foreground">
                           {new Date(version.published_at).toLocaleDateString(locale)}
@@ -307,6 +349,13 @@ export default function PluginDetailPage() {
               <CardTitle>{t("install")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {installedVersion && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">{t("currentVersion")}</span>
+                  <Badge variant="secondary">v{installedVersion}</Badge>
+                </div>
+              )}
+
               <div>
                 <label className="text-sm font-medium mb-2 block">{t("version")}</label>
                 <Select value={selectedVersion || undefined} onValueChange={setSelectedVersion}>
@@ -320,6 +369,7 @@ export default function PluginDetailPage() {
                         <SelectItem key={v.id} value={v.version}>
                           {v.version}
                           {v.version === plugin.latest_version && ` (${t("latest")})`}
+                          {v.version === installedVersion && ` (${t("installed")})`}
                         </SelectItem>
                       ))}
                   </SelectContent>
@@ -329,9 +379,15 @@ export default function PluginDetailPage() {
               <Button
                 className="w-full"
                 onClick={handleInstall}
-                disabled={installing || !selectedVersion}
+                disabled={installing || !selectedVersion || (!!installedVersion && selectedVersion === installedVersion)}
               >
-                {installing ? t("installing") : t("installPlugin")}
+                {installing
+                  ? t("installing")
+                  : installedVersion
+                    ? selectedVersion && selectedVersion !== installedVersion
+                      ? t("updateTo", { version: selectedVersion })
+                      : t("installed")
+                    : t("installPlugin")}
               </Button>
 
               {error && (

@@ -28,5 +28,9 @@
   "homepage": "首頁",
   "repository": "儲存庫",
   "pluginNotFound": "找不到外掛",
-  "installationFailed": "安裝失敗"
+  "installationFailed": "安裝失敗",
+  "updateTo": "更新至 {{version}}",
+  "installed": "已安裝",
+  "currentVersion": "目前版本",
+  "latestVersion": "最新版本"
 }

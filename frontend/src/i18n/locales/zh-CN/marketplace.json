@@ -28,5 +28,9 @@
   "homepage": "主页",
   "repository": "仓库",
   "pluginNotFound": "未找到插件",
-  "installationFailed": "安装失败"
+  "installationFailed": "安装失败",
+  "updateTo": "更新到 {{version}}",
+  "installed": "已安装",
+  "currentVersion": "当前版本",
+  "latestVersion": "最新版本"
 }

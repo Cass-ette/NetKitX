@@ -14,5 +14,16 @@
   "noPluginsInstalled": "プラグインがインストールされていません。",
   "uploadFailed": "アップロードに失敗しました",
   "toggleFailed": "切り替えに失敗しました",
-  "deleteFailed": "削除に失敗しました"
+  "deleteFailed": "削除に失敗しました",
+  "checkUpdates": "更新を確認",
+  "checkingUpdates": "確認中...",
+  "updatesAvailable": "{{count}}個の更新が利用可能",
+  "noUpdates": "すべてのプラグインは最新です",
+  "updateAll": "すべて更新",
+  "updating": "更新中...",
+  "updateSuccess": "更新成功",
+  "updateFailed": "更新に失敗しました",
+  "updateAvailable": "v{{version}}が利用可能",
+  "update": "更新",
+  "breakingChanges": "破壊的変更を含む"
 }

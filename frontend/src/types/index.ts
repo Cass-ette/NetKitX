@@ -81,3 +81,17 @@ export interface AgentSSEEvent {
   event: "text" | "turn" | "action" | "action_status" | "action_result" | "waiting" | "done";
   data: Record<string, unknown>;
 }
+
+export interface PluginUpdateInfo {
+  plugin_name: string;
+  current_version: string;
+  latest_version: string;
+  changelog?: string;
+  published_at: string;
+  has_breaking_changes: boolean;
+}
+
+export interface UpdateCheckResponse {
+  updates_available: number;
+  plugins: PluginUpdateInfo[];
+}

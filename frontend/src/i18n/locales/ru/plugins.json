@@ -14,5 +14,16 @@
   "noPluginsInstalled": "Плагины не установлены.",
   "uploadFailed": "Ошибка загрузки",
   "toggleFailed": "Ошибка переключения",
-  "deleteFailed": "Ошибка удаления"
+  "deleteFailed": "Ошибка удаления",
+  "checkUpdates": "Проверить обновления",
+  "checkingUpdates": "Проверка...",
+  "updatesAvailable": "Доступно обновлений: {{count}}",
+  "noUpdates": "Все плагины обновлены",
+  "updateAll": "Обновить все",
+  "updating": "Обновление...",
+  "updateSuccess": "Обновление успешно",
+  "updateFailed": "Ошибка обновления",
+  "updateAvailable": "v{{version}} доступна",
+  "update": "Обновить",
+  "breakingChanges": "Содержит критические изменения"
 }

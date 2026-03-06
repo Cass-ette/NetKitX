@@ -28,5 +28,9 @@
   "homepage": "Page d'accueil",
   "repository": "Dépôt",
   "pluginNotFound": "Plugin non trouvé",
-  "installationFailed": "Échec de l'installation"
+  "installationFailed": "Échec de l'installation",
+  "updateTo": "Mettre à jour vers {{version}}",
+  "installed": "Installé",
+  "currentVersion": "Version actuelle",
+  "latestVersion": "Dernière version"
 }

@@ -14,5 +14,16 @@
   "noPluginsInstalled": "未安装插件。",
   "uploadFailed": "上传失败",
   "toggleFailed": "切换失败",
-  "deleteFailed": "删除失败"
+  "deleteFailed": "删除失败",
+  "checkUpdates": "检查更新",
+  "checkingUpdates": "检查中...",
+  "updatesAvailable": "{{count}} 个更新可用",
+  "noUpdates": "所有插件已是最新版本",
+  "updateAll": "全部更新",
+  "updating": "更新中...",
+  "updateSuccess": "更新成功",
+  "updateFailed": "更新失败",
+  "updateAvailable": "v{{version}} 可用",
+  "update": "更新",
+  "breakingChanges": "包含破坏性变更"
 }

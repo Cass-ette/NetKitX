@@ -14,5 +14,16 @@
   "noPluginsInstalled": "설치된 플러그인이 없습니다.",
   "uploadFailed": "업로드에 실패했습니다",
   "toggleFailed": "전환에 실패했습니다",
-  "deleteFailed": "삭제에 실패했습니다"
+  "deleteFailed": "삭제에 실패했습니다",
+  "checkUpdates": "업데이트 확인",
+  "checkingUpdates": "확인 중...",
+  "updatesAvailable": "{{count}}개의 업데이트 사용 가능",
+  "noUpdates": "모든 플러그인이 최신 버전입니다",
+  "updateAll": "모두 업데이트",
+  "updating": "업데이트 중...",
+  "updateSuccess": "업데이트 성공",
+  "updateFailed": "업데이트 실패",
+  "updateAvailable": "v{{version}} 사용 가능",
+  "update": "업데이트",
+  "breakingChanges": "호환성 변경 포함"
 }

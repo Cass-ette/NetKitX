@@ -28,5 +28,9 @@
   "homepage": "Homepage",
   "repository": "Repository",
   "pluginNotFound": "Plugin not found",
-  "installationFailed": "Installation failed"
+  "installationFailed": "Installation failed",
+  "updateTo": "Update to {{version}}",
+  "installed": "Installed",
+  "currentVersion": "Current version",
+  "latestVersion": "Latest version"
 }

@@ -14,5 +14,16 @@
   "noPluginsInstalled": "尚未安裝外掛。",
   "uploadFailed": "上傳失敗",
   "toggleFailed": "切換失敗",
-  "deleteFailed": "刪除失敗"
+  "deleteFailed": "刪除失敗",
+  "checkUpdates": "檢查更新",
+  "checkingUpdates": "檢查中...",
+  "updatesAvailable": "{{count}} 個更新可用",
+  "noUpdates": "所有外掛已是最新版本",
+  "updateAll": "全部更新",
+  "updating": "更新中...",
+  "updateSuccess": "更新成功",
+  "updateFailed": "更新失敗",
+  "updateAvailable": "v{{version}} 可用",
+  "update": "更新",
+  "breakingChanges": "包含破壞性變更"
 }

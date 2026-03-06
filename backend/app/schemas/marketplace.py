@@ -194,3 +194,21 @@ class MarketplaceReportResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class PluginUpdateInfo(BaseModel):
+    """Single plugin update information."""
+
+    plugin_name: str
+    current_version: str
+    latest_version: str
+    changelog: Optional[str] = None
+    published_at: datetime.datetime
+    has_breaking_changes: bool = False
+
+
+class UpdateCheckResponse(BaseModel):
+    """Update check response."""
+
+    updates_available: int
+    plugins: list[PluginUpdateInfo]

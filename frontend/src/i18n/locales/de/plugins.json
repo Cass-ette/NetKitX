@@ -14,5 +14,16 @@
   "noPluginsInstalled": "Keine Plugins installiert.",
   "uploadFailed": "Hochladen fehlgeschlagen",
   "toggleFailed": "Umschalten fehlgeschlagen",
-  "deleteFailed": "Löschen fehlgeschlagen"
+  "deleteFailed": "Löschen fehlgeschlagen",
+  "checkUpdates": "Updates prüfen",
+  "checkingUpdates": "Prüfe...",
+  "updatesAvailable": "{{count}} Update(s) verfügbar",
+  "noUpdates": "Alle Plugins sind aktuell",
+  "updateAll": "Alle aktualisieren",
+  "updating": "Aktualisiere...",
+  "updateSuccess": "Update erfolgreich",
+  "updateFailed": "Update fehlgeschlagen",
+  "updateAvailable": "v{{version}} verfügbar",
+  "update": "Aktualisieren",
+  "breakingChanges": "Enthält Breaking Changes"
 }

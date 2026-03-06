@@ -14,5 +14,16 @@
   "noPluginsInstalled": "Aucun plugin installé.",
   "uploadFailed": "Échec du téléchargement",
   "toggleFailed": "Échec du basculement",
-  "deleteFailed": "Échec de la suppression"
+  "deleteFailed": "Échec de la suppression",
+  "checkUpdates": "Vérifier les mises à jour",
+  "checkingUpdates": "Vérification...",
+  "updatesAvailable": "{{count}} mise(s) à jour disponible(s)",
+  "noUpdates": "Tous les plugins sont à jour",
+  "updateAll": "Tout mettre à jour",
+  "updating": "Mise à jour...",
+  "updateSuccess": "Mise à jour réussie",
+  "updateFailed": "Échec de la mise à jour",
+  "updateAvailable": "v{{version}} disponible",
+  "update": "Mettre à jour",
+  "breakingChanges": "Contient des changements incompatibles"
 }

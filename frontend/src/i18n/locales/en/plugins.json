@@ -14,5 +14,16 @@
   "noPluginsInstalled": "No plugins installed.",
   "uploadFailed": "Upload failed",
   "toggleFailed": "Toggle failed",
-  "deleteFailed": "Delete failed"
+  "deleteFailed": "Delete failed",
+  "checkUpdates": "Check Updates",
+  "checkingUpdates": "Checking...",
+  "updatesAvailable": "{{count}} update(s) available",
+  "noUpdates": "All plugins are up to date",
+  "updateAll": "Update All",
+  "updating": "Updating...",
+  "updateSuccess": "Update Successful",
+  "updateFailed": "Update failed",
+  "updateAvailable": "v{{version}} available",
+  "update": "Update",
+  "breakingChanges": "Contains breaking changes"
 }

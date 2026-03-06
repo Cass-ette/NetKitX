@@ -28,5 +28,9 @@
   "homepage": "Домашняя страница",
   "repository": "Репозиторий",
   "pluginNotFound": "Плагин не найден",
-  "installationFailed": "Ошибка установки"
+  "installationFailed": "Ошибка установки",
+  "updateTo": "Обновить до {{version}}",
+  "installed": "Установлено",
+  "currentVersion": "Текущая версия",
+  "latestVersion": "Последняя версия"
 }
