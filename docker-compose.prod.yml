@@ -10,6 +10,8 @@ services:
       - ENGINES_DIR=/app/engines/bin
       - SANDBOX_IMAGE=netkitx-sandbox
       - SANDBOX_API_URL=http://156.225.20.57
+    group_add:
+      - "997"
     volumes:
       - plugins_data:/app/plugins
       - engines_data:/app/engines/bin
