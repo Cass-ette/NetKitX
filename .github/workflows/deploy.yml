@@ -18,6 +18,8 @@ jobs:
           script: |
             set -e
             cd /opt/NetKitX
+            git config pull.rebase false
+            git reset --hard HEAD
             git pull origin develop
             POSTGRES_PASSWORD=$(grep DATABASE_URL backend/.env | sed 's/.*netkitx:\(.*\)@db.*/\1/')
             export POSTGRES_PASSWORD
