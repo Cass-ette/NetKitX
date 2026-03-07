@@ -34,9 +34,11 @@ export const useAuth = create<AuthState>((set, get) => ({
       method: "POST",
       body: JSON.stringify({ username, password }),
     });
-    // Decode user from token (or fetch /me endpoint)
-    // For now store minimal info
-    const user: User = { id: 0, username, email: "", role: "user" };
+
+    const user = await api<User>("/api/v1/auth/me", {
+      token: access_token,
+    });
+
     get().setAuth(access_token, user);
   },
 
@@ -45,7 +47,6 @@ export const useAuth = create<AuthState>((set, get) => ({
       method: "POST",
       body: JSON.stringify({ username, email, password }),
     });
-    // Auto-login after register
     await get().login(username, password);
   },
 }));

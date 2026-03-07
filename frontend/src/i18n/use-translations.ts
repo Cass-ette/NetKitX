@@ -12,6 +12,7 @@ import en_marketplace from "./locales/en/marketplace.json";
 import en_topology from "./locales/en/topology.json";
 import en_settings from "./locales/en/settings.json";
 import en_ai from "./locales/en/ai.json";
+import en_admin from "./locales/en/admin.json";
 
 import zhCN_common from "./locales/zh-CN/common.json";
 import zhCN_login from "./locales/zh-CN/login.json";
@@ -23,6 +24,7 @@ import zhCN_marketplace from "./locales/zh-CN/marketplace.json";
 import zhCN_topology from "./locales/zh-CN/topology.json";
 import zhCN_settings from "./locales/zh-CN/settings.json";
 import zhCN_ai from "./locales/zh-CN/ai.json";
+import zhCN_admin from "./locales/zh-CN/admin.json";
 
 import zhTW_common from "./locales/zh-TW/common.json";
 import zhTW_login from "./locales/zh-TW/login.json";
@@ -34,6 +36,7 @@ import zhTW_marketplace from "./locales/zh-TW/marketplace.json";
 import zhTW_topology from "./locales/zh-TW/topology.json";
 import zhTW_settings from "./locales/zh-TW/settings.json";
 import zhTW_ai from "./locales/zh-TW/ai.json";
+import zhTW_admin from "./locales/zh-TW/admin.json";
 
 import ja_common from "./locales/ja/common.json";
 import ja_login from "./locales/ja/login.json";
@@ -45,6 +48,7 @@ import ja_marketplace from "./locales/ja/marketplace.json";
 import ja_topology from "./locales/ja/topology.json";
 import ja_settings from "./locales/ja/settings.json";
 import ja_ai from "./locales/ja/ai.json";
+import ja_admin from "./locales/ja/admin.json";
 
 import ko_common from "./locales/ko/common.json";
 import ko_login from "./locales/ko/login.json";
@@ -56,6 +60,7 @@ import ko_marketplace from "./locales/ko/marketplace.json";
 import ko_topology from "./locales/ko/topology.json";
 import ko_settings from "./locales/ko/settings.json";
 import ko_ai from "./locales/ko/ai.json";
+import ko_admin from "./locales/ko/admin.json";
 
 import de_common from "./locales/de/common.json";
 import de_login from "./locales/de/login.json";
@@ -67,6 +72,7 @@ import de_marketplace from "./locales/de/marketplace.json";
 import de_topology from "./locales/de/topology.json";
 import de_settings from "./locales/de/settings.json";
 import de_ai from "./locales/de/ai.json";
+import de_admin from "./locales/de/admin.json";
 
 import fr_common from "./locales/fr/common.json";
 import fr_login from "./locales/fr/login.json";
@@ -78,6 +84,7 @@ import fr_marketplace from "./locales/fr/marketplace.json";
 import fr_topology from "./locales/fr/topology.json";
 import fr_settings from "./locales/fr/settings.json";
 import fr_ai from "./locales/fr/ai.json";
+import fr_admin from "./locales/fr/admin.json";
 
 import ru_common from "./locales/ru/common.json";
 import ru_login from "./locales/ru/login.json";
@@ -89,6 +96,7 @@ import ru_marketplace from "./locales/ru/marketplace.json";
 import ru_topology from "./locales/ru/topology.json";
 import ru_settings from "./locales/ru/settings.json";
 import ru_ai from "./locales/ru/ai.json";
+import ru_admin from "./locales/ru/admin.json";
 
 type Namespace =
   | "common"
@@ -100,7 +108,8 @@ type Namespace =
   | "marketplace"
   | "topology"
   | "settings"
-  | "ai";
+  | "ai"
+  | "admin";
 
 type Messages = Record<string, string>;
 
@@ -116,6 +125,7 @@ const messages: Record<Locale, Record<Namespace, Messages>> = {
     topology: en_topology,
     settings: en_settings,
     ai: en_ai,
+    admin: en_admin,
   },
   "zh-CN": {
     common: zhCN_common,
@@ -128,6 +138,7 @@ const messages: Record<Locale, Record<Namespace, Messages>> = {
     topology: zhCN_topology,
     settings: zhCN_settings,
     ai: zhCN_ai,
+    admin: zhCN_admin,
   },
   "zh-TW": {
     common: zhTW_common,
@@ -140,6 +151,7 @@ const messages: Record<Locale, Record<Namespace, Messages>> = {
     topology: zhTW_topology,
     settings: zhTW_settings,
     ai: zhTW_ai,
+    admin: zhTW_admin,
   },
   ja: {
     common: ja_common,
@@ -152,6 +164,7 @@ const messages: Record<Locale, Record<Namespace, Messages>> = {
     topology: ja_topology,
     settings: ja_settings,
     ai: ja_ai,
+    admin: ja_admin,
   },
   ko: {
     common: ko_common,
@@ -164,6 +177,7 @@ const messages: Record<Locale, Record<Namespace, Messages>> = {
     topology: ko_topology,
     settings: ko_settings,
     ai: ko_ai,
+    admin: ko_admin,
   },
   de: {
     common: de_common,
@@ -176,6 +190,7 @@ const messages: Record<Locale, Record<Namespace, Messages>> = {
     topology: de_topology,
     settings: de_settings,
     ai: de_ai,
+    admin: de_admin,
   },
   fr: {
     common: fr_common,
@@ -188,6 +203,7 @@ const messages: Record<Locale, Record<Namespace, Messages>> = {
     topology: fr_topology,
     settings: fr_settings,
     ai: fr_ai,
+    admin: fr_admin,
   },
   ru: {
     common: ru_common,
@@ -200,6 +216,7 @@ const messages: Record<Locale, Record<Namespace, Messages>> = {
     topology: ru_topology,
     settings: ru_settings,
     ai: ru_ai,
+    admin: ru_admin,
   },
 };
 

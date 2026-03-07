@@ -1,11 +1,12 @@
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_session
+from app.core.deps import get_current_user
 from app.core.security import create_access_token
 from app.models.user import User
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserResponse
@@ -38,6 +39,14 @@ async def login(body: LoginRequest, session: AsyncSession = Depends(get_session)
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = create_access_token(subject=user.id)
     return TokenResponse(access_token=token)
+
+
+@router.get("/me", response_model=UserResponse)
+async def get_current_user_info(
+    current_user: User = Depends(get_current_user),
+):
+    """Get current authenticated user's information."""
+    return current_user
 
 
 # ---------------------------------------------------------------------------
@@ -141,6 +150,9 @@ async def github_callback(code: str, session: AsyncSession = Depends(get_session
                 hashed_password="",
                 github_id=github_id,
                 avatar_url=avatar_url,
+                role="admin"
+                if (await session.execute(select(func.count(User.id)))).scalar() == 0
+                else "user",
             )
             session.add(user)
             await session.commit()

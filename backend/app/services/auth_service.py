@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password, verify_password
@@ -21,10 +21,15 @@ async def get_user_by_email(session: AsyncSession, email: str) -> User | None:
 
 
 async def create_user(session: AsyncSession, username: str, email: str, password: str) -> User:
+    # First registered user becomes admin
+    result = await session.execute(select(func.count(User.id)))
+    user_count = result.scalar() or 0
+
     user = User(
         username=username,
         email=email,
         hashed_password=hash_password(password),
+        role="admin" if user_count == 0 else "user",
     )
     session.add(user)
     await session.commit()

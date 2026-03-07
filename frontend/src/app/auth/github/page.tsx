@@ -3,7 +3,9 @@
 import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { api } from "@/lib/api";
 import { Loader2 } from "lucide-react";
+import type { User } from "@/types";
 
 function GitHubCallbackInner() {
   const router = useRouter();
@@ -12,11 +14,16 @@ function GitHubCallbackInner() {
 
   useEffect(() => {
     const token = searchParams.get("token");
-    const username = searchParams.get("username");
 
-    if (token && username) {
-      setAuth(token, { id: 0, username, email: "", role: "user" });
-      router.replace("/dashboard");
+    if (token) {
+      api<User>("/api/v1/auth/me", { token })
+        .then((user) => {
+          setAuth(token, user);
+          router.replace("/dashboard");
+        })
+        .catch(() => {
+          router.replace("/login");
+        });
     } else {
       router.replace("/login");
     }

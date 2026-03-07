@@ -13,6 +13,7 @@ import {
   Store,
   Network,
   Bot,
+  ShieldCheck,
 } from "lucide-react";
 import {
   Sidebar,
@@ -32,7 +33,7 @@ import { api } from "@/lib/api";
 import type { LucideIcon } from "lucide-react";
 import type { UpdateCheckResponse } from "@/types";
 
-const navItems: { key: string; href: string; icon: LucideIcon }[] = [
+const navItems: { key: string; href: string; icon: LucideIcon; adminOnly?: boolean }[] = [
   { key: "dashboard", href: "/dashboard", icon: LayoutDashboard },
   { key: "tools", href: "/tools", icon: Wrench },
   { key: "tasks", href: "/tasks", icon: ListTodo },
@@ -40,6 +41,7 @@ const navItems: { key: string; href: string; icon: LucideIcon }[] = [
   { key: "marketplace", href: "/marketplace", icon: Store },
   { key: "topology", href: "/topology", icon: Network },
   { key: "aiChat", href: "/ai-chat", icon: Bot },
+  { key: "admin", href: "/admin", icon: ShieldCheck, adminOnly: true },
   { key: "settings", href: "/settings", icon: Settings },
 ];
 
@@ -47,6 +49,7 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { t } = useTranslations("common");
   const token = useAuth((s) => s.token);
+  const user = useAuth((s) => s.user);
   const [updateCount, setUpdateCount] = useState(0);
 
   useEffect(() => {
@@ -79,7 +82,9 @@ export function AppSidebar() {
           <SidebarGroupLabel>{t("navigation")}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
+              {navItems
+                .filter((item) => !item.adminOnly || user?.role === "admin")
+                .map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)}>
                     <Link href={item.href}>

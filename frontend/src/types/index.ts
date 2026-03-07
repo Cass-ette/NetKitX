@@ -40,6 +40,8 @@ export interface User {
   username: string;
   email: string;
   role: "admin" | "user";
+  avatar_url?: string | null;
+  created_at: string; // ISO datetime string from backend
 }
 
 export interface AISettings {
