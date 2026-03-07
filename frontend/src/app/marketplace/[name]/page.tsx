@@ -135,15 +135,13 @@ export default function PluginDetailPage() {
     setInstallSuccess(false);
 
     try {
+      const params = new URLSearchParams({ plugin_name: pluginName });
+      if (selectedVersion) params.append("version", selectedVersion);
       const result = await api<{success: boolean, installed: Array<{plugin: string, version: string}>}>(
-        "/api/v1/marketplace/install",
+        `/api/v1/marketplace/install?${params}`,
         {
           token: token || undefined,
           method: "POST",
-          body: JSON.stringify({
-            plugin_name: pluginName,
-            version: selectedVersion || undefined,
-          }),
         }
       );
 
