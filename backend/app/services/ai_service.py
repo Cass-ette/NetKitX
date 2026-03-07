@@ -113,6 +113,7 @@ async def stream_openai_compatible(
         url = url.rstrip("/") + "/chat/completions"
 
     body = {"model": model, "stream": True, "messages": messages}
+    logger.info("OpenAI-compatible request: %s model=%s", url, model)
 
     try:
         async with httpx.AsyncClient(timeout=120, follow_redirects=True) as client:
@@ -125,13 +126,24 @@ async def stream_openai_compatible(
                 },
                 json=body,
             ) as resp:
+                logger.info(
+                    "OpenAI-compatible response: status=%s content-type=%s url=%s",
+                    resp.status_code,
+                    resp.headers.get("content-type", ""),
+                    resp.url,
+                )
                 if resp.status_code != 200:
                     error_body = await resp.aread()
                     logger.error("API error %s: %s", resp.status_code, error_body[:500])
-                    yield f"[API Error {resp.status_code}]"
+                    yield f"[API Error {resp.status_code}] {error_body[:200].decode(errors='replace')}"
                     return
+
+                yielded = False
+                raw_lines: list[str] = []
                 async for line in resp.aiter_lines():
                     if not line.startswith("data: "):
+                        if line.strip() and not yielded and len(raw_lines) < 5:
+                            raw_lines.append(line[:200])
                         continue
                     data = line[6:]
                     if data == "[DONE]":
@@ -140,12 +152,39 @@ async def stream_openai_compatible(
                         event = json.loads(data)
                     except json.JSONDecodeError:
                         continue
+                    # Handle error in SSE response body
+                    if "error" in event:
+                        err_msg = event["error"]
+                        if isinstance(err_msg, dict):
+                            err_msg = err_msg.get("message", str(err_msg))
+                        yield f"[API Error] {err_msg}"
+                        yielded = True
+                        return
                     choices = event.get("choices", [])
                     if choices:
                         delta = choices[0].get("delta", {})
                         text = delta.get("content", "")
                         if text:
+                            yielded = True
                             yield text
+
+                if not yielded:
+                    logger.warning(
+                        "OpenAI-compatible stream produced no content. raw_lines=%s",
+                        raw_lines[:3],
+                    )
+                    if raw_lines:
+                        # Try parsing first line as JSON error
+                        try:
+                            err = json.loads(raw_lines[0])
+                            msg = err.get("error", {})
+                            if isinstance(msg, dict):
+                                msg = msg.get("message", str(err))
+                            yield f"[API Error] {msg}"
+                        except (json.JSONDecodeError, AttributeError):
+                            yield f"[No response from API - raw: {raw_lines[0][:150]}]"
+                    else:
+                        yield "[No response from API - empty stream. Check base URL, API key, and model name.]"
     except Exception as e:
         logger.error("OpenAI-compatible stream error: %s", e)
         yield f"[Error: {e}]"
