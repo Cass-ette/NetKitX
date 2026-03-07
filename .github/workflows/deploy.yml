@@ -8,6 +8,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      OAUTH_GH_CLIENT_ID: ${{ secrets.OAUTH_GH_CLIENT_ID }}
+      OAUTH_GH_CLIENT_SECRET: ${{ secrets.OAUTH_GH_CLIENT_SECRET }}
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -15,6 +18,7 @@ jobs:
           host: 156.225.20.57
           username: root
           key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: OAUTH_GH_CLIENT_ID,OAUTH_GH_CLIENT_SECRET
           script: |
             set -e
             cd /opt/NetKitX
@@ -23,6 +27,8 @@ jobs:
             git pull origin develop
             POSTGRES_PASSWORD=$(grep DATABASE_URL backend/.env | sed 's/.*netkitx:\(.*\)@db.*/\1/')
             export POSTGRES_PASSWORD
+            export GITHUB_CLIENT_ID="${OAUTH_GH_CLIENT_ID}"
+            export GITHUB_CLIENT_SECRET="${OAUTH_GH_CLIENT_SECRET}"
             docker compose -f docker-compose.prod.yml up -d --build
             docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
             # Build sandbox image (netkitx CLI must exist in sandbox/)
