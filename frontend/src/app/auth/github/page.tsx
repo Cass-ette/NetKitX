@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { Loader2 } from "lucide-react";
 
-export default function GitHubCallbackPage() {
+function GitHubCallbackInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { setAuth } = useAuth();
@@ -26,5 +26,19 @@ export default function GitHubCallbackPage() {
     <div className="flex min-h-screen items-center justify-center">
       <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
     </div>
+  );
+}
+
+export default function GitHubCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      }
+    >
+      <GitHubCallbackInner />
+    </Suspense>
   );
 }
