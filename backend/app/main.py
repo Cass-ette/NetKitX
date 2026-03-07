@@ -2,7 +2,8 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, WebSocket, WebSocketDisconnect
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
@@ -141,6 +142,16 @@ async def stats():
         "plugins_count": len(all_plugins),
         "categories": categories,
     }
+
+
+@app.get("/api/v1/announcements")
+async def public_announcements(session: AsyncSession = Depends(get_session)):
+    """Public endpoint: active announcements for dashboard banner."""
+    from app.services.admin_service import get_announcements
+    from app.schemas.admin import AnnouncementResponse
+
+    anns = await get_announcements(session, active_only=True, limit=10)
+    return [AnnouncementResponse.model_validate(a) for a in anns]
 
 
 @app.websocket("/api/v1/ws/tasks/{task_id}")

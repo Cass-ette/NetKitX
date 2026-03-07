@@ -6,8 +6,8 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Wrench, ListTodo, Puzzle, Activity } from "lucide-react";
-import type { Task } from "@/types";
+import { Wrench, ListTodo, Puzzle, Activity, Info, AlertTriangle, XCircle } from "lucide-react";
+import type { Task, Announcement } from "@/types";
 import { useTranslations } from "@/i18n/use-translations";
 
 interface Stats {
@@ -23,11 +23,13 @@ export default function DashboardPage() {
   const { t: tc } = useTranslations("common");
   const [stats, setStats] = useState<Stats | null>(null);
   const [recentTasks, setRecentTasks] = useState<Task[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
   useEffect(() => {
     if (!token) return;
     api<Stats>("/api/v1/stats", { token }).then(setStats).catch(() => {});
     api<Task[]>("/api/v1/tasks", { token }).then(setRecentTasks).catch(() => {});
+    api<Announcement[]>("/api/v1/announcements").then(setAnnouncements).catch(() => {});
   }, [token]);
 
   return (
@@ -36,6 +38,36 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
         <p className="text-muted-foreground">{t("subtitle")}</p>
       </div>
+
+      {/* Announcement Banner */}
+      {announcements.length > 0 && (
+        <div className="space-y-2">
+          {announcements.map((ann) => (
+            <div
+              key={ann.id}
+              className={`flex items-start gap-3 rounded-lg border px-4 py-3 ${
+                ann.type === "error"
+                  ? "border-destructive/50 bg-destructive/10 text-destructive"
+                  : ann.type === "warning"
+                    ? "border-yellow-500/50 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400"
+                    : "border-blue-500/50 bg-blue-500/10 text-blue-700 dark:text-blue-400"
+              }`}
+            >
+              {ann.type === "error" ? (
+                <XCircle className="h-5 w-5 shrink-0 mt-0.5" />
+              ) : ann.type === "warning" ? (
+                <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+              ) : (
+                <Info className="h-5 w-5 shrink-0 mt-0.5" />
+              )}
+              <div>
+                <p className="font-medium">{ann.title}</p>
+                <p className="text-sm opacity-90">{ann.content}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>

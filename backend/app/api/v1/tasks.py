@@ -71,6 +71,13 @@ async def create(
     if not registry.get_meta(body.plugin_name):
         raise HTTPException(status_code=404, detail=f"Plugin '{body.plugin_name}' not found")
 
+    # Check user quota
+    from app.services.admin_service import check_quota
+
+    quota_error = await check_quota(session, user.id)
+    if quota_error:
+        raise HTTPException(status_code=429, detail=quota_error)
+
     task = await create_task(session, body.plugin_name, body.params, user.id, body.project_id)
 
     # Dispatch as background asyncio task

@@ -98,3 +98,76 @@ export interface UpdateCheckResponse {
   updates_available: number;
   plugins: PluginUpdateInfo[];
 }
+
+// ── Admin Panel Types ───────────────────────────────────────────────
+
+export interface AdminTask {
+  id: number;
+  plugin_name: string;
+  status: "pending" | "running" | "done" | "failed";
+  params: Record<string, unknown> | null;
+  result: Record<string, unknown> | null;
+  created_by: number | null;
+  created_by_username: string | null;
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+}
+
+export interface AdminPlugin {
+  name: string;
+  version: string;
+  description: string | null;
+  category: string;
+  engine: string;
+  enabled: boolean;
+  usage_count: number;
+}
+
+export interface AuditLog {
+  id: number;
+  user_id: number;
+  username: string;
+  action: string;
+  target_type: string;
+  target_id: string | null;
+  details: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface UserQuota {
+  user_id: number;
+  username: string;
+  max_concurrent_tasks: number;
+  max_daily_tasks: number;
+  current_running_tasks: number;
+  tasks_today: number;
+}
+
+export interface Announcement {
+  id: number;
+  title: string;
+  content: string;
+  type: "info" | "warning" | "error";
+  active: boolean;
+  created_by: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ServiceStatus {
+  name: string;
+  status: "ok" | "error";
+  detail?: string;
+}
+
+export interface ServerStatus {
+  cpu_percent: number;
+  memory_percent: number;
+  memory_used_mb: number;
+  memory_total_mb: number;
+  disk_percent: number;
+  disk_used_gb: number;
+  disk_total_gb: number;
+  services: ServiceStatus[];
+}

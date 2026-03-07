@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     GITHUB_CLIENT_ID: str = ""
     GITHUB_CLIENT_SECRET: str = ""
 
+    # User quotas
+    DEFAULT_MAX_CONCURRENT_TASKS: int = 5
+    DEFAULT_MAX_DAILY_TASKS: int = 100
+
     # CORS
     ALLOWED_ORIGINS: list[str] = ["http://localhost:3000"]
 

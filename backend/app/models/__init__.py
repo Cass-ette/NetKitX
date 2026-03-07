@@ -11,6 +11,8 @@ from app.models.marketplace import (
     MarketplaceReport,
 )
 from app.models.ai_settings import AISettings
+from app.models.audit_log import AuditLog
+from app.models.announcement import Announcement
 
 __all__ = [
     "User",
@@ -24,4 +26,6 @@ __all__ = [
     "MarketplaceReview",
     "MarketplaceReport",
     "AISettings",
+    "AuditLog",
+    "Announcement",
 ]
