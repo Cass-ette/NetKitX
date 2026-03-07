@@ -121,7 +121,16 @@ class PluginInstaller:
                 shutil.rmtree(temp_dir, ignore_errors=True)
 
     async def _download(self, url: str, dest: Path):
-        """Download file from URL. Relative URLs are resolved against the local API."""
+        """Download or copy a plugin package. Local paths are copied directly."""
+        if url.startswith("/api/v1/marketplace/packages/"):
+            # Local package — copy directly from _packages directory
+            filename = url.split("/")[-1]
+            local_path = Path(settings.PLUGINS_DIR) / "_packages" / filename
+            if local_path.exists():
+                shutil.copy2(local_path, dest)
+                return
+
+        # Remote URL — download via HTTP
         import os
 
         if url.startswith("/"):
