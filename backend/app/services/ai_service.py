@@ -115,7 +115,7 @@ async def stream_openai_compatible(
     body = {"model": model, "stream": True, "messages": messages}
 
     try:
-        async with httpx.AsyncClient(timeout=120) as client:
+        async with httpx.AsyncClient(timeout=120, follow_redirects=True) as client:
             async with client.stream(
                 "POST",
                 url,
@@ -174,7 +174,7 @@ async def stream_claude(
         body["system"] = system_msg
 
     try:
-        async with httpx.AsyncClient(timeout=120) as client:
+        async with httpx.AsyncClient(timeout=120, follow_redirects=True) as client:
             async with client.stream(
                 "POST",
                 "https://api.anthropic.com/v1/messages",
@@ -222,7 +222,7 @@ async def stream_deepseek(
     }
 
     try:
-        async with httpx.AsyncClient(timeout=120) as client:
+        async with httpx.AsyncClient(timeout=120, follow_redirects=True) as client:
             async with client.stream(
                 "POST",
                 "https://api.deepseek.com/chat/completions",
@@ -275,7 +275,7 @@ async def stream_glm(
     }
 
     try:
-        async with httpx.AsyncClient(timeout=120) as client:
+        async with httpx.AsyncClient(timeout=120, follow_redirects=True) as client:
             async with client.stream(
                 "POST",
                 "https://open.bigmodel.cn/api/paas/v4/chat/completions",
