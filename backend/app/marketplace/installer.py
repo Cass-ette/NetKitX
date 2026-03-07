@@ -121,7 +121,12 @@ class PluginInstaller:
                 shutil.rmtree(temp_dir, ignore_errors=True)
 
     async def _download(self, url: str, dest: Path):
-        """Download file from URL."""
+        """Download file from URL. Relative URLs are resolved against the local API."""
+        import os
+
+        if url.startswith("/"):
+            base = os.environ.get("SANDBOX_API_URL", "http://127.0.0.1:8000")
+            url = f"{base}{url}"
         async with httpx.AsyncClient(timeout=60.0) as client:
             async with client.stream("GET", url) as response:
                 response.raise_for_status()

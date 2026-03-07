@@ -540,7 +540,16 @@ async def publish_plugin(
             )
 
         # TODO: Upload to S3/MinIO - for now use placeholder URL
-        package_url = f"https://marketplace.netkitx.com/packages/{plugin_name}/{version}.zip"
+        # Store zip in persistent packages directory
+        from app.core.config import settings
+
+        packages_dir = Path(settings.PLUGINS_DIR) / "_packages"
+        packages_dir.mkdir(parents=True, exist_ok=True)
+        package_filename = f"{plugin_name}-{version}.zip"
+        package_dest = packages_dir / package_filename
+        with open(package_dest, "wb") as pf:
+            pf.write(content)
+        package_url = f"/api/v1/marketplace/packages/{package_filename}"
 
         # Create version
         new_version = MarketplaceVersion(
@@ -586,6 +595,19 @@ async def publish_plugin(
 
         if temp_dir.exists():
             shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+@router.get("/packages/{filename}")
+async def download_package(filename: str):
+    """Serve a published plugin package zip file."""
+    from fastapi.responses import FileResponse
+    from app.core.config import settings
+
+    packages_dir = Path(settings.PLUGINS_DIR) / "_packages"
+    package_path = packages_dir / filename
+    if not package_path.exists() or not package_path.is_file():
+        raise HTTPException(status_code=404, detail="Package not found")
+    return FileResponse(package_path, media_type="application/zip", filename=filename)
 
 
 @router.delete("/plugins/{plugin_name}/versions/{version}")
