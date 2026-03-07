@@ -26,6 +26,7 @@ export default function SettingsPage() {
   const [aiProvider, setAiProvider] = useState("claude");
   const [aiApiKey, setAiApiKey] = useState("");
   const [aiModel, setAiModel] = useState("claude-sonnet-4-20250514");
+  const [aiBaseUrl, setAiBaseUrl] = useState("");
   const [aiConfigured, setAiConfigured] = useState(false);
   const [aiMasked, setAiMasked] = useState("");
   const [aiSaving, setAiSaving] = useState(false);
@@ -37,6 +38,7 @@ export default function SettingsPage() {
       const data = await api<AISettings>("/api/v1/ai/settings", { token });
       setAiProvider(data.provider);
       setAiModel(data.model);
+      setAiBaseUrl(data.base_url || "");
       setAiMasked(data.api_key_masked);
       setAiConfigured(true);
     } catch {
@@ -60,6 +62,7 @@ export default function SettingsPage() {
           provider: aiProvider,
           api_key: aiApiKey,
           model: aiModel,
+          base_url: aiBaseUrl || null,
         }),
       });
       setAiApiKey("");
@@ -92,6 +95,7 @@ export default function SettingsPage() {
     claude: "claude-sonnet-4-20250514",
     deepseek: "deepseek-chat",
     glm: "glm-4-flash",
+    custom: "",
   };
 
   return (
@@ -136,6 +140,7 @@ export default function SettingsPage() {
               <p><strong>{t("aiProvider")}:</strong> {aiProvider}</p>
               <p><strong>{t("aiModel")}:</strong> {aiModel}</p>
               <p><strong>{t("aiApiKey")}:</strong> {aiMasked}</p>
+              {aiBaseUrl && <p><strong>{t("aiBaseUrl")}:</strong> {aiBaseUrl}</p>}
             </div>
           )}
 
@@ -155,6 +160,7 @@ export default function SettingsPage() {
                 <SelectItem value="claude">Claude (Anthropic)</SelectItem>
                 <SelectItem value="deepseek">DeepSeek</SelectItem>
                 <SelectItem value="glm">GLM (智谱 AI)</SelectItem>
+                <SelectItem value="custom">{t("aiCustom")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -176,6 +182,16 @@ export default function SettingsPage() {
               value={aiModel}
               onChange={(e) => setAiModel(e.target.value)}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>{t("aiBaseUrl")}</Label>
+            <Input
+              placeholder={t("aiBaseUrlPlaceholder")}
+              value={aiBaseUrl}
+              onChange={(e) => setAiBaseUrl(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">{t("aiBaseUrlHint")}</p>
           </div>
 
           {aiMsg && (

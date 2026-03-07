@@ -17,6 +17,10 @@
   "aiModel": "模型",
   "aiSave": "保存",
   "aiDelete": "删除",
+  "aiBaseUrl": "接口地址",
+  "aiBaseUrlPlaceholder": "https://your-proxy.com/v1",
+  "aiBaseUrlHint": "可选。用于第三方 API 代理（OpenAI 兼容格式）。",
+  "aiCustom": "自定义（OpenAI 兼容）",
   "aiSaved": "AI 配置已保存",
   "aiDeleted": "AI 配置已删除"
 }

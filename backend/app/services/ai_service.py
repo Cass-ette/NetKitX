@@ -99,6 +99,58 @@ def mask_key(plaintext: str) -> str:
     return plaintext[:3] + "..." + plaintext[-4:]
 
 
+async def stream_openai_compatible(
+    api_key: str,
+    model: str,
+    messages: list[dict[str, str]],
+    base_url: str,
+) -> AsyncIterator[str]:
+    """Stream from any OpenAI-compatible API endpoint."""
+    import json
+
+    url = base_url.rstrip("/")
+    if not url.endswith("/chat/completions"):
+        url = url.rstrip("/") + "/chat/completions"
+
+    body = {"model": model, "stream": True, "messages": messages}
+
+    try:
+        async with httpx.AsyncClient(timeout=120) as client:
+            async with client.stream(
+                "POST",
+                url,
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json=body,
+            ) as resp:
+                if resp.status_code != 200:
+                    error_body = await resp.aread()
+                    logger.error("API error %s: %s", resp.status_code, error_body[:500])
+                    yield f"[API Error {resp.status_code}]"
+                    return
+                async for line in resp.aiter_lines():
+                    if not line.startswith("data: "):
+                        continue
+                    data = line[6:]
+                    if data == "[DONE]":
+                        break
+                    try:
+                        event = json.loads(data)
+                    except json.JSONDecodeError:
+                        continue
+                    choices = event.get("choices", [])
+                    if choices:
+                        delta = choices[0].get("delta", {})
+                        text = delta.get("content", "")
+                        if text:
+                            yield text
+    except Exception as e:
+        logger.error("OpenAI-compatible stream error: %s", e)
+        yield f"[Error: {e}]"
+
+
 async def stream_claude(
     api_key: str, model: str, messages: list[dict[str, str]]
 ) -> AsyncIterator[str]:

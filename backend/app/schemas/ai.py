@@ -2,15 +2,17 @@ from pydantic import BaseModel
 
 
 class AISettingsUpdate(BaseModel):
-    provider: str  # "claude" | "deepseek" | "glm"
+    provider: str  # "claude" | "deepseek" | "glm" | "custom"
     api_key: str  # plaintext, encrypted on save
     model: str
+    base_url: str | None = None  # custom API endpoint (OpenAI-compatible)
 
 
 class AISettingsResponse(BaseModel):
     provider: str
     api_key_masked: str  # e.g. "sk-...xxxx"
     model: str
+    base_url: str | None = None
     configured: bool = True
 
     model_config = {"from_attributes": True}

@@ -13,6 +13,7 @@ from app.services.ai_service import (
     stream_claude,
     stream_deepseek,
     stream_glm,
+    stream_openai_compatible,
 )
 
 logger = logging.getLogger(__name__)
@@ -255,6 +256,7 @@ async def run_agent_loop(
     confirm_action: dict | None = None,
     user_id: int | None = None,
     user_token: str | None = None,
+    base_url: str | None = None,
 ) -> AsyncIterator[dict]:
     """
     Main agent loop generator. Yields SSE event dicts.
@@ -305,7 +307,9 @@ async def run_agent_loop(
 
         # Stream AI response
         full_text = ""
-        if provider == "claude":
+        if base_url:
+            gen = stream_openai_compatible(api_key, model, full_messages, base_url)
+        elif provider == "claude":
             gen = stream_claude(api_key, model, full_messages)
         elif provider == "deepseek":
             gen = stream_deepseek(api_key, model, full_messages)

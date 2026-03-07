@@ -17,6 +17,10 @@
   "aiModel": "Model",
   "aiSave": "Save",
   "aiDelete": "Delete",
+  "aiBaseUrl": "Base URL",
+  "aiBaseUrlPlaceholder": "https://your-proxy.com/v1",
+  "aiBaseUrlHint": "Optional. For third-party API proxies (OpenAI-compatible).",
+  "aiCustom": "Custom (OpenAI-compatible)",
   "aiSaved": "AI settings saved",
   "aiDeleted": "AI settings deleted"
 }

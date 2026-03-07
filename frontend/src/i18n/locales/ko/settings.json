@@ -17,6 +17,10 @@
   "aiModel": "모델",
   "aiSave": "저장",
   "aiDelete": "삭제",
+  "aiBaseUrl": "기본 URL",
+  "aiBaseUrlPlaceholder": "https://your-proxy.com/v1",
+  "aiBaseUrlHint": "선택 사항. 타사 API 프록시(OpenAI 호환)용.",
+  "aiCustom": "사용자 정의 (OpenAI 호환)",
   "aiSaved": "AI 설정이 저장되었습니다",
   "aiDeleted": "AI 설정이 삭제되었습니다"
 }

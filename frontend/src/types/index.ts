@@ -46,6 +46,7 @@ export interface AISettings {
   provider: string;
   api_key_masked: string;
   model: string;
+  base_url?: string | null;
   configured: boolean;
 }
 

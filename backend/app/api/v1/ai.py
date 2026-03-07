@@ -21,6 +21,7 @@ from app.services.ai_service import (
     stream_claude,
     stream_deepseek,
     stream_glm,
+    stream_openai_compatible,
     get_system_prompt,
     get_lang_reminder,
 )
@@ -47,6 +48,7 @@ async def get_settings(
         provider=ai.provider,
         api_key_masked=mask_key(plain_key),
         model=ai.model,
+        base_url=ai.base_url,
     )
 
 
@@ -62,12 +64,14 @@ async def update_settings(
         ai.provider = body.provider
         ai.api_key_enc = enc
         ai.model = body.model
+        ai.base_url = body.base_url
     else:
         ai = AISettings(
             user_id=user.id,
             provider=body.provider,
             api_key_enc=enc,
             model=body.model,
+            base_url=body.base_url,
         )
         session.add(ai)
     await session.commit()
@@ -75,6 +79,7 @@ async def update_settings(
         provider=body.provider,
         api_key_masked=mask_key(body.api_key),
         model=body.model,
+        base_url=body.base_url,
     )
 
 
@@ -90,13 +95,25 @@ async def delete_settings(
     return {"ok": True}
 
 
-async def _stream_ai(provider: str, api_key: str, model: str, messages: list[dict[str, str]]):
-    if provider == "claude":
+async def _stream_ai(
+    provider: str,
+    api_key: str,
+    model: str,
+    messages: list[dict[str, str]],
+    base_url: str | None = None,
+):
+    # Custom base_url → always use OpenAI-compatible format
+    if base_url:
+        gen = stream_openai_compatible(api_key, model, messages, base_url)
+    elif provider == "claude":
         gen = stream_claude(api_key, model, messages)
     elif provider == "deepseek":
         gen = stream_deepseek(api_key, model, messages)
     elif provider == "glm":
         gen = stream_glm(api_key, model, messages)
+    elif provider == "custom":
+        yield f"data: {json.dumps({'error': 'Custom provider requires base_url'})}\n\n"
+        return
     else:
         yield f"data: {json.dumps({'error': 'Unknown provider'})}\n\n"
         return
@@ -150,7 +167,7 @@ async def analyze(
     ]
 
     return StreamingResponse(
-        _stream_ai(ai.provider, api_key, ai.model, messages),
+        _stream_ai(ai.provider, api_key, ai.model, messages, ai.base_url),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
@@ -175,7 +192,7 @@ async def chat(
     ]
 
     return StreamingResponse(
-        _stream_ai(ai.provider, api_key, ai.model, messages),
+        _stream_ai(ai.provider, api_key, ai.model, messages, ai.base_url),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
@@ -220,6 +237,7 @@ async def agent(
             confirm_action=confirm,
             user_id=user.id,
             user_token=user_token,
+            base_url=ai.base_url,
         ):
             yield f"data: {json.dumps(evt, default=str)}\n\n"
         yield "data: [DONE]\n\n"

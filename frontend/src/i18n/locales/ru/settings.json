@@ -17,6 +17,10 @@
   "aiModel": "Модель",
   "aiSave": "Сохранить",
   "aiDelete": "Удалить",
+  "aiBaseUrl": "Базовый URL",
+  "aiBaseUrlPlaceholder": "https://your-proxy.com/v1",
+  "aiBaseUrlHint": "Необязательно. Для сторонних API-прокси (совместимых с OpenAI).",
+  "aiCustom": "Пользовательский (совместимый с OpenAI)",
   "aiSaved": "Настройки ИИ сохранены",
   "aiDeleted": "Настройки ИИ удалены"
 }

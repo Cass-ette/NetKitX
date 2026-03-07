@@ -17,6 +17,10 @@
   "aiModel": "モデル",
   "aiSave": "保存",
   "aiDelete": "削除",
+  "aiBaseUrl": "ベースURL",
+  "aiBaseUrlPlaceholder": "https://your-proxy.com/v1",
+  "aiBaseUrlHint": "任意。サードパーティAPIプロキシ（OpenAI互換）用。",
+  "aiCustom": "カスタム（OpenAI互換）",
   "aiSaved": "AI設定を保存しました",
   "aiDeleted": "AI設定を削除しました"
 }

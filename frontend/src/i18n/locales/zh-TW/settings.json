@@ -17,6 +17,10 @@
   "aiModel": "模型",
   "aiSave": "儲存",
   "aiDelete": "刪除",
+  "aiBaseUrl": "介面位址",
+  "aiBaseUrlPlaceholder": "https://your-proxy.com/v1",
+  "aiBaseUrlHint": "可選。用於第三方 API 代理（OpenAI 相容格式）。",
+  "aiCustom": "自訂（OpenAI 相容）",
   "aiSaved": "AI 組態已儲存",
   "aiDeleted": "AI 組態已刪除"
 }

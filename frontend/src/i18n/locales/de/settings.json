@@ -17,6 +17,10 @@
   "aiModel": "Modell",
   "aiSave": "Speichern",
   "aiDelete": "Löschen",
+  "aiBaseUrl": "Basis-URL",
+  "aiBaseUrlPlaceholder": "https://your-proxy.com/v1",
+  "aiBaseUrlHint": "Optional. Für API-Proxys von Drittanbietern (OpenAI-kompatibel).",
+  "aiCustom": "Benutzerdefiniert (OpenAI-kompatibel)",
   "aiSaved": "KI-Einstellungen gespeichert",
   "aiDeleted": "KI-Einstellungen gelöscht"
 }
