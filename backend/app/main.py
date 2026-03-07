@@ -35,9 +35,37 @@ async def lifespan(app: FastAPI):
 
     task = asyncio.create_task(_cleanup_loop())
 
+    # Background task: subscribe to Redis for hot plugin reload
+    async def _plugin_reload_loop():
+        try:
+            import redis.asyncio as aioredis
+            from app.plugins.loader import load_single_plugin
+            import json
+
+            r = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+            pubsub = r.pubsub()
+            await pubsub.subscribe("netkitx.plugin.installed")
+            async for message in pubsub.listen():
+                if message["type"] != "message":
+                    continue
+                try:
+                    plugin_names = json.loads(message["data"])
+                    plugins_path = __import__("pathlib").Path(settings.PLUGINS_DIR)
+                    for name in plugin_names:
+                        plugin_dir = plugins_path / name
+                        if load_single_plugin(plugin_dir, settings.ENGINES_DIR):
+                            logger.info("Hot-reloaded plugin: %s", name)
+                except Exception as e:
+                    logger.error("Plugin hot-reload error: %s", e)
+        except Exception as e:
+            logger.error("Redis subscribe error: %s", e)
+
+    reload_task = asyncio.create_task(_plugin_reload_loop())
+
     yield
 
     task.cancel()
+    reload_task.cancel()
 
 
 app = FastAPI(

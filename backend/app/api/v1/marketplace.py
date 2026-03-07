@@ -1,6 +1,7 @@
 """Marketplace API endpoints."""
 
 import hashlib
+import logging
 import tempfile
 import zipfile
 from pathlib import Path
@@ -38,6 +39,7 @@ from app.schemas.marketplace import (
     UserInstalledPluginResponse,
 )
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/marketplace", tags=["marketplace"])
 
 
@@ -388,6 +390,18 @@ async def install_plugin(
             if plugin_to_update:
                 plugin_to_update.downloads += 1
                 await session.commit()
+
+        # Publish hot-reload event to Redis
+        try:
+            import redis as redis_lib
+            from app.core.config import settings
+
+            r = redis_lib.from_url(settings.REDIS_URL, decode_responses=True)
+            import json as _json
+
+            r.publish("netkitx.plugin.installed", _json.dumps([p["plugin"] for p in installed]))
+        except Exception as _re:
+            logger.warning("Redis publish failed (hot-reload skipped): %s", _re)
 
         return {"success": True, "installed": installed}
 
