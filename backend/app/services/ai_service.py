@@ -108,9 +108,12 @@ async def stream_openai_compatible(
     """Stream from any OpenAI-compatible API endpoint."""
     import json
 
-    url = base_url.rstrip("/")
+    url = base_url.strip()
+    if not url.startswith(("http://", "https://")):
+        url = "https://" + url
+    url = url.rstrip("/")
     if not url.endswith("/chat/completions"):
-        url = url.rstrip("/") + "/chat/completions"
+        url = url + "/chat/completions"
 
     body = {"model": model, "stream": True, "messages": messages}
     logger.info("OpenAI-compatible request: %s model=%s", url, model)
