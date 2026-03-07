@@ -10,6 +10,8 @@ services:
       - ENGINES_DIR=/app/engines/bin
       - SANDBOX_IMAGE=netkitx-sandbox
       - SANDBOX_API_URL=http://156.225.20.57
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
     group_add:
       - "997"
     volumes:

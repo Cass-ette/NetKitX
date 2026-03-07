@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Shield } from "lucide-react";
+import { Shield, Github } from "lucide-react";
 import { useTranslations } from "@/i18n/use-translations";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
+import { API_BASE } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -94,6 +95,22 @@ export default function LoginPage() {
               {loading ? t("loading") : isRegister ? t("register") : t("signIn")}
             </Button>
           </form>
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">OR</span>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => { window.location.href = `${API_BASE}/api/v1/auth/github`; }}
+          >
+            <Github className="mr-2 h-4 w-4" />
+            GitHub
+          </Button>
           <div className="mt-4 text-center text-sm text-muted-foreground">
             {isRegister ? t("alreadyHaveAccount") : t("dontHaveAccount")}{" "}
             <button

@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     AGENT_MAX_TURNS: int = 0  # 0 = unlimited
     AGENT_COMMAND_TIMEOUT: int = 30
 
+    # GitHub OAuth
+    GITHUB_CLIENT_ID: str = ""
+    GITHUB_CLIENT_SECRET: str = ""
+
     # CORS
     ALLOWED_ORIGINS: list[str] = ["http://localhost:3000"]
 
