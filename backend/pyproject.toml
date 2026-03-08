@@ -5,6 +5,7 @@ description = "NetKitX - Extensible Network Security Toolkit API"
 requires-python = ">=3.11"
 
 dependencies = [
+    "netkitx-sdk>=0.1.0",
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.32.0",
     "sqlalchemy[asyncio]>=2.0.0",

@@ -1,6 +1,8 @@
 services:
   backend:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     ports:
       - "8000:8000"
     environment:
@@ -20,7 +22,9 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   worker:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     environment:
       - DATABASE_URL=postgresql+asyncpg://netkitx:netkitx@db:5432/netkitx
       - REDIS_URL=redis://redis:6379/0

@@ -9,12 +9,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy dependency files
-COPY pyproject.toml ./
-
-# Install Python dependencies
+# Install SDK first (local dependency, no PyPI needed)
+COPY sdk/ /sdk/
 RUN pip install --no-cache-dir --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple && \
-    pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple .
+    pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple /sdk
+
+# Copy and install backend dependencies
+COPY backend/pyproject.toml ./
+RUN pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple .
 
 # Runtime stage
 FROM python:3.11-slim
@@ -38,7 +40,7 @@ COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/pytho
 COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application code
-COPY . .
+COPY backend/ .
 
 # Create non-root user
 RUN useradd -m -u 1000 netkitx && \
