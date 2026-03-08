@@ -57,6 +57,12 @@ export function useAIChat() {
         });
 
         if (!res.ok) {
+          if (res.status === 401) {
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+            window.location.href = "/login";
+            return;
+          }
           const body = await res.json().catch(() => ({}));
           const detail = body.detail;
           if (detail === "AI not configured") {
@@ -146,6 +152,12 @@ export function useAIChat() {
       });
 
       if (!res.ok) {
+        if (res.status === 401) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          window.location.href = "/login";
+          return;
+        }
         const errBody = await res.json().catch(() => ({}));
         const detail = errBody.detail;
         if (detail === "AI not configured") {

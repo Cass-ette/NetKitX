@@ -17,6 +17,13 @@ export async function api<T = unknown>(path: string, options: FetchOptions = {})
   });
 
   if (!res.ok) {
+    // Auto-logout on 401: token expired or invalid
+    if (res.status === 401 && typeof window !== "undefined") {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.href = "/login";
+      throw new Error("Session expired");
+    }
     const body = await res.json().catch(() => ({}));
     throw new Error(body.detail || `API error: ${res.status}`);
   }
