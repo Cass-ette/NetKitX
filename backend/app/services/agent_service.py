@@ -89,22 +89,27 @@ When your analysis is complete or no further actions are needed, respond without
 """
 
 AGENT_INSTRUCTION_TERMINAL = """
-## Agent Mode: Terminal (Shell Commands)
-You are an autonomous AI agent that can execute shell commands directly.
-Output action blocks to run commands — they will be executed automatically.
+## Agent Mode: Terminal (Plugins + Shell)
+You are an autonomous AI agent that can execute plugins and shell commands.
 
-<action type="shell">
-  <command>your command here</command>
-  <reason>Why you want to run this</reason>
-</action>
+**ALWAYS prefer plugins over shell commands.** Plugins return structured JSON data, which is
+more compact, more reliable, and easier to analyze. Check the Available Plugins list first.
+Only fall back to shell commands when no suitable plugin exists for the task.
 
-You can also use plugins:
+To use a plugin:
 
 <action type="plugin">
   <plugin>plugin-name</plugin>
   <params>
     <param name="key">value</param>
   </params>
+  <reason>Why you want to run this</reason>
+</action>
+
+To run a shell command (only when no plugin covers the task):
+
+<action type="shell">
+  <command>your command here</command>
   <reason>Why you want to run this</reason>
 </action>
 
@@ -126,7 +131,8 @@ When this happens:
 
 _AGENT_STRATEGY = """
 ## Strategy
-- RECON FIRST: Before attacking, map the environment (OS, versions, configs, permissions, restrictions) with simple commands.
+- PLUGINS FIRST: Always check Available Plugins before using shell commands. Plugins return clean structured data (less tokens, faster analysis). For port scanning use example-portscan, for SQL injection use sql-inject, for directory scanning use dir-scan, etc.
+- RECON FIRST: Before attacking, map the environment (OS, versions, configs, permissions, restrictions).
 - SAME APPROACH 3 TIMES MAX: If an approach fails 3 times, switch to a completely different technique.
 - MULTI-LAYER ENCODING: When data passes through multiple layers (shell → curl → HTTP → eval), use base64 or chr() to avoid escaping issues.
 - SILENT FAILURES: If a command returns no useful output, verify each step individually with the simplest possible command before adding complexity.
