@@ -657,12 +657,29 @@ def test_strip_html_removes_tags():
     assert "Content" in result
 
 
-def test_strip_html_removes_script_and_style():
-    html = "<script>alert(1)</script><style>.x{color:red}</style><p>Hello</p>"
+def test_strip_html_preserves_script_content():
+    """Script content may contain tokens/endpoints - must NOT be stripped."""
+    html = '<script>var token = "csrf_abc123";</script><style>.x{color:red}</style><p>Hello</p>'
     result = _strip_html(html)
-    assert "alert" not in result
-    assert "color" not in result
+    assert "csrf_abc123" in result  # script content preserved
+    assert "color" not in result  # style content stripped
     assert "Hello" in result
+
+
+def test_strip_html_preserves_form_attrs():
+    """Form/input attributes are critical for attack formulation."""
+    html = '<form action="/admin/delete" method="POST"><input type="hidden" name="csrf" value="token123"><button type="submit">Delete</button></form>'
+    result = _strip_html(html)
+    assert "/admin/delete" in result
+    assert "csrf" in result
+    assert "token123" in result
+
+
+def test_strip_html_preserves_link_href():
+    html = '<a href="/internal/api/keys">API Keys</a>'
+    result = _strip_html(html)
+    assert "/internal/api/keys" in result
+    assert "API Keys" in result
 
 
 def test_strip_html_decodes_entities():

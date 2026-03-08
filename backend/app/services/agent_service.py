@@ -270,16 +270,43 @@ _ANSI_RE = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]")
 _BLANK_LINES_RE = re.compile(r"\n{3,}")
 _WHITESPACE_LINES_RE = re.compile(r"\n[ \t]+\n")
 
+# Tags whose attributes are security-relevant (preserve as [tag attr=val] text)
+_SEC_ATTR_RE = re.compile(
+    r"<(form|input|a|iframe|meta|img|button|select|option|textarea)\s+([^>]*)>",
+    re.IGNORECASE,
+)
+_ATTR_PAIR_RE = re.compile(r'(\w+)\s*=\s*["\']([^"\']*)["\']')
+
 # Max chars to keep from a single stdout/stderr field before smart truncation
 _FIELD_MAX = 12000
 _FIELD_HEAD = 5000
 _FIELD_TAIL = 5000
 
 
+def _preserve_sec_attrs(match: re.Match) -> str:
+    """Convert security-relevant HTML tags to compact [tag attr=val] text."""
+    tag = match.group(1).lower()
+    attrs_str = match.group(2)
+    pairs = _ATTR_PAIR_RE.findall(attrs_str)
+    if pairs:
+        attr_text = " ".join(f"{k}={v}" for k, v in pairs)
+        return f"[{tag} {attr_text}]"
+    return ""
+
+
 def _strip_html(text: str) -> str:
-    """Remove HTML tags, keep text content."""
-    text = re.sub(r"<script[^>]*>.*?</script>", "", text, flags=re.DOTALL | re.IGNORECASE)
+    """Remove HTML tags, preserve security-relevant content.
+
+    - Keeps <script> body (may contain tokens, endpoints, secrets)
+    - Extracts attributes from form/input/a/iframe/meta tags
+    - Strips <style> blocks and purely presentational tags
+    """
+    # Strip style blocks (CSS is noise for security analysis)
     text = re.sub(r"<style[^>]*>.*?</style>", "", text, flags=re.DOTALL | re.IGNORECASE)
+    # Keep script CONTENT but strip the <script> tags themselves (done by _HTML_TAG_RE below)
+    # Extract security-relevant tag attributes before stripping
+    text = _SEC_ATTR_RE.sub(_preserve_sec_attrs, text)
+    # Strip remaining tags
     text = _HTML_TAG_RE.sub("", text)
     # Decode common HTML entities
     for entity, char in [
