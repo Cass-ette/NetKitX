@@ -12,6 +12,9 @@ from app.services.agent_service import (
     classify_error,
     run_agent_loop,
     _preprocess_shell_command,
+    _action_fingerprint,
+    _is_similar,
+    count_similar_recent,
     MAX_CONSECUTIVE_ERRORS,
 )
 from app.services.sandbox import is_command_safe
@@ -579,3 +582,60 @@ async def test_successful_action_resets_error_counter():
     # The error after success should have retry_count=1, not 2
     error_evt = next(e for e in events if e["event"] == "action_error")
     assert error_evt["data"]["retry_count"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Stagnation detection tests
+# ---------------------------------------------------------------------------
+
+
+def test_action_fingerprint_shell():
+    fp = _action_fingerprint({"type": "shell", "command": "curl http://example.com"})
+    assert fp == "shell:curl http://example.com"
+
+
+def test_action_fingerprint_plugin():
+    fp = _action_fingerprint(
+        {"type": "plugin", "plugin": "nmap", "params": {"target": "192.168.1.1"}}
+    )
+    assert "plugin:nmap:" in fp
+    assert "192.168.1.1" in fp
+
+
+def test_similar_commands_detected():
+    a = "shell:curl -X POST http://target.com/ -d 'payload1'"
+    b = "shell:curl -X POST http://target.com/ -d 'payload2'"
+    assert _is_similar(a, b) is True
+
+
+def test_different_commands_not_similar():
+    a = "shell:curl http://example.com"
+    b = "shell:nmap -sV 192.168.1.1"
+    assert _is_similar(a, b) is False
+
+
+def test_count_similar_recent_empty_history():
+    assert count_similar_recent([], "shell:curl http://example.com") == 0
+
+
+def test_count_similar_recent_counts_correctly():
+    history = [
+        "shell:curl -X POST http://target.com/ -d 'data1'",
+        "shell:curl -X POST http://target.com/ -d 'data2'",
+        "shell:nmap -sV 192.168.1.1",
+        "shell:curl -X POST http://target.com/ -d 'data3'",
+    ]
+    current = "shell:curl -X POST http://target.com/ -d 'data4'"
+    count = count_similar_recent(history, current)
+    # Should match the 3 curl commands but not nmap
+    assert count == 3
+
+
+def test_count_similar_recent_no_matches():
+    history = [
+        "shell:nmap -sV 192.168.1.1",
+        "shell:nikto -h http://target.com",
+        "plugin:sql-inject:{}",
+    ]
+    current = "shell:curl http://example.com"
+    assert count_similar_recent(history, current) == 0

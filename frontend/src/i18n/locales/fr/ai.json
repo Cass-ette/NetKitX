@@ -42,6 +42,7 @@
   "viewTask": "Voir la tâche",
   "maxTurnsReached": "Limite de tours atteinte ({{max}} tours). Envoyez un nouveau message pour continuer.",
   "agentErrorStopped": "L'agent s'est arrêté en raison d'une erreur irrécupérable. Veuillez réessayer ou ajuster votre requête.",
+  "agentStagnation": "L'agent s'est arrêté car il répétait des approches similaires sans faire de progrès. Veuillez essayer une requête différente ou décomposer la tâche en étapes plus petites.",
   "openPanel": "Ouvrir le panneau IA",
   "closePanel": "Fermer le panneau IA",
   "newChat": "Nouveau chat"

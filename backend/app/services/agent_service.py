@@ -4,6 +4,7 @@ import json
 import logging
 import re
 from collections.abc import AsyncIterator
+from difflib import SequenceMatcher
 from typing import Any
 
 from app.plugins.registry import registry
@@ -298,6 +299,39 @@ def classify_error(error: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Stagnation detection (semantic loop breaker)
+# ---------------------------------------------------------------------------
+
+STAGNATION_SIMILARITY = 0.7  # two actions >70% similar = "same approach"
+STAGNATION_WARN = 3  # inject soft warning
+STAGNATION_FORCE = 5  # inject hard warning
+STAGNATION_STOP = 7  # terminate
+
+
+def _action_fingerprint(action: dict[str, Any]) -> str:
+    """Extract a comparable fingerprint from an action dict."""
+    atype = action.get("type", "")
+    if atype == "shell":
+        return f"shell:{action.get('command', '')}"
+    elif atype == "plugin":
+        params_str = json.dumps(action.get("params", {}), sort_keys=True)
+        return f"plugin:{action.get('plugin', '')}:{params_str}"
+    return ""
+
+
+def _is_similar(a: str, b: str) -> bool:
+    """Check if two fingerprints are similar enough to count as repetition."""
+    if not a or not b:
+        return False
+    return SequenceMatcher(None, a, b).ratio() >= STAGNATION_SIMILARITY
+
+
+def count_similar_recent(history: list[str], current: str) -> int:
+    """Count how many recent actions are similar to the current one."""
+    return sum(1 for h in history if _is_similar(h, current))
+
+
+# ---------------------------------------------------------------------------
 # Main agent loop
 # ---------------------------------------------------------------------------
 
@@ -359,6 +393,7 @@ async def run_agent_loop(
 
     turn = 0
     consecutive_errors = 0
+    action_history: list[str] = []
     while True:
         turn += 1
         if max_turns > 0 and turn > max_turns:
@@ -523,10 +558,39 @@ async def run_agent_loop(
         consecutive_errors = 0
         yield {"event": "action_result", "data": {"result": result, "action": action}}
 
+        # Stagnation detection
+        fingerprint = _action_fingerprint(action)
+        similar_count = count_similar_recent(action_history, fingerprint)
+        action_history.append(fingerprint)
+
         # Inject into conversation
         full_messages.append({"role": "assistant", "content": full_text})
         result_text = format_action_result(action, result)
         full_messages.append({"role": "user", "content": result_text})
+
+        if similar_count >= STAGNATION_STOP:
+            yield {"event": "done", "data": {"reason": "stagnation"}}
+            return
+        elif similar_count >= STAGNATION_FORCE:
+            full_messages.append(
+                {
+                    "role": "user",
+                    "content": "[System Warning: STAGNATION DETECTED] "
+                    "You have attempted very similar actions multiple times without meaningful progress. "
+                    "You MUST either: (1) try a completely different technique/tool, or "
+                    "(2) stop and provide a summary of your findings so far. "
+                    "Do NOT repeat the same approach again.",
+                }
+            )
+        elif similar_count >= STAGNATION_WARN:
+            full_messages.append(
+                {
+                    "role": "user",
+                    "content": "[System Notice: Your recent actions look very similar to previous attempts. "
+                    "Consider changing your strategy — try different tools, parameters, or techniques "
+                    "rather than variations of the same approach.]",
+                }
+            )
 
     yield {"event": "done", "data": {"reason": "max_turns"}}
 

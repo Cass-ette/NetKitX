@@ -44,5 +44,6 @@
   "newChat": "新對話",
   "maxTurnsReached": "已達到最大輪次限制 ({{max}} 輪)。如需繼續，請傳送新訊息。",
   "agentTurnUnlimited": "第 {{turn}} 輪",
-  "agentErrorStopped": "Agent 因無法恢復的錯誤而停止。請重試或調整您的請求。"
+  "agentErrorStopped": "Agent 因無法恢復的錯誤而停止。請重試或調整您的請求。",
+  "agentStagnation": "Agent 因重複採用相似方法而未取得進展而停止。請嘗試不同的請求或將任務分解為較小的步驟。"
 }

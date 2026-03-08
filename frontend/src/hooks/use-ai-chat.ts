@@ -310,6 +310,16 @@ export function useAIChat() {
           return [...prev, { role: "assistant", content: notice }];
         }
 
+        if (reason === "stagnation") {
+          const notice = t("agentStagnation");
+          if (isTrailingEmpty) {
+            const updated = [...prev];
+            updated[updated.length - 1] = { role: "assistant", content: notice };
+            return updated;
+          }
+          return [...prev, { role: "assistant", content: notice }];
+        }
+
         if (isTrailingEmpty) {
           return prev.slice(0, -1);
         }

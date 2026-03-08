@@ -42,6 +42,7 @@
   "viewTask": "Aufgabe anzeigen",
   "maxTurnsReached": "Maximale Rundenzahl erreicht ({{max}} Runden). Senden Sie eine neue Nachricht, um fortzufahren.",
   "agentErrorStopped": "Agent wurde aufgrund eines nicht behebbaren Fehlers gestoppt. Bitte versuchen Sie es erneut oder passen Sie Ihre Anfrage an.",
+  "agentStagnation": "Der Agent wurde gestoppt, da er ähnliche Ansätze wiederholte, ohne Fortschritte zu erzielen. Versuchen Sie eine andere Anfrage oder teilen Sie die Aufgabe in kleinere Schritte auf.",
   "openPanel": "KI-Panel öffnen",
   "closePanel": "KI-Panel schließen",
   "newChat": "Neuer Chat"

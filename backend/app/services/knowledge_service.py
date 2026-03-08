@@ -326,7 +326,11 @@ async def finalize_session(
             ).scalar_one_or_none()
 
             if agent_session:
-                status = "completed" if reason in ("complete", "waiting", "max_turns") else "failed"
+                status = (
+                    "completed"
+                    if reason in ("complete", "waiting", "max_turns", "stagnation")
+                    else "failed"
+                )
                 # Count actual turn events
                 max_turn = 0
                 for td in turn_dicts:
