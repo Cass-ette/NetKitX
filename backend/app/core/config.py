@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     AGENT_MAX_TURNS: int = 0  # 0 = unlimited
     AGENT_COMMAND_TIMEOUT: int = 30
 
+    # Knowledge extraction
+    AUTO_EXTRACT_KNOWLEDGE: bool = False
+
     # GitHub OAuth
     GITHUB_CLIENT_ID: str = ""
     GITHUB_CLIENT_SECRET: str = ""

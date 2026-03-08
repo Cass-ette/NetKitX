@@ -57,6 +57,7 @@ class KnowledgeEntryResponse(BaseModel):
     key_findings: str
     tags: list | None = None
     summary: str
+    learning_report: str = ""
     extraction_status: str
     created_at: datetime
 

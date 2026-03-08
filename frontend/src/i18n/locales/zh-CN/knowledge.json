@@ -12,5 +12,19 @@
   "loading": "加载中...",
   "knowledge": "知识库",
   "knowledgeDescription": "从会话中提取的攻防知识。",
-  "noKnowledge": "暂无知识条目。"
+  "noKnowledge": "暂无知识条目。",
+  "generateReport": "生成报告",
+  "extracting": "提取中...",
+  "reportReady": "报告已就绪",
+  "learningReport": "学习报告",
+  "totalEntries": "共 {{count}} 条",
+  "scenario": "场景",
+  "targetType": "目标类型",
+  "vulnType": "漏洞类型",
+  "outcome": "结果",
+  "summary": "摘要",
+  "keyFindings": "关键发现",
+  "attackChain": "攻击链",
+  "toolsUsed": "使用工具",
+  "tags": "标签"
 }

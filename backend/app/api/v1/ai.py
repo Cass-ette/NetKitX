@@ -274,7 +274,11 @@ async def agent(
 
     async def _finalize():
         await finalize_session(
-            agent_session.id, collected, list(body.messages), done_reason_holder[0]
+            agent_session.id,
+            collected,
+            list(body.messages),
+            done_reason_holder[0],
+            user_id=user.id,
         )
 
     return StreamingResponse(

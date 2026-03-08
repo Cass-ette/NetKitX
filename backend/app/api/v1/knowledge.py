@@ -1,5 +1,7 @@
 """Session & knowledge REST endpoints."""
 
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +19,7 @@ from app.schemas.knowledge import (
 from app.services.knowledge_service import (
     delete_knowledge_entry,
     delete_session,
+    extract_knowledge,
     get_knowledge_entries,
     get_session_detail,
     get_session_turns,
@@ -102,3 +105,32 @@ async def remove_knowledge(
     if not deleted:
         raise HTTPException(status_code=404, detail="Knowledge entry not found")
     return {"ok": True}
+
+
+@router.post("/sessions/{session_id}/extract")
+async def extract_session_knowledge(
+    session_id: int,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """Trigger knowledge extraction for a completed session."""
+    session = await get_session_detail(db, session_id, user.id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # Launch extraction in background
+    asyncio.create_task(
+        _run_extraction(session_id, user.id),
+    )
+    return {"status": "processing", "session_id": session_id}
+
+
+async def _run_extraction(session_id: int, user_id: int) -> None:
+    try:
+        await extract_knowledge(session_id, user_id)
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).exception(
+            "Background extraction failed for session %d", session_id
+        )

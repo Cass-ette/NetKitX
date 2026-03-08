@@ -12,5 +12,19 @@
   "loading": "Loading...",
   "knowledge": "Knowledge Base",
   "knowledgeDescription": "Extracted attack/defense knowledge from your sessions.",
-  "noKnowledge": "No knowledge entries yet."
+  "noKnowledge": "No knowledge entries yet.",
+  "generateReport": "Generate Report",
+  "extracting": "Extracting...",
+  "reportReady": "Report Ready",
+  "learningReport": "Learning Report",
+  "totalEntries": "{{count}} entries",
+  "scenario": "Scenario",
+  "targetType": "Target Type",
+  "vulnType": "Vulnerability",
+  "outcome": "Outcome",
+  "summary": "Summary",
+  "keyFindings": "Key Findings",
+  "attackChain": "Attack Chain",
+  "toolsUsed": "Tools Used",
+  "tags": "Tags"
 }

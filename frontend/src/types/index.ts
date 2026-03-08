@@ -222,6 +222,7 @@ export interface KnowledgeEntry {
   key_findings: string;
   tags?: string[] | null;
   summary: string;
+  learning_report: string;
   extraction_status: string;
   created_at: string;
 }

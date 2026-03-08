@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   BookOpen,
   History,
+  Brain,
 } from "lucide-react";
 import {
   Sidebar,
@@ -45,6 +46,7 @@ const navItems: { key: string; href: string; icon: LucideIcon; adminOnly?: boole
   { key: "topology", href: "/topology", icon: Network },
   { key: "aiChat", href: "/ai-chat", icon: Bot },
   { key: "sessions", href: "/sessions", icon: History },
+  { key: "knowledge", href: "/knowledge", icon: Brain },
   { key: "admin", href: "/admin", icon: ShieldCheck, adminOnly: true },
   { key: "settings", href: "/settings", icon: Settings },
 ];

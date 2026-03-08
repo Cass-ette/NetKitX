@@ -62,6 +62,7 @@ class KnowledgeEntry(Base):
     tags: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
     summary: Mapped[str] = mapped_column(Text, default="")
     raw_data: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    learning_report: Mapped[str] = mapped_column(Text, default="")
     extraction_status: Mapped[str] = mapped_column(String(20), default="pending")
     created_at: Mapped[datetime.datetime] = mapped_column(server_default=func.now())
 

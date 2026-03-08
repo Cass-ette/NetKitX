@@ -1,6 +1,6 @@
 {
-  "sessions": "Sitzungsverlauf",
-  "sessionsDescription": "Vergangene AI-Agent-Sitzungen durchsuchen und wiedergeben.",
+  "sessions": "Sitzungen",
+  "sessionsDescription": "Durchsuchen und wiederholen Sie vergangene AI-Agent-Sitzungen.",
   "title": "Titel",
   "mode": "Modus",
   "security": "Sicherheit",
@@ -10,7 +10,21 @@
   "noSessions": "Noch keine Sitzungen. Starten Sie ein AI-Agent-Gespräch, um es hier zu sehen.",
   "totalSessions": "{{count}} Sitzung(en)",
   "loading": "Laden...",
-  "knowledge": "Wissensdatenbank",
+  "knowledge": "Wissensbasis",
   "knowledgeDescription": "Aus Sitzungen extrahiertes Angriffs-/Verteidigungswissen.",
-  "noKnowledge": "Noch keine Wissenseinträge."
+  "noKnowledge": "Noch keine Wissenseinträge.",
+  "generateReport": "Bericht erstellen",
+  "extracting": "Extrahieren...",
+  "reportReady": "Bericht fertig",
+  "learningReport": "Lernbericht",
+  "totalEntries": "{{count}} Einträge",
+  "scenario": "Szenario",
+  "targetType": "Zieltyp",
+  "vulnType": "Schwachstelle",
+  "outcome": "Ergebnis",
+  "summary": "Zusammenfassung",
+  "keyFindings": "Wichtige Erkenntnisse",
+  "attackChain": "Angriffskette",
+  "toolsUsed": "Verwendete Tools",
+  "tags": "Tags"
 }

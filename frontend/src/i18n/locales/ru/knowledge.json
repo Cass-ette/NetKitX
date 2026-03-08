@@ -1,7 +1,7 @@
 {
-  "sessions": "История сессий",
+  "sessions": "Сессии",
   "sessionsDescription": "Просмотр и воспроизведение прошлых сессий AI-агента.",
-  "title": "Заголовок",
+  "title": "Название",
   "mode": "Режим",
   "security": "Безопасность",
   "turns": "Ходы",
@@ -11,6 +11,20 @@
   "totalSessions": "{{count}} сессий",
   "loading": "Загрузка...",
   "knowledge": "База знаний",
-  "knowledgeDescription": "Знания об атаках/защите, извлечённые из ваших сессий.",
-  "noKnowledge": "Пока нет записей знаний."
+  "knowledgeDescription": "Извлечённые знания об атаках/защите из ваших сессий.",
+  "noKnowledge": "Пока нет записей знаний.",
+  "generateReport": "Создать отчёт",
+  "extracting": "Извлечение...",
+  "reportReady": "Отчёт готов",
+  "learningReport": "Учебный отчёт",
+  "totalEntries": "{{count}} записей",
+  "scenario": "Сценарий",
+  "targetType": "Тип цели",
+  "vulnType": "Уязвимость",
+  "outcome": "Результат",
+  "summary": "Резюме",
+  "keyFindings": "Ключевые находки",
+  "attackChain": "Цепочка атаки",
+  "toolsUsed": "Используемые инструменты",
+  "tags": "Теги"
 }

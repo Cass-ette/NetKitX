@@ -351,3 +351,28 @@ async def stream_glm(
     except Exception as e:
         logger.error("GLM stream error: %s", e)
         yield f"[Error: {e}]"
+
+
+async def call_ai(
+    provider: str,
+    api_key: str,
+    model: str,
+    messages: list[dict[str, str]],
+    base_url: str | None = None,
+) -> str:
+    """Non-streaming AI call — collects all chunks into a single string."""
+    if base_url:
+        gen = stream_openai_compatible(api_key, model, messages, base_url)
+    elif provider == "claude":
+        gen = stream_claude(api_key, model, messages)
+    elif provider == "deepseek":
+        gen = stream_deepseek(api_key, model, messages)
+    elif provider == "glm":
+        gen = stream_glm(api_key, model, messages)
+    else:
+        return "[Error: Unknown provider or missing base_url]"
+
+    chunks: list[str] = []
+    async for chunk in gen:
+        chunks.append(chunk)
+    return "".join(chunks)

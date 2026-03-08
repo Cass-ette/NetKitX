@@ -1,5 +1,6 @@
-"""Knowledge service: session persistence & event-to-turn conversion."""
+"""Knowledge service: session persistence, event-to-turn conversion, knowledge extraction."""
 
+import json
 import logging
 from datetime import datetime
 from typing import Any
@@ -11,6 +12,46 @@ from app.core.database import async_session
 from app.models.knowledge import AgentSession, KnowledgeEntry, SessionTurn
 
 logger = logging.getLogger(__name__)
+
+EXTRACTION_PROMPT = """\
+You are a cybersecurity knowledge extractor. Analyze this agent session and extract structured data.
+
+Return a JSON object with exactly these fields:
+- scenario: (string) Brief description of the attack/defense scenario
+- target_type: (string) One of: web|network|host|api|cloud|other
+- vulnerability_type: (string) One of: sqli|xss|rce|ssrf|shellshock|lfi|rfi|misconfig|privesc|other
+- tools_used: (array of strings) Tools and commands used
+- attack_chain: (string) Step-by-step progression of what was attempted
+- outcome: (string) One of: success|partial|failed
+- key_findings: (string) Important technical discoveries
+- tags: (array of strings) Searchable keywords
+- summary: (string) 2-3 sentence executive summary
+
+Return ONLY valid JSON, no markdown code fences, no extra text.
+
+Session data:
+{digest}"""
+
+REPORT_PROMPT = """\
+Based on this cybersecurity session analysis, write a concise learning report.
+
+Format as markdown with these sections:
+## 场景概述
+(1-2 sentences)
+
+## 攻击/防御过程
+(numbered key steps, what worked and what didn't)
+
+## 关键教训
+(each lesson: what went wrong/right, why, how to do better next time)
+
+## 正确做法
+(the optimal approach for this type of scenario)
+
+{lang_instruction}
+
+Extraction data:
+{extraction_json}"""
 
 
 # ---------------------------------------------------------------------------
@@ -300,6 +341,7 @@ async def finalize_session(
     collected: list[dict[str, Any]],
     messages: list[dict[str, str]],
     reason: str,
+    user_id: int | None = None,
 ) -> None:
     """Save turns and update session status. Opens its own DB session."""
     try:
@@ -343,5 +385,262 @@ async def finalize_session(
             await db.commit()
             logger.info("Session %d finalized: %s (%d turns)", session_id, reason, len(turn_dicts))
 
+        # Auto-extract knowledge if enabled
+        from app.core.config import settings
+
+        if settings.AUTO_EXTRACT_KNOWLEDGE and user_id is not None:
+            try:
+                await extract_knowledge(session_id, user_id)
+            except Exception:
+                logger.exception("Auto-extract failed for session %d", session_id)
+
     except Exception:
         logger.exception("Failed to finalize session %d", session_id)
+
+
+# ---------------------------------------------------------------------------
+# Knowledge Extraction (Phase 2)
+# ---------------------------------------------------------------------------
+
+MAX_RESULT_CHARS = 500
+
+
+def _compress_action_result(result: dict | None) -> str:
+    """Compress an action result dict into a compact string for digest."""
+    if not result:
+        return "(no output)"
+    parts = []
+    if result.get("error"):
+        parts.append(f"ERROR: {str(result['error'])[:MAX_RESULT_CHARS]}")
+    if result.get("exit_code") is not None:
+        parts.append(f"exit_code={result['exit_code']}")
+    if result.get("stdout"):
+        stdout = str(result["stdout"])[:MAX_RESULT_CHARS]
+        parts.append(f"stdout: {stdout}")
+    if result.get("stderr"):
+        stderr = str(result["stderr"])[:MAX_RESULT_CHARS]
+        parts.append(f"stderr: {stderr}")
+    if result.get("items"):
+        items = result["items"]
+        items_str = json.dumps(items[:5], default=str, ensure_ascii=False)
+        if len(items_str) > MAX_RESULT_CHARS:
+            items_str = items_str[:MAX_RESULT_CHARS] + "..."
+        parts.append(f"{len(items)} result(s): {items_str}")
+    return " | ".join(parts) if parts else "(empty result)"
+
+
+def build_session_digest(turns: list[SessionTurn]) -> str:
+    """Compress session turns into a compact text digest for AI extraction."""
+    lines: list[str] = []
+    for turn in turns:
+        if turn.role == "user":
+            lines.append(f"[User] {turn.content[:1000]}")
+        elif turn.role == "assistant":
+            content_preview = turn.content[:500] if turn.content else ""
+            if content_preview:
+                lines.append(f"[Turn {turn.turn_number}] {content_preview}")
+            if turn.action:
+                action = turn.action
+                atype = action.get("type", "?")
+                if atype == "plugin":
+                    desc = f"plugin: {action.get('plugin', '?')}"
+                    params = action.get("params")
+                    if params:
+                        desc += f" params={json.dumps(params, ensure_ascii=False)[:200]}"
+                elif atype == "shell":
+                    desc = f"shell: {action.get('command', '?')[:200]}"
+                else:
+                    desc = json.dumps(action, ensure_ascii=False)[:200]
+                lines.append(f"[Action] {desc}")
+        elif turn.role == "action_result":
+            compressed = _compress_action_result(turn.action_result)
+            lines.append(f"[Result] {compressed}")
+    return "\n".join(lines)
+
+
+def _parse_extraction_json(raw: str) -> dict[str, Any]:
+    """Parse AI extraction response, handling markdown fences."""
+    text = raw.strip()
+    # Strip markdown code fences
+    if text.startswith("```"):
+        first_nl = text.index("\n") if "\n" in text else 3
+        text = text[first_nl + 1 :]
+        if text.endswith("```"):
+            text = text[:-3]
+        text = text.strip()
+    return json.loads(text)
+
+
+VALID_TARGET_TYPES = {"web", "network", "host", "api", "cloud", "other"}
+VALID_VULN_TYPES = {
+    "sqli",
+    "xss",
+    "rce",
+    "ssrf",
+    "shellshock",
+    "lfi",
+    "rfi",
+    "misconfig",
+    "privesc",
+    "other",
+}
+VALID_OUTCOMES = {"success", "partial", "failed"}
+
+
+def _sanitize_extraction(data: dict[str, Any]) -> dict[str, Any]:
+    """Sanitize and normalize extracted fields."""
+    return {
+        "scenario": str(data.get("scenario", ""))[:500],
+        "target_type": data.get("target_type", "other")
+        if data.get("target_type") in VALID_TARGET_TYPES
+        else "other",
+        "vulnerability_type": data.get("vulnerability_type", "other")
+        if data.get("vulnerability_type") in VALID_VULN_TYPES
+        else "other",
+        "tools_used": data.get("tools_used") if isinstance(data.get("tools_used"), list) else [],
+        "attack_chain": str(data.get("attack_chain", ""))[:2000],
+        "outcome": data.get("outcome", "partial")
+        if data.get("outcome") in VALID_OUTCOMES
+        else "partial",
+        "key_findings": str(data.get("key_findings", ""))[:2000],
+        "tags": data.get("tags") if isinstance(data.get("tags"), list) else [],
+        "summary": str(data.get("summary", ""))[:1000],
+    }
+
+
+async def extract_knowledge(session_id: int, user_id: int) -> int:
+    """Extract knowledge from a completed session. Returns KnowledgeEntry.id."""
+    from app.models.ai_settings import AISettings
+    from app.services.ai_service import call_ai, decrypt_key, get_lang_reminder
+
+    async with async_session() as db:
+        # Check for existing successful extraction
+        existing = (
+            await db.execute(
+                select(KnowledgeEntry).where(
+                    KnowledgeEntry.session_id == session_id,
+                    KnowledgeEntry.user_id == user_id,
+                    KnowledgeEntry.extraction_status == "success",
+                )
+            )
+        ).scalar_one_or_none()
+        if existing:
+            return existing.id
+
+        # Load session + turns
+        session_row = (
+            await db.execute(
+                select(AgentSession).where(
+                    AgentSession.id == session_id, AgentSession.user_id == user_id
+                )
+            )
+        ).scalar_one_or_none()
+        if not session_row:
+            raise ValueError(f"Session {session_id} not found for user {user_id}")
+
+        turns = await get_session_turns(db, session_id)
+        if not turns:
+            raise ValueError(f"Session {session_id} has no turns")
+
+        # Load AI settings
+        ai_row = (
+            await db.execute(select(AISettings).where(AISettings.user_id == user_id))
+        ).scalar_one_or_none()
+        if not ai_row:
+            raise ValueError("AI not configured")
+
+        api_key = decrypt_key(ai_row.api_key_enc)
+
+        # Create pending entry
+        entry = KnowledgeEntry(
+            user_id=user_id,
+            session_id=session_id,
+            extraction_status="processing",
+        )
+        db.add(entry)
+        await db.commit()
+        await db.refresh(entry)
+        entry_id = entry.id
+
+    # Run extraction outside the DB session to avoid long-held connections
+    try:
+        async with async_session() as db:
+            digest = build_session_digest(turns)
+            prompt = EXTRACTION_PROMPT.format(digest=digest)
+
+            # Call 1: Structured extraction
+            extraction_raw = await call_ai(
+                provider=ai_row.provider,
+                api_key=api_key,
+                model=ai_row.model,
+                messages=[{"role": "user", "content": prompt}],
+                base_url=ai_row.base_url,
+            )
+
+            extracted = _parse_extraction_json(extraction_raw)
+            sanitized = _sanitize_extraction(extracted)
+
+            # Call 2: Learning report
+            lang = session_row.lang or "en"
+            from app.services.ai_service import LANG_MAP
+
+            lang_name = LANG_MAP.get(lang, lang)
+            lang_instruction = f"Write the entire report in {lang_name}."
+            report_prompt = REPORT_PROMPT.format(
+                extraction_json=json.dumps(sanitized, ensure_ascii=False, indent=2),
+                lang_instruction=lang_instruction,
+            )
+            report_prompt += get_lang_reminder(lang)
+
+            learning_report = await call_ai(
+                provider=ai_row.provider,
+                api_key=api_key,
+                model=ai_row.model,
+                messages=[{"role": "user", "content": report_prompt}],
+                base_url=ai_row.base_url,
+            )
+
+            # Update entry
+            entry_row = (
+                await db.execute(select(KnowledgeEntry).where(KnowledgeEntry.id == entry_id))
+            ).scalar_one()
+            entry_row.scenario = sanitized["scenario"]
+            entry_row.target_type = sanitized["target_type"]
+            entry_row.vulnerability_type = sanitized["vulnerability_type"]
+            entry_row.tools_used = sanitized["tools_used"]
+            entry_row.attack_chain = sanitized["attack_chain"]
+            entry_row.outcome = sanitized["outcome"]
+            entry_row.key_findings = sanitized["key_findings"]
+            entry_row.tags = sanitized["tags"]
+            entry_row.summary = sanitized["summary"]
+            entry_row.learning_report = learning_report
+            entry_row.raw_data = extracted
+            entry_row.extraction_status = "success"
+
+            # Update session summary
+            session_obj = (
+                await db.execute(select(AgentSession).where(AgentSession.id == session_id))
+            ).scalar_one_or_none()
+            if session_obj:
+                session_obj.summary = sanitized["summary"][:300]
+
+            await db.commit()
+            logger.info(
+                "Knowledge extraction complete for session %d, entry %d", session_id, entry_id
+            )
+            return entry_id
+
+    except Exception:
+        logger.exception("Knowledge extraction failed for session %d", session_id)
+        # Mark entry as failed
+        try:
+            async with async_session() as db:
+                entry_row = (
+                    await db.execute(select(KnowledgeEntry).where(KnowledgeEntry.id == entry_id))
+                ).scalar_one_or_none()
+                if entry_row:
+                    entry_row.extraction_status = "failed"
+                    await db.commit()
+        except Exception:
+            logger.exception("Failed to mark entry %d as failed", entry_id)
+        raise

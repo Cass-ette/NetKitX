@@ -1,17 +1,22 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { useTranslations } from "@/i18n/use-translations";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, User, Bot } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowLeft, User, Bot, Sparkles, Loader2, BookOpen } from "lucide-react";
 import { AgentActionCard } from "@/components/ai/agent-action-card";
 import ReactMarkdown from "react-markdown";
-import type { AgentSessionDetail, SessionTurn, AgentAction, AgentActionResult } from "@/types";
+import type { AgentSessionDetail, SessionTurn, AgentAction, AgentActionResult, KnowledgeEntry } from "@/types";
+
+interface KnowledgeListResponse {
+  items: KnowledgeEntry[];
+  total: number;
+}
 
 export default function SessionDetailPage() {
   const { t } = useTranslations("knowledge");
@@ -23,6 +28,20 @@ export default function SessionDetailPage() {
 
   const [session, setSession] = useState<AgentSessionDetail | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [knowledge, setKnowledge] = useState<KnowledgeEntry | null>(null);
+  const [extracting, setExtracting] = useState(false);
+
+  const fetchKnowledge = useCallback(async () => {
+    if (!token) return;
+    try {
+      const data = await api<KnowledgeListResponse>("/api/v1/knowledge", { token });
+      const entry = data.items.find((e) => e.session_id === Number(sessionId));
+      if (entry) setKnowledge(entry);
+      return entry;
+    } catch {
+      return null;
+    }
+  }, [token, sessionId]);
 
   useEffect(() => {
     if (!token || !sessionId) return;
@@ -36,8 +55,36 @@ export default function SessionDetailPage() {
       } catch (err) {
         console.error("Failed to fetch session:", err);
       }
+      await fetchKnowledge();
     });
-  }, [token, sessionId]);
+  }, [token, sessionId, fetchKnowledge]);
+
+  const handleExtract = async () => {
+    if (!token || extracting) return;
+    setExtracting(true);
+    try {
+      await api(`/api/v1/sessions/${sessionId}/extract`, {
+        method: "POST",
+        token,
+      });
+      // Poll for completion
+      const poll = setInterval(async () => {
+        const entry = await fetchKnowledge();
+        if (entry && entry.extraction_status !== "processing") {
+          clearInterval(poll);
+          setExtracting(false);
+        }
+      }, 3000);
+      // Stop polling after 2 minutes
+      setTimeout(() => {
+        clearInterval(poll);
+        setExtracting(false);
+      }, 120_000);
+    } catch (err) {
+      console.error("Extract failed:", err);
+      setExtracting(false);
+    }
+  };
 
   if (isPending || !session) {
     return (
@@ -46,6 +93,9 @@ export default function SessionDetailPage() {
       </div>
     );
   }
+
+  const isProcessing = extracting || knowledge?.extraction_status === "processing";
+  const hasReport = knowledge?.extraction_status === "success" && knowledge.learning_report;
 
   return (
     <div className="space-y-6">
@@ -72,7 +122,50 @@ export default function SessionDetailPage() {
             </span>
           </div>
         </div>
+        <Button
+          onClick={handleExtract}
+          disabled={isProcessing || hasReport !== false}
+          variant={hasReport ? "outline" : "default"}
+          size="sm"
+        >
+          {isProcessing ? (
+            <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("extracting")}</>
+          ) : hasReport ? (
+            <><BookOpen className="h-4 w-4 mr-2" />{t("reportReady")}</>
+          ) : (
+            <><Sparkles className="h-4 w-4 mr-2" />{t("generateReport")}</>
+          )}
+        </Button>
       </div>
+
+      {/* Learning Report */}
+      {hasReport && (
+        <Card className="border-primary/20">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <BookOpen className="h-4 w-4" />
+              {t("learningReport")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="prose prose-sm dark:prose-invert max-w-none">
+            <ReactMarkdown>{knowledge!.learning_report}</ReactMarkdown>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Knowledge Summary (if extracted) */}
+      {knowledge?.extraction_status === "success" && (
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="outline">{knowledge.target_type}</Badge>
+          <Badge variant="outline">{knowledge.vulnerability_type}</Badge>
+          <Badge variant={knowledge.outcome === "success" ? "default" : knowledge.outcome === "failed" ? "destructive" : "secondary"}>
+            {knowledge.outcome}
+          </Badge>
+          {knowledge.tags?.map((tag) => (
+            <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+          ))}
+        </div>
+      )}
 
       {/* Turns */}
       <div className="space-y-4">

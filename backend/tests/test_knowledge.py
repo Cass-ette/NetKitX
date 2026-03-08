@@ -1,6 +1,14 @@
-"""Unit tests for knowledge service (_events_to_turns logic)."""
+"""Unit tests for knowledge service (_events_to_turns logic + extraction helpers)."""
 
-from app.services.knowledge_service import _events_to_turns
+from unittest.mock import MagicMock
+
+from app.services.knowledge_service import (
+    _compress_action_result,
+    _events_to_turns,
+    _parse_extraction_json,
+    _sanitize_extraction,
+    build_session_digest,
+)
 
 
 class TestEventsToTurnsBasic:
@@ -167,3 +175,189 @@ class TestEventsToTurnsActionError:
         err_turn = turns[1]
         assert err_turn["role"] == "action_result"
         assert err_turn["action_result"]["error_type"] == "malformed"
+
+
+# =====================================================================
+# Phase 2: Knowledge extraction helpers
+# =====================================================================
+
+
+class TestCompressActionResult:
+    """_compress_action_result produces compact strings."""
+
+    def test_none_result(self):
+        assert _compress_action_result(None) == "(no output)"
+
+    def test_empty_dict(self):
+        assert _compress_action_result({}) == "(no output)"
+
+    def test_stdout_result(self):
+        result = {"stdout": "PHP Version 5.2.17", "exit_code": 0}
+        compressed = _compress_action_result(result)
+        assert "exit_code=0" in compressed
+        assert "PHP Version" in compressed
+
+    def test_error_result(self):
+        result = {"error": "Permission denied", "exit_code": 1}
+        compressed = _compress_action_result(result)
+        assert "ERROR: Permission denied" in compressed
+
+    def test_items_result(self):
+        result = {"items": [{"port": 80}, {"port": 443}]}
+        compressed = _compress_action_result(result)
+        assert "2 result(s)" in compressed
+
+    def test_long_stdout_truncated(self):
+        result = {"stdout": "x" * 1000}
+        compressed = _compress_action_result(result)
+        assert len(compressed) < 1000
+
+
+class TestBuildSessionDigest:
+    """build_session_digest converts SessionTurn objects to compact text."""
+
+    def _make_turn(self, **kwargs):
+        turn = MagicMock()
+        turn.role = kwargs.get("role", "assistant")
+        turn.content = kwargs.get("content", "")
+        turn.turn_number = kwargs.get("turn_number", 0)
+        turn.action = kwargs.get("action", None)
+        turn.action_result = kwargs.get("action_result", None)
+        return turn
+
+    def test_user_turn(self):
+        turns = [self._make_turn(role="user", content="Target: http://10.0.0.1")]
+        digest = build_session_digest(turns)
+        assert "[User] Target: http://10.0.0.1" in digest
+
+    def test_assistant_with_plugin_action(self):
+        turns = [
+            self._make_turn(
+                role="assistant",
+                content="Scanning...",
+                turn_number=1,
+                action={"type": "plugin", "plugin": "nmap", "params": {"target": "10.0.0.1"}},
+            ),
+        ]
+        digest = build_session_digest(turns)
+        assert "[Turn 1]" in digest
+        assert "[Action] plugin: nmap" in digest
+
+    def test_assistant_with_shell_action(self):
+        turns = [
+            self._make_turn(
+                role="assistant",
+                content="Running command",
+                turn_number=2,
+                action={"type": "shell", "command": "curl http://target/"},
+            ),
+        ]
+        digest = build_session_digest(turns)
+        assert "shell: curl" in digest
+
+    def test_action_result_turn(self):
+        turns = [
+            self._make_turn(
+                role="action_result",
+                action_result={"stdout": "Found flag!", "exit_code": 0},
+            ),
+        ]
+        digest = build_session_digest(turns)
+        assert "[Result]" in digest
+        assert "Found flag!" in digest
+
+    def test_full_session_digest(self):
+        turns = [
+            self._make_turn(role="user", content="Exploit ShellShock"),
+            self._make_turn(
+                role="assistant",
+                content="Analyzing...",
+                turn_number=1,
+                action={
+                    "type": "shell",
+                    "command": "curl -H 'User-Agent: () { :; }; echo vulnerable' http://target/",
+                },
+            ),
+            self._make_turn(
+                role="action_result",
+                action_result={"stdout": "vulnerable", "exit_code": 0},
+            ),
+            self._make_turn(
+                role="assistant",
+                content="The target is vulnerable.",
+                turn_number=2,
+            ),
+        ]
+        digest = build_session_digest(turns)
+        lines = digest.split("\n")
+        assert len(lines) == 5  # user, turn1, action, result, turn2
+
+
+class TestParseExtractionJson:
+    """_parse_extraction_json handles raw AI output."""
+
+    def test_plain_json(self):
+        raw = '{"scenario": "test", "outcome": "success"}'
+        result = _parse_extraction_json(raw)
+        assert result["scenario"] == "test"
+
+    def test_markdown_fenced_json(self):
+        raw = '```json\n{"scenario": "test", "outcome": "success"}\n```'
+        result = _parse_extraction_json(raw)
+        assert result["scenario"] == "test"
+
+    def test_markdown_fenced_no_lang(self):
+        raw = '```\n{"scenario": "fenced"}\n```'
+        result = _parse_extraction_json(raw)
+        assert result["scenario"] == "fenced"
+
+
+class TestSanitizeExtraction:
+    """_sanitize_extraction normalizes and validates fields."""
+
+    def test_valid_data(self):
+        data = {
+            "scenario": "SQL injection on login",
+            "target_type": "web",
+            "vulnerability_type": "sqli",
+            "tools_used": ["sqlmap", "curl"],
+            "attack_chain": "Discovered SQLi in login form",
+            "outcome": "success",
+            "key_findings": "Union-based SQLi",
+            "tags": ["sqli", "web"],
+            "summary": "Found and exploited SQLi",
+        }
+        result = _sanitize_extraction(data)
+        assert result["target_type"] == "web"
+        assert result["vulnerability_type"] == "sqli"
+        assert result["outcome"] == "success"
+
+    def test_invalid_enums_fallback_to_defaults(self):
+        data = {
+            "target_type": "spaceship",
+            "vulnerability_type": "magic",
+            "outcome": "maybe",
+        }
+        result = _sanitize_extraction(data)
+        assert result["target_type"] == "other"
+        assert result["vulnerability_type"] == "other"
+        assert result["outcome"] == "partial"
+
+    def test_missing_fields_use_defaults(self):
+        result = _sanitize_extraction({})
+        assert result["scenario"] == ""
+        assert result["target_type"] == "other"
+        assert result["tools_used"] == []
+        assert result["tags"] == []
+
+    def test_non_list_tools_become_empty(self):
+        data = {"tools_used": "nmap", "tags": 123}
+        result = _sanitize_extraction(data)
+        assert result["tools_used"] == []
+        assert result["tags"] == []
+
+    def test_long_strings_truncated(self):
+        data = {"scenario": "x" * 1000, "attack_chain": "y" * 5000}
+        result = _sanitize_extraction(data)
+        assert len(result["scenario"]) == 500
+        assert len(result["attack_chain"]) == 2000

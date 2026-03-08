@@ -12,5 +12,19 @@
   "loading": "載入中...",
   "knowledge": "知識庫",
   "knowledgeDescription": "從會話中提取的攻防知識。",
-  "noKnowledge": "暫無知識條目。"
+  "noKnowledge": "暫無知識條目。",
+  "generateReport": "生成報告",
+  "extracting": "提取中...",
+  "reportReady": "報告已就緒",
+  "learningReport": "學習報告",
+  "totalEntries": "共 {{count}} 條",
+  "scenario": "場景",
+  "targetType": "目標類型",
+  "vulnType": "漏洞類型",
+  "outcome": "結果",
+  "summary": "摘要",
+  "keyFindings": "關鍵發現",
+  "attackChain": "攻擊鏈",
+  "toolsUsed": "使用工具",
+  "tags": "標籤"
 }
