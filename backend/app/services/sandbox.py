@@ -90,8 +90,8 @@ async def execute_shell(command: str) -> dict[str, Any]:
         stderr = stderr_bytes.decode("utf-8", errors="replace")
 
         # Truncate output
-        max_stdout = 10240  # 10KB
-        max_stderr = 5120  # 5KB
+        max_stdout = 30720  # 30KB
+        max_stderr = 10240  # 10KB
         if len(stdout) > max_stdout:
             stdout = stdout[:max_stdout] + "\n...(stdout truncated)"
         if len(stderr) > max_stderr:

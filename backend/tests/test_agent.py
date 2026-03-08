@@ -11,6 +11,7 @@ from app.services.agent_service import (
     has_action_attempt,
     classify_error,
     run_agent_loop,
+    _preprocess_shell_command,
     MAX_CONSECUTIVE_ERRORS,
 )
 from app.services.sandbox import is_command_safe
@@ -150,11 +151,39 @@ def test_format_shell_result():
 
 def test_format_result_truncates_large_output():
     action = {"type": "plugin", "plugin": "test"}
-    result = {"data": "x" * 10000}
+    result = {"data": "x" * 25000}
     formatted = format_action_result(action, result)
     assert "truncated" in formatted
     # Should not exceed max chars significantly
-    assert len(formatted) < 10000
+    assert len(formatted) < 25000
+
+
+# ---------------------------------------------------------------------------
+# Curl preprocessing tests
+# ---------------------------------------------------------------------------
+
+
+def test_curl_gets_silent_flag():
+    assert _preprocess_shell_command("curl http://example.com") == "curl -s http://example.com"
+
+
+def test_curl_already_silent():
+    cmd = "curl -s http://example.com"
+    assert _preprocess_shell_command(cmd) == cmd
+
+
+def test_curl_combined_silent_flag():
+    cmd = "curl -sS http://example.com"
+    assert _preprocess_shell_command(cmd) == cmd
+
+
+def test_curl_post_gets_silent():
+    assert "curl -s" in _preprocess_shell_command('curl -X POST http://example.com -d "data"')
+
+
+def test_no_curl_unchanged():
+    cmd = "nmap -sV 192.168.1.1"
+    assert _preprocess_shell_command(cmd) == cmd
 
 
 # ---------------------------------------------------------------------------

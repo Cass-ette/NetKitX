@@ -95,8 +95,8 @@ async def exec_in_container(user_id: int, command: str, token: str) -> dict[str,
             workdir="/home/user",
         )
         stdout, stderr = output if isinstance(output, tuple) else (output, b"")
-        stdout = (stdout or b"").decode("utf-8", errors="replace")[:10240]
-        stderr = (stderr or b"").decode("utf-8", errors="replace")[:5120]
+        stdout = (stdout or b"").decode("utf-8", errors="replace")[:30720]
+        stderr = (stderr or b"").decode("utf-8", errors="replace")[:10240]
         return {"stdout": stdout, "stderr": stderr, "exit_code": exit_code}
     except Exception as e:
         logger.error("exec_in_container error: %s", e)

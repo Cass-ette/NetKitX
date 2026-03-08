@@ -202,6 +202,24 @@ def has_action_attempt(text: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Shell command preprocessing
+# ---------------------------------------------------------------------------
+
+_CURL_RE = re.compile(r"\bcurl\b")
+_CURL_SILENT_RE = re.compile(r"\bcurl\s+.*-[a-zA-Z]*s")
+
+
+def _preprocess_shell_command(command: str) -> str:
+    """Add -s (silent) to curl commands to suppress noisy progress output."""
+    if "curl" not in command:
+        return command
+    # Skip if any curl invocation already has -s flag
+    if _CURL_SILENT_RE.search(command):
+        return command
+    return _CURL_RE.sub("curl -s", command)
+
+
+# ---------------------------------------------------------------------------
 # Plugin execution (synchronous wait for result)
 # ---------------------------------------------------------------------------
 
@@ -238,7 +256,7 @@ async def execute_plugin_action(action: dict[str, Any]) -> dict[str, Any]:
 # Format result for conversation injection
 # ---------------------------------------------------------------------------
 
-MAX_RESULT_CHARS = 8000
+MAX_RESULT_CHARS = 20000
 
 
 def format_action_result(action: dict[str, Any], result: dict[str, Any]) -> str:
@@ -531,6 +549,7 @@ async def _execute_action(
         from app.services.sandbox import is_command_safe
 
         command = action.get("command", "")
+        command = _preprocess_shell_command(command)
         safe, reason = is_command_safe(command)
         if not safe:
             return {"error": f"Command blocked: {reason}", "exit_code": -1}
