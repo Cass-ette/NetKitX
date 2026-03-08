@@ -35,7 +35,16 @@ export function useAIChat() {
   const handleStop = useCallback(() => {
     abortRef.current?.abort();
     setLoading(false);
-  }, [setLoading]);
+    setCurrentSessionId(null);
+    // Clean trailing empty assistant message
+    setMessages((prev) => {
+      const last = prev[prev.length - 1];
+      if (last && last.role === "assistant" && !last.content.trim() && !last.action) {
+        return prev.slice(0, -1);
+      }
+      return prev;
+    });
+  }, [setLoading, setCurrentSessionId, setMessages]);
 
   // Chat mode send
   const handleChatSend = useCallback(

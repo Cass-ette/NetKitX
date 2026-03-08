@@ -252,24 +252,29 @@ async def agent(
         # Emit session_start event
         yield f"data: {json.dumps({'event': 'session_start', 'data': {'session_id': agent_session.id}})}\n\n"
 
-        async for evt in run_agent_loop(
-            provider=ai.provider,
-            api_key=api_key,
-            model=ai.model,
-            messages=list(body.messages),
-            agent_mode=body.agent_mode,
-            security_mode=body.security_mode,
-            lang=body.lang,
-            max_turns=body.max_turns,
-            confirm_action=confirm,
-            user_id=user.id,
-            user_token=user_token,
-            base_url=ai.base_url,
-        ):
-            collected.append(evt)
-            if evt.get("event") == "done":
-                done_reason_holder[0] = evt.get("data", {}).get("reason", "complete")
-            yield f"data: {json.dumps(evt, default=str)}\n\n"
+        try:
+            async for evt in run_agent_loop(
+                provider=ai.provider,
+                api_key=api_key,
+                model=ai.model,
+                messages=list(body.messages),
+                agent_mode=body.agent_mode,
+                security_mode=body.security_mode,
+                lang=body.lang,
+                max_turns=body.max_turns,
+                confirm_action=confirm,
+                user_id=user.id,
+                user_token=user_token,
+                base_url=ai.base_url,
+            ):
+                collected.append(evt)
+                if evt.get("event") == "done":
+                    done_reason_holder[0] = evt.get("data", {}).get("reason", "complete")
+                yield f"data: {json.dumps(evt, default=str)}\n\n"
+        except Exception:
+            # Client disconnect or other error — mark as aborted
+            if done_reason_holder[0] == "complete":
+                done_reason_holder[0] = "aborted"
         yield "data: [DONE]\n\n"
 
     async def _finalize():

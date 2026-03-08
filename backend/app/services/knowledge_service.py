@@ -370,7 +370,7 @@ async def finalize_session(
             if agent_session:
                 status = (
                     "completed"
-                    if reason in ("complete", "waiting", "max_turns", "stagnation")
+                    if reason in ("complete", "waiting", "max_turns", "stagnation", "aborted")
                     else "failed"
                 )
                 # Count actual turn events
@@ -526,6 +526,25 @@ async def extract_knowledge(session_id: int, user_id: int) -> int:
         ).scalar_one_or_none()
         if existing:
             return existing.id
+
+        # Clean up stuck "processing" or "failed" entries so we can retry
+        stale = (
+            (
+                await db.execute(
+                    select(KnowledgeEntry).where(
+                        KnowledgeEntry.session_id == session_id,
+                        KnowledgeEntry.user_id == user_id,
+                        KnowledgeEntry.extraction_status.in_(["processing", "failed"]),
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for entry in stale:
+            await db.delete(entry)
+        if stale:
+            await db.commit()
 
         # Load session + turns
         session_row = (
