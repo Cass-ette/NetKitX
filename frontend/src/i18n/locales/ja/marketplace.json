@@ -32,5 +32,6 @@
   "updateTo": "{{version}}にアップデート",
   "installed": "インストール済み",
   "currentVersion": "現在のバージョン",
-  "latestVersion": "最新バージョン"
+  "latestVersion": "最新バージョン",
+  "developerDocs": "開発ドキュメント"
 }

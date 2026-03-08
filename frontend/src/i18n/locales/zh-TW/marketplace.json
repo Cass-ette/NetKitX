@@ -32,5 +32,6 @@
   "updateTo": "更新至 {{version}}",
   "installed": "已安裝",
   "currentVersion": "目前版本",
-  "latestVersion": "最新版本"
+  "latestVersion": "最新版本",
+  "developerDocs": "開發文件"
 }

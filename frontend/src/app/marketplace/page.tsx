@@ -22,7 +22,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Download, Star, Search, CheckCircle, Upload, Loader2 } from "lucide-react";
+import { Download, Star, Search, CheckCircle, Upload, Loader2, BookOpen } from "lucide-react";
 import { useTranslations } from "@/i18n/use-translations";
 
 interface MarketplacePlugin {
@@ -139,6 +139,12 @@ export default function MarketplacePage() {
           )}
           <Link href="/plugins">
             <Button variant="outline">{t("myPlugins")}</Button>
+          </Link>
+          <Link href="/developers">
+            <Button variant="outline">
+              <BookOpen className="mr-2 h-4 w-4" />
+              {t("developerDocs")}
+            </Button>
           </Link>
         </div>
       </div>

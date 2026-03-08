@@ -32,5 +32,6 @@
   "updateTo": "Auf {{version}} aktualisieren",
   "installed": "Installiert",
   "currentVersion": "Aktuelle Version",
-  "latestVersion": "Neueste Version"
+  "latestVersion": "Neueste Version",
+  "developerDocs": "Entwicklerdokumentation"
 }

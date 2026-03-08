@@ -14,6 +14,7 @@ import {
   Network,
   Bot,
   ShieldCheck,
+  BookOpen,
 } from "lucide-react";
 import {
   Sidebar,
@@ -39,6 +40,7 @@ const navItems: { key: string; href: string; icon: LucideIcon; adminOnly?: boole
   { key: "tasks", href: "/tasks", icon: ListTodo },
   { key: "plugins", href: "/plugins", icon: Puzzle },
   { key: "marketplace", href: "/marketplace", icon: Store },
+  { key: "developers", href: "/developers", icon: BookOpen },
   { key: "topology", href: "/topology", icon: Network },
   { key: "aiChat", href: "/ai-chat", icon: Bot },
   { key: "admin", href: "/admin", icon: ShieldCheck, adminOnly: true },

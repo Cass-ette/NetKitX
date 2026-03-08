@@ -32,5 +32,6 @@
   "updateTo": "{{version}}로 업데이트",
   "installed": "설치됨",
   "currentVersion": "현재 버전",
-  "latestVersion": "최신 버전"
+  "latestVersion": "최신 버전",
+  "developerDocs": "개발 문서"
 }

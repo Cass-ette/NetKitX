@@ -32,5 +32,6 @@
   "updateTo": "Обновить до {{version}}",
   "installed": "Установлено",
   "currentVersion": "Текущая версия",
-  "latestVersion": "Последняя версия"
+  "latestVersion": "Последняя версия",
+  "developerDocs": "Документация для разработчиков"
 }
