@@ -41,6 +41,7 @@
   "actionProposed": "Proposed",
   "viewTask": "View Task",
   "maxTurnsReached": "Reached maximum turn limit ({{max}} turns). Send a new message to continue.",
+  "agentErrorStopped": "Agent stopped due to an unrecoverable error. Please try again or adjust your request.",
   "openPanel": "Open AI Panel",
   "closePanel": "Close AI Panel",
   "newChat": "New Chat"

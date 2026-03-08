@@ -41,6 +41,7 @@
   "actionProposed": "待确认",
   "viewTask": "查看任务",
   "maxTurnsReached": "已达到最大轮次限制 ({{max}} 轮)。如需继续，请发送新消息。",
+  "agentErrorStopped": "Agent 因不可恢复的错误而停止。请重试或调整您的请求。",
   "openPanel": "打开 AI 面板",
   "closePanel": "关闭 AI 面板",
   "newChat": "新对话"

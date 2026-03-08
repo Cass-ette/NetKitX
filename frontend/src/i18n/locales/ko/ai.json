@@ -41,6 +41,7 @@
   "actionProposed": "제안됨",
   "viewTask": "작업 보기",
   "maxTurnsReached": "최대 턴 제한에 도달했습니다 ({{max}} 턴). 계속하려면 새 메시지를 보내세요.",
+  "agentErrorStopped": "복구할 수 없는 오류로 에이전트가 중지되었습니다. 다시 시도하거나 요청을 조정하세요.",
   "openPanel": "AI 패널 열기",
   "closePanel": "AI 패널 닫기",
   "newChat": "새 채팅"

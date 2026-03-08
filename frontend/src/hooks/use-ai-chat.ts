@@ -225,6 +225,12 @@ export function useAIChat() {
               updated[last] = { ...updated[last], actionResult: result, actionStatus: "done" };
               return [...updated, { role: "assistant", content: "" }];
             });
+          } else if (event === "action_error") {
+            const errorType = data.error_type as string;
+            if (errorType === "malformed") {
+              assistantContent = "";
+              setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+            }
           } else if (event === "waiting") {
             // semi_auto: action card already shows confirm buttons
           } else if (event === "done") {
@@ -271,6 +277,16 @@ export function useAIChat() {
 
         if (reason === "max_turns") {
           const notice = t("maxTurnsReached", { max: maxTurns });
+          if (isTrailingEmpty) {
+            const updated = [...prev];
+            updated[updated.length - 1] = { role: "assistant", content: notice };
+            return updated;
+          }
+          return [...prev, { role: "assistant", content: notice }];
+        }
+
+        if (reason === "error") {
+          const notice = t("agentErrorStopped");
           if (isTrailingEmpty) {
             const updated = [...prev];
             updated[updated.length - 1] = { role: "assistant", content: notice };

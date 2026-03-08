@@ -111,6 +111,18 @@ Only propose ONE action per response. After execution, you'll see the result and
 When your analysis is complete, respond without an action block.
 """
 
+_AGENT_ERROR_HANDLING = """
+## Error Handling
+If an action fails, you will receive an error message in the format [Action Failed: ...].
+When this happens:
+- Analyze the error message carefully before retrying.
+- If a plugin was not found, check the Available Plugins list and use the exact name.
+- If parameters were wrong, review the plugin's parameter requirements and correct them.
+- Try a different approach, different plugin, or different parameters.
+- Do NOT repeat the exact same action that just failed.
+- If you have failed multiple consecutive times, continue analysis in plain text.
+"""
+
 _AGENT_INSTRUCTIONS = {
     "semi_auto": AGENT_INSTRUCTION_SEMI_AUTO,
     "full_auto": AGENT_INSTRUCTION_FULL_AUTO,
@@ -119,11 +131,11 @@ _AGENT_INSTRUCTIONS = {
 
 
 def get_agent_system_prompt(agent_mode: str, security_mode: str, lang: str) -> str:
-    """Compose full system prompt: language + security + agent instructions + plugin catalog."""
+    """Compose full system prompt: language + security + agent instructions + error handling + plugin catalog."""
     base = get_system_prompt(security_mode, lang)
     agent_inst = _AGENT_INSTRUCTIONS.get(agent_mode, "")
     catalog = build_plugin_catalog()
-    return f"{base}\n\n{agent_inst}\n\n{catalog}"
+    return f"{base}\n\n{agent_inst}\n\n{_AGENT_ERROR_HANDLING}\n\n{catalog}"
 
 
 # ---------------------------------------------------------------------------
@@ -181,6 +193,14 @@ def strip_action_tags(text: str) -> str:
     return _ACTION_RE.sub("", text).strip()
 
 
+_ACTION_ATTEMPT_RE = re.compile(r"<action[\s>]", re.IGNORECASE)
+
+
+def has_action_attempt(text: str) -> bool:
+    """Check if text looks like a failed action attempt (malformed XML)."""
+    return bool(_ACTION_ATTEMPT_RE.search(text))
+
+
 # ---------------------------------------------------------------------------
 # Plugin execution (synchronous wait for result)
 # ---------------------------------------------------------------------------
@@ -236,6 +256,27 @@ def format_action_result(action: dict[str, Any], result: dict[str, Any]) -> str:
         result_str = result_str[:MAX_RESULT_CHARS] + "...(truncated)"
 
     return f"{header}\n{result_str}"
+
+
+# ---------------------------------------------------------------------------
+# Error classification
+# ---------------------------------------------------------------------------
+
+MAX_CONSECUTIVE_ERRORS = 3
+
+_FATAL_ERROR_PATTERNS = [
+    "Command blocked:",
+    "Unknown action type:",
+    "Shell commands only allowed",
+]
+
+
+def classify_error(error: str) -> str:
+    """Classify an action error as 'fatal' or 'retryable'."""
+    for pattern in _FATAL_ERROR_PATTERNS:
+        if pattern in error:
+            return "fatal"
+    return "retryable"
 
 
 # ---------------------------------------------------------------------------
@@ -299,6 +340,7 @@ async def run_agent_loop(
         full_messages.append({"role": msg["role"], "content": content})
 
     turn = 0
+    consecutive_errors = 0
     while True:
         turn += 1
         if max_turns > 0 and turn > max_turns:
@@ -307,40 +349,90 @@ async def run_agent_loop(
 
         # Stream AI response
         full_text = ""
-        if base_url:
-            gen = stream_openai_compatible(api_key, model, full_messages, base_url)
-        elif provider == "claude":
-            gen = stream_claude(api_key, model, full_messages)
-        elif provider == "deepseek":
-            gen = stream_deepseek(api_key, model, full_messages)
-        elif provider == "glm":
-            gen = stream_glm(api_key, model, full_messages)
-        else:
-            yield {"event": "text", "data": {"content": f"Unknown provider: {provider}"}}
+        try:
+            if base_url:
+                gen = stream_openai_compatible(api_key, model, full_messages, base_url)
+            elif provider == "claude":
+                gen = stream_claude(api_key, model, full_messages)
+            elif provider == "deepseek":
+                gen = stream_deepseek(api_key, model, full_messages)
+            elif provider == "glm":
+                gen = stream_glm(api_key, model, full_messages)
+            else:
+                yield {"event": "text", "data": {"content": f"Unknown provider: {provider}"}}
+                yield {"event": "done", "data": {"reason": "error"}}
+                return
+
+            async for chunk in gen:
+                full_text += chunk
+                yield {"event": "text", "data": {"content": chunk}}
+        except Exception as e:
+            logger.exception("Streaming error in agent loop")
+            yield {
+                "event": "action_error",
+                "data": {
+                    "error": str(e),
+                    "error_type": "fatal",
+                    "retry_count": consecutive_errors,
+                    "max_retries": MAX_CONSECUTIVE_ERRORS,
+                },
+            }
             yield {"event": "done", "data": {"reason": "error"}}
             return
-
-        async for chunk in gen:
-            full_text += chunk
-            yield {"event": "text", "data": {"content": chunk}}
 
         # Parse action from response
         action = parse_action(full_text)
 
         if not action:
-            # No action — AI is done analyzing
+            # Check if AI attempted an action but malformed the XML
+            if has_action_attempt(full_text):
+                consecutive_errors += 1
+                yield {
+                    "event": "action_error",
+                    "data": {
+                        "error": "Malformed action XML",
+                        "error_type": "malformed",
+                        "retry_count": consecutive_errors,
+                        "max_retries": MAX_CONSECUTIVE_ERRORS,
+                    },
+                }
+                # Inject feedback so AI can correct itself
+                full_messages.append({"role": "assistant", "content": full_text})
+                if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
+                    full_messages.append(
+                        {
+                            "role": "user",
+                            "content": "[Action Failed: Malformed action XML after multiple attempts. "
+                            "Please continue your analysis in plain text without action blocks.]",
+                        }
+                    )
+                else:
+                    full_messages.append(
+                        {
+                            "role": "user",
+                            "content": "[Action Failed: Malformed action XML. Your <action> block could not be parsed. "
+                            "Please make sure to use the correct format: "
+                            '<action type="plugin"> or <action type="shell"> with proper closing </action> tag.]',
+                        }
+                    )
+                continue
+
+            # No action and no attempt — AI is done analyzing
             yield {"event": "done", "data": {"reason": "complete"}}
             return
 
         # Validate action type for mode
         if agent_mode == "full_auto" and action.get("type") == "shell":
             yield {
-                "event": "text",
+                "event": "action_error",
                 "data": {
-                    "content": "\n\n[Shell commands are not allowed in full_auto mode. Use plugin actions only.]\n"
+                    "error": "Shell commands not allowed in full_auto mode",
+                    "error_type": "fatal",
+                    "retry_count": 0,
+                    "max_retries": MAX_CONSECUTIVE_ERRORS,
                 },
             }
-            yield {"event": "done", "data": {"reason": "complete"}}
+            yield {"event": "done", "data": {"reason": "error"}}
             return
 
         yield {"event": "action", "data": {"action": action}}
@@ -353,7 +445,64 @@ async def run_agent_loop(
 
         # Mode B/C: auto-execute
         yield {"event": "action_status", "data": {"status": "executing", "action": action}}
-        result = await _execute_action(action, agent_mode, user_id, user_token)
+        try:
+            result = await _execute_action(action, agent_mode, user_id, user_token)
+        except Exception as e:
+            logger.exception("Action execution error in agent loop")
+            yield {
+                "event": "action_error",
+                "data": {
+                    "error": str(e),
+                    "error_type": "fatal",
+                    "retry_count": consecutive_errors,
+                    "max_retries": MAX_CONSECUTIVE_ERRORS,
+                },
+            }
+            yield {"event": "done", "data": {"reason": "error"}}
+            return
+
+        error_msg = result.get("error")
+        if error_msg:
+            error_type = classify_error(error_msg)
+            consecutive_errors += 1
+
+            yield {
+                "event": "action_error",
+                "data": {
+                    "error": error_msg,
+                    "error_type": error_type,
+                    "retry_count": consecutive_errors,
+                    "max_retries": MAX_CONSECUTIVE_ERRORS,
+                },
+            }
+
+            if error_type == "fatal":
+                yield {"event": "done", "data": {"reason": "error"}}
+                return
+
+            # Retryable: inject error feedback into conversation
+            full_messages.append({"role": "assistant", "content": full_text})
+            if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
+                full_messages.append(
+                    {
+                        "role": "user",
+                        "content": f"[Action Failed: {error_msg}] "
+                        "You have failed multiple consecutive times. "
+                        "Please continue your analysis in plain text without action blocks.",
+                    }
+                )
+            else:
+                full_messages.append(
+                    {
+                        "role": "user",
+                        "content": f"[Action Failed: {error_msg}] "
+                        "Please analyze the error and try a different approach.",
+                    }
+                )
+            continue
+
+        # Success — reset error counter
+        consecutive_errors = 0
         yield {"event": "action_result", "data": {"result": result, "action": action}}
 
         # Inject into conversation

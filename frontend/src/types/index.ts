@@ -81,7 +81,7 @@ export interface AgentActionResult {
 }
 
 export interface AgentSSEEvent {
-  event: "text" | "turn" | "action" | "action_status" | "action_result" | "waiting" | "done";
+  event: "text" | "turn" | "action" | "action_status" | "action_result" | "action_error" | "waiting" | "done";
   data: Record<string, unknown>;
 }
 

@@ -41,5 +41,8 @@
   "viewTask": "查看任務",
   "openPanel": "開啟 AI 面板",
   "closePanel": "關閉 AI 面板",
-  "newChat": "新對話"
+  "newChat": "新對話",
+  "maxTurnsReached": "已達到最大輪次限制 ({{max}} 輪)。如需繼續，請傳送新訊息。",
+  "agentTurnUnlimited": "第 {{turn}} 輪",
+  "agentErrorStopped": "Agent 因無法恢復的錯誤而停止。請重試或調整您的請求。"
 }

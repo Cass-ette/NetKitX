@@ -1,12 +1,17 @@
 """Unit tests for AI agent service (no DB required)."""
 
 import pytest
+from unittest.mock import patch
 from app.services.agent_service import (
     parse_action,
     strip_action_tags,
     build_plugin_catalog,
     format_action_result,
     get_agent_system_prompt,
+    has_action_attempt,
+    classify_error,
+    run_agent_loop,
+    MAX_CONSECUTIVE_ERRORS,
 )
 from app.services.sandbox import is_command_safe
 
@@ -241,3 +246,307 @@ def test_get_agent_system_prompt_semi_auto():
 def test_get_agent_system_prompt_terminal_mode():
     prompt = get_agent_system_prompt("terminal", "offense", "en")
     assert "shell" in prompt.lower() or "Terminal" in prompt
+
+
+# ---------------------------------------------------------------------------
+# has_action_attempt tests
+# ---------------------------------------------------------------------------
+
+
+def test_has_action_attempt_partial_tag():
+    text = 'Here is my action: <action type="plugin"><plugin>test</plugin>'
+    assert has_action_attempt(text) is True
+
+
+def test_has_action_attempt_bare_open_tag():
+    text = "Let me try <action> something"
+    assert has_action_attempt(text) is True
+
+
+def test_has_action_attempt_with_space():
+    text = '<action type="shell">'
+    assert has_action_attempt(text) is True
+
+
+def test_has_action_attempt_plain_text():
+    text = "I will take action on this vulnerability."
+    assert has_action_attempt(text) is False
+
+
+def test_has_action_attempt_empty_string():
+    assert has_action_attempt("") is False
+
+
+def test_has_action_attempt_complete_action():
+    text = '<action type="plugin"><plugin>test</plugin></action>'
+    assert has_action_attempt(text) is True
+
+
+# ---------------------------------------------------------------------------
+# classify_error tests
+# ---------------------------------------------------------------------------
+
+
+def test_classify_error_command_blocked():
+    assert classify_error("Command blocked: dangerous operation") == "fatal"
+
+
+def test_classify_error_unknown_action_type():
+    assert classify_error("Unknown action type: foo") == "fatal"
+
+
+def test_classify_error_shell_not_allowed():
+    assert classify_error("Shell commands only allowed in terminal mode") == "fatal"
+
+
+def test_classify_error_plugin_not_found():
+    assert classify_error("Plugin 'xxx' not found or not enabled") == "retryable"
+
+
+def test_classify_error_plugin_disabled():
+    assert classify_error("Plugin 'xxx' is disabled") == "retryable"
+
+
+def test_classify_error_timeout():
+    assert classify_error("Command timed out after 30 seconds") == "retryable"
+
+
+def test_classify_error_param_error():
+    assert classify_error("Missing required parameter: url") == "retryable"
+
+
+def test_classify_error_generic_exception():
+    assert classify_error("Connection refused") == "retryable"
+
+
+def test_classify_error_empty_string():
+    assert classify_error("") == "retryable"
+
+
+# ---------------------------------------------------------------------------
+# System prompt error handling tests
+# ---------------------------------------------------------------------------
+
+
+def test_agent_system_prompt_contains_error_handling():
+    prompt = get_agent_system_prompt("full_auto", "offense", "en")
+    assert "Error Handling" in prompt
+    assert "Action Failed" in prompt
+    assert "different approach" in prompt.lower() or "different plugin" in prompt.lower()
+
+
+# ---------------------------------------------------------------------------
+# Agent loop integration tests (async)
+# ---------------------------------------------------------------------------
+
+
+async def _collect_events(gen):
+    """Collect all events from an async generator."""
+    events = []
+    async for event in gen:
+        events.append(event)
+    return events
+
+
+async def _mock_stream(*chunks):
+    """Create an async generator that yields chunks."""
+    for chunk in chunks:
+        yield chunk
+
+
+@pytest.mark.asyncio
+async def test_malformed_action_does_not_terminate_loop():
+    """Malformed <action> XML should inject feedback and continue, not exit."""
+    call_count = 0
+
+    async def mock_stream_fn(api_key, model, messages):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            # First turn: malformed action
+            yield '<action type="plugin"><plugin>test</plugin>'
+        else:
+            # Second turn: no action, analysis done
+            yield "Analysis complete. No further actions needed."
+
+    with patch("app.services.agent_service.stream_claude", mock_stream_fn):
+        events = await _collect_events(
+            run_agent_loop(
+                provider="claude",
+                api_key="test",
+                model="test",
+                messages=[{"role": "user", "content": "test"}],
+                agent_mode="full_auto",
+                security_mode="offense",
+                lang="en",
+                max_turns=5,
+            )
+        )
+
+    event_types = [e["event"] for e in events]
+    assert "action_error" in event_types
+    # Should have continued and completed, not just errored out
+    assert events[-1]["event"] == "done"
+    assert events[-1]["data"]["reason"] == "complete"
+    # Should have used 2 turns
+    assert event_types.count("turn") == 2
+
+    # Check the action_error event data
+    error_evt = next(e for e in events if e["event"] == "action_error")
+    assert error_evt["data"]["error_type"] == "malformed"
+    assert error_evt["data"]["retry_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_fatal_error_terminates_loop():
+    """Fatal error (e.g. command blocked) should terminate the loop."""
+
+    async def mock_stream_fn(api_key, model, messages):
+        yield '<action type="shell"><command>rm -rf /</command><reason>test</reason></action>'
+
+    async def mock_execute(action, agent_mode, user_id=None, user_token=None):
+        return {"error": "Command blocked: dangerous operation", "exit_code": -1}
+
+    with (
+        patch("app.services.agent_service.stream_claude", mock_stream_fn),
+        patch("app.services.agent_service._execute_action", mock_execute),
+    ):
+        events = await _collect_events(
+            run_agent_loop(
+                provider="claude",
+                api_key="test",
+                model="test",
+                messages=[{"role": "user", "content": "test"}],
+                agent_mode="terminal",
+                security_mode="offense",
+                lang="en",
+                max_turns=5,
+            )
+        )
+
+    event_types = [e["event"] for e in events]
+    assert "action_error" in event_types
+    assert events[-1]["event"] == "done"
+    assert events[-1]["data"]["reason"] == "error"
+
+    error_evt = next(e for e in events if e["event"] == "action_error")
+    assert error_evt["data"]["error_type"] == "fatal"
+
+
+@pytest.mark.asyncio
+async def test_retryable_error_continues_loop():
+    """Retryable error should inject feedback and continue the loop."""
+    call_count = 0
+
+    async def mock_stream_fn(api_key, model, messages):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            yield '<action type="plugin"><plugin>nonexistent</plugin><params></params><reason>test</reason></action>'
+        else:
+            yield "Understood, the plugin was not found. Here is my analysis."
+
+    async def mock_execute(action, agent_mode, user_id=None, user_token=None):
+        return {"error": "Plugin 'nonexistent' not found or not enabled"}
+
+    with (
+        patch("app.services.agent_service.stream_claude", mock_stream_fn),
+        patch("app.services.agent_service._execute_action", mock_execute),
+    ):
+        events = await _collect_events(
+            run_agent_loop(
+                provider="claude",
+                api_key="test",
+                model="test",
+                messages=[{"role": "user", "content": "test"}],
+                agent_mode="full_auto",
+                security_mode="offense",
+                lang="en",
+                max_turns=5,
+            )
+        )
+
+    event_types = [e["event"] for e in events]
+    assert "action_error" in event_types
+    assert events[-1]["event"] == "done"
+    assert events[-1]["data"]["reason"] == "complete"
+    assert event_types.count("turn") == 2
+
+    error_evt = next(e for e in events if e["event"] == "action_error")
+    assert error_evt["data"]["error_type"] == "retryable"
+
+
+@pytest.mark.asyncio
+async def test_consecutive_errors_injects_plain_text_request():
+    """After MAX_CONSECUTIVE_ERRORS, AI should be told to use plain text."""
+    call_count = 0
+
+    async def mock_stream_fn(api_key, model, messages):
+        nonlocal call_count
+        call_count += 1
+        if call_count <= MAX_CONSECUTIVE_ERRORS:
+            yield '<action type="plugin"><plugin>bad</plugin>'  # malformed
+        else:
+            yield "OK, continuing in plain text."
+
+    with patch("app.services.agent_service.stream_claude", mock_stream_fn):
+        events = await _collect_events(
+            run_agent_loop(
+                provider="claude",
+                api_key="test",
+                model="test",
+                messages=[{"role": "user", "content": "test"}],
+                agent_mode="full_auto",
+                security_mode="offense",
+                lang="en",
+                max_turns=10,
+            )
+        )
+
+    error_events = [e for e in events if e["event"] == "action_error"]
+    assert len(error_events) == MAX_CONSECUTIVE_ERRORS
+    assert events[-1]["event"] == "done"
+    assert events[-1]["data"]["reason"] == "complete"
+
+
+@pytest.mark.asyncio
+async def test_successful_action_resets_error_counter():
+    """A successful action should reset the consecutive error counter."""
+    call_count = 0
+
+    async def mock_stream_fn(api_key, model, messages):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            yield '<action type="plugin"><plugin>good</plugin><params></params><reason>test</reason></action>'
+        elif call_count == 2:
+            yield '<action type="plugin"><plugin>bad</plugin>'  # malformed
+        else:
+            yield "Done."
+
+    async def mock_execute(action, agent_mode, user_id=None, user_token=None):
+        return {"items": [{"result": "ok"}], "logs": []}
+
+    with (
+        patch("app.services.agent_service.stream_claude", mock_stream_fn),
+        patch("app.services.agent_service._execute_action", mock_execute),
+    ):
+        events = await _collect_events(
+            run_agent_loop(
+                provider="claude",
+                api_key="test",
+                model="test",
+                messages=[{"role": "user", "content": "test"}],
+                agent_mode="full_auto",
+                security_mode="offense",
+                lang="en",
+                max_turns=10,
+            )
+        )
+
+    event_types = [e["event"] for e in events]
+    assert "action_result" in event_types
+    assert "action_error" in event_types
+    # The error after success should have retry_count=1, not 2
+    error_evt = next(e for e in events if e["event"] == "action_error")
+    assert error_evt["data"]["retry_count"] == 1
