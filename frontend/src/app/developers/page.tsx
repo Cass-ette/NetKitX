@@ -148,16 +148,16 @@ output:
               <div>
                 <h3 className="font-semibold mb-2">{t("quickStartStep3Title")}</h3>
                 <p className="text-sm text-muted-foreground mb-2">{t("quickStartStep3Desc")}</p>
-                <CodeBlock>{`from app.plugin_base import PluginBase
+                <CodeBlock>{`from collections.abc import AsyncIterator
+from app.plugins.base import PluginBase, PluginEvent
 
 class Plugin(PluginBase):
-    async def execute(self, params: dict) -> dict:
+    async def execute(self, params: dict) -> AsyncIterator[PluginEvent]:
         target = params["target"]
-        results = []
-        for port in [22, 80, 443, 8080]:
-            results.append({"port": port, "status": "open"})
-            self.emit_event("progress", {"percent": port / 80})
-        return {"status": "success", "data": results}`}</CodeBlock>
+        ports = [22, 80, 443, 8080]
+        for i, port in enumerate(ports):
+            yield PluginEvent(type="result", data={"port": port, "status": "open"})
+            yield PluginEvent(type="progress", data={"percent": (i + 1) * 100 // len(ports)})`}</CodeBlock>
               </div>
               <p className="text-sm text-muted-foreground">{t("quickStartTestDesc")}</p>
             </CardContent>
@@ -326,7 +326,8 @@ dependencies:
               </div>
               <div>
                 <h3 className="font-semibold mb-2">{t("pluginApiExample")}</h3>
-                <CodeBlock>{`from app.plugin_base import PluginBase
+                <CodeBlock>{`from collections.abc import AsyncIterator
+from app.plugins.base import PluginBase, PluginEvent
 
 class Plugin(PluginBase):
     async def validate_params(self, params: dict) -> dict:
@@ -334,22 +335,18 @@ class Plugin(PluginBase):
             raise ValueError("target is required")
         return params
 
-    async def execute(self, params: dict) -> dict:
+    async def execute(self, params: dict) -> AsyncIterator[PluginEvent]:
         target = params["target"]
 
-        self.emit_event("log", {"message": f"Scanning {target}..."})
-        self.emit_event("progress", {"percent": 0})
+        yield PluginEvent(type="log", data={"msg": f"Scanning {target}..."})
+        yield PluginEvent(type="progress", data={"percent": 0})
 
         results = []
         # ... scanning logic ...
+        for item in results:
+            yield PluginEvent(type="result", data=item)
 
-        self.emit_event("progress", {"percent": 100})
-
-        return {
-            "status": "success",
-            "data": results,
-            "summary": f"Found {len(results)} results"
-        }
+        yield PluginEvent(type="progress", data={"percent": 100})
 
     async def cleanup(self):
         # Close connections, temp files, etc.
@@ -382,23 +379,18 @@ class Plugin(PluginBase):
 output:
   type: table
   columns:
-    - name: host
+    - key: host
       label: Host
-    - name: port
+    - key: port
       label: Port
-    - name: service
+    - key: service
       label: Service
-    - name: version
+    - key: version
       label: Version
 
-# main.py — return data as list of dicts
-return {
-    "status": "success",
-    "data": [
-        {"host": "10.0.0.1", "port": 22, "service": "ssh", "version": "OpenSSH 8.9"},
-        {"host": "10.0.0.1", "port": 80, "service": "http", "version": "nginx 1.24"},
-    ]
-}`}</CodeBlock>
+# main.py — yield result events, one row at a time
+yield PluginEvent(type="result", data={"host": "10.0.0.1", "port": 22, "service": "ssh", "version": "OpenSSH 8.9"})
+yield PluginEvent(type="result", data={"host": "10.0.0.1", "port": 80, "service": "http", "version": "nginx 1.24"})`}</CodeBlock>
               </div>
             </CardContent>
           </Card>
@@ -428,12 +420,9 @@ return {
                 </div>
                 <div>
                   <p className="text-sm font-medium mb-2">{t("jsonOutput")}</p>
-                  <CodeBlock>{`{
-  "status": "success",
-  "data": [
-    {"port": 80, "status": "open"}
-  ]
-}`}</CodeBlock>
+                  <CodeBlock>{`{"type": "progress", "data": {"percent": 0}}
+{"type": "result", "data": {"port": 80, "status": "open"}}
+{"type": "progress", "data": {"percent": 100}}`}</CodeBlock>
                 </div>
               </div>
               <div>
@@ -446,20 +435,24 @@ import (
     "os"
 )
 
+type Event struct {
+    Type string      \`json:"type"\`
+    Data interface{} \`json:"data"\`
+}
+
+func emit(t string, data interface{}) {
+    json.NewEncoder(os.Stdout).Encode(Event{Type: t, Data: data})
+}
+
 func main() {
     var params map[string]interface{}
     json.NewDecoder(os.Stdin).Decode(&params)
 
     target := params["target"].(string)
 
-    result := map[string]interface{}{
-        "status": "success",
-        "data": []map[string]interface{}{
-            {"host": target, "port": 80, "status": "open"},
-        },
-    }
-
-    json.NewEncoder(os.Stdout).Encode(result)
+    emit("progress", map[string]int{"percent": 0})
+    emit("result", map[string]interface{}{"host": target, "port": 80, "status": "open"})
+    emit("progress", map[string]int{"percent": 100})
     fmt.Fprintln(os.Stderr, "Scan complete")
 }`}</CodeBlock>
               </div>
