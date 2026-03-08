@@ -6,6 +6,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
+from starlette.background import BackgroundTask
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
@@ -205,8 +206,6 @@ async def agent(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
-    import asyncio
-
     from app.services.knowledge_service import create_session, finalize_session
 
     ai = await _get_ai_settings(session, user.id)
@@ -245,10 +244,11 @@ async def agent(
         lang=body.lang,
     )
 
-    async def event_stream():
-        collected: list[dict] = []
-        done_reason = "complete"
+    # Shared mutable state between generator and background task
+    collected: list[dict] = []
+    done_reason_holder = ["complete"]
 
+    async def event_stream():
         # Emit session_start event
         yield f"data: {json.dumps({'event': 'session_start', 'data': {'session_id': agent_session.id}})}\n\n"
 
@@ -268,17 +268,18 @@ async def agent(
         ):
             collected.append(evt)
             if evt.get("event") == "done":
-                done_reason = evt.get("data", {}).get("reason", "complete")
+                done_reason_holder[0] = evt.get("data", {}).get("reason", "complete")
             yield f"data: {json.dumps(evt, default=str)}\n\n"
         yield "data: [DONE]\n\n"
 
-        # Finalize session in background (non-blocking)
-        asyncio.create_task(
-            finalize_session(agent_session.id, collected, list(body.messages), done_reason)
+    async def _finalize():
+        await finalize_session(
+            agent_session.id, collected, list(body.messages), done_reason_holder[0]
         )
 
     return StreamingResponse(
         event_stream(),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        background=BackgroundTask(_finalize),
     )
