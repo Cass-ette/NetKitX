@@ -1,7 +1,7 @@
 """Knowledge service: session persistence & event-to-turn conversion."""
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import delete, func, select
@@ -334,7 +334,7 @@ async def finalize_session(
                         max_turn = td["turn_number"]
                 agent_session.status = status
                 agent_session.total_turns = max_turn
-                agent_session.finished_at = datetime.now(timezone.utc)
+                agent_session.finished_at = datetime.utcnow()
 
             await db.commit()
             logger.info("Session %d finalized: %s (%d turns)", session_id, reason, len(turn_dicts))
