@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "netkitx-cli"
+version = "0.1.0"
+description = "Command-line interface for the NetKitX network security toolkit"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+keywords = ["netkitx", "cli", "security", "network"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Information Technology",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Security",
+  "Topic :: Utilities",
+  "Environment :: Console",
+]
+dependencies = [
+  "httpx>=0.27",
+]
+
+[project.scripts]
+netkitx = "netkitx_cli:main"
+
+[project.urls]
+Homepage = "https://github.com/Cass-ette/NetKitX"
+Documentation = "http://wql.me/developers"
+Repository = "https://github.com/Cass-ette/NetKitX"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["netkitx_cli*"]
