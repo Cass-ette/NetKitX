@@ -81,7 +81,7 @@ export interface AgentActionResult {
 }
 
 export interface AgentSSEEvent {
-  event: "text" | "turn" | "action" | "action_status" | "action_result" | "action_error" | "waiting" | "done";
+  event: "text" | "turn" | "action" | "action_status" | "action_result" | "action_error" | "waiting" | "session_start" | "done";
   data: Record<string, unknown>;
 }
 
@@ -170,4 +170,58 @@ export interface ServerStatus {
   disk_used_gb: number;
   disk_total_gb: number;
   services: ServiceStatus[];
+}
+
+// ── Knowledge / Session Types ─────────────────────────────────────────
+
+export interface SessionTurn {
+  id: number;
+  session_id: number;
+  turn_number: number;
+  role: "user" | "assistant" | "action_result";
+  content: string;
+  action?: AgentAction | null;
+  action_result?: AgentActionResult | null;
+  action_status?: string | null;
+  created_at: string;
+}
+
+export interface AgentSession {
+  id: number;
+  user_id: number;
+  title: string;
+  agent_mode: string;
+  security_mode: string;
+  lang: string;
+  total_turns: number;
+  status: "active" | "completed" | "failed";
+  summary?: string | null;
+  created_at: string;
+  finished_at?: string | null;
+}
+
+export interface AgentSessionDetail extends AgentSession {
+  turns: SessionTurn[];
+}
+
+export interface SessionListResponse {
+  items: AgentSession[];
+  total: number;
+}
+
+export interface KnowledgeEntry {
+  id: number;
+  user_id: number;
+  session_id?: number | null;
+  scenario: string;
+  target_type: string;
+  vulnerability_type: string;
+  tools_used?: string[] | null;
+  attack_chain: string;
+  outcome: string;
+  key_findings: string;
+  tags?: string[] | null;
+  summary: string;
+  extraction_status: string;
+  created_at: string;
 }

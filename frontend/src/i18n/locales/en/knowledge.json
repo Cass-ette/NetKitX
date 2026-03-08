@@ -1,0 +1,16 @@
+{
+  "sessions": "Sessions",
+  "sessionsDescription": "Browse and replay your past AI agent sessions.",
+  "title": "Title",
+  "mode": "Mode",
+  "security": "Security",
+  "turns": "Turns",
+  "status": "Status",
+  "date": "Date",
+  "noSessions": "No sessions yet. Start an AI agent conversation to see it here.",
+  "totalSessions": "{{count}} session(s)",
+  "loading": "Loading...",
+  "knowledge": "Knowledge Base",
+  "knowledgeDescription": "Extracted attack/defense knowledge from your sessions.",
+  "noKnowledge": "No knowledge entries yet."
+}

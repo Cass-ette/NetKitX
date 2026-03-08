@@ -1,0 +1,16 @@
+{
+  "sessions": "セッション履歴",
+  "sessionsDescription": "過去のAIエージェントセッションを閲覧・再生します。",
+  "title": "タイトル",
+  "mode": "モード",
+  "security": "セキュリティ",
+  "turns": "ターン数",
+  "status": "ステータス",
+  "date": "日付",
+  "noSessions": "セッションがまだありません。AIエージェントとの会話を始めるとここに表示されます。",
+  "totalSessions": "{{count}} セッション",
+  "loading": "読み込み中...",
+  "knowledge": "ナレッジベース",
+  "knowledgeDescription": "セッションから抽出された攻撃/防御のナレッジ。",
+  "noKnowledge": "ナレッジエントリがまだありません。"
+}

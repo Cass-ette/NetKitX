@@ -25,6 +25,7 @@ export function useAIChat() {
     setLoading,
     setError,
     setCurrentTurn,
+    setCurrentSessionId,
   } = useAIChatStore();
 
   const abortRef = useRef<AbortController | null>(null);
@@ -189,7 +190,9 @@ export function useAIChat() {
 
           const { event, data } = evt;
 
-          if (event === "text") {
+          if (event === "session_start") {
+            setCurrentSessionId(data.session_id as number);
+          } else if (event === "text") {
             assistantContent += (data.content as string) || "";
             const snap = assistantContent;
             setMessages((prev) => {
@@ -242,7 +245,7 @@ export function useAIChat() {
         if (streamDone) break;
       }
     },
-    [token, agentMode, mode, locale, maxTurns, setMessages, setError, setCurrentTurn],
+    [token, agentMode, mode, locale, maxTurns, setMessages, setError, setCurrentTurn, setCurrentSessionId],
   );
 
   // Main send handler

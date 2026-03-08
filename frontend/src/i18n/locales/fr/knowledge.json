@@ -1,0 +1,16 @@
+{
+  "sessions": "Historique des sessions",
+  "sessionsDescription": "Parcourir et relire vos sessions d'agent IA passées.",
+  "title": "Titre",
+  "mode": "Mode",
+  "security": "Sécurité",
+  "turns": "Tours",
+  "status": "Statut",
+  "date": "Date",
+  "noSessions": "Aucune session pour le moment. Lancez une conversation avec l'agent IA pour la voir ici.",
+  "totalSessions": "{{count}} session(s)",
+  "loading": "Chargement...",
+  "knowledge": "Base de connaissances",
+  "knowledgeDescription": "Connaissances d'attaque/défense extraites de vos sessions.",
+  "noKnowledge": "Aucune entrée de connaissance pour le moment."
+}

@@ -13,6 +13,7 @@ from app.models.marketplace import (
 from app.models.ai_settings import AISettings
 from app.models.audit_log import AuditLog
 from app.models.announcement import Announcement
+from app.models.knowledge import AgentSession, SessionTurn, KnowledgeEntry
 
 __all__ = [
     "User",
@@ -28,4 +29,7 @@ __all__ = [
     "AISettings",
     "AuditLog",
     "Announcement",
+    "AgentSession",
+    "SessionTurn",
+    "KnowledgeEntry",
 ]

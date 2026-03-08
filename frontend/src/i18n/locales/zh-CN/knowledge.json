@@ -1,0 +1,16 @@
+{
+  "sessions": "会话历史",
+  "sessionsDescription": "浏览和回放过去的 AI Agent 会话。",
+  "title": "标题",
+  "mode": "模式",
+  "security": "安全",
+  "turns": "轮次",
+  "status": "状态",
+  "date": "日期",
+  "noSessions": "暂无会话记录。开始一次 AI Agent 对话即可在此查看。",
+  "totalSessions": "共 {{count}} 个会话",
+  "loading": "加载中...",
+  "knowledge": "知识库",
+  "knowledgeDescription": "从会话中提取的攻防知识。",
+  "noKnowledge": "暂无知识条目。"
+}

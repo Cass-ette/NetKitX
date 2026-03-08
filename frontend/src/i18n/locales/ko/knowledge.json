@@ -1,0 +1,16 @@
+{
+  "sessions": "세션 기록",
+  "sessionsDescription": "과거 AI 에이전트 세션을 탐색하고 재생합니다.",
+  "title": "제목",
+  "mode": "모드",
+  "security": "보안",
+  "turns": "턴 수",
+  "status": "상태",
+  "date": "날짜",
+  "noSessions": "아직 세션이 없습니다. AI 에이전트 대화를 시작하면 여기에 표시됩니다.",
+  "totalSessions": "{{count}}개 세션",
+  "loading": "로딩 중...",
+  "knowledge": "지식 베이스",
+  "knowledgeDescription": "세션에서 추출된 공격/방어 지식.",
+  "noKnowledge": "아직 지식 항목이 없습니다."
+}

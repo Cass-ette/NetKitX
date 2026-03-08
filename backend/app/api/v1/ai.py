@@ -205,6 +205,10 @@ async def agent(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
+    import asyncio
+
+    from app.services.knowledge_service import create_session, finalize_session
+
     ai = await _get_ai_settings(session, user.id)
     if not ai:
         raise HTTPException(status_code=400, detail="AI not configured")
@@ -224,7 +228,30 @@ async def agent(
     auth_header = request.headers.get("Authorization", "")
     user_token = auth_header.removeprefix("Bearer ").strip() or None
 
+    # Derive session title from first user message
+    title = "Agent Session"
+    for msg in body.messages:
+        if msg.get("role") == "user" and msg.get("content", "").strip():
+            title = msg["content"].strip()[:200]
+            break
+
+    # Create persistent session
+    agent_session = await create_session(
+        session,
+        user_id=user.id,
+        title=title,
+        agent_mode=body.agent_mode,
+        security_mode=body.security_mode,
+        lang=body.lang,
+    )
+
     async def event_stream():
+        collected: list[dict] = []
+        done_reason = "complete"
+
+        # Emit session_start event
+        yield f"data: {json.dumps({'event': 'session_start', 'data': {'session_id': agent_session.id}})}\n\n"
+
         async for evt in run_agent_loop(
             provider=ai.provider,
             api_key=api_key,
@@ -239,8 +266,16 @@ async def agent(
             user_token=user_token,
             base_url=ai.base_url,
         ):
+            collected.append(evt)
+            if evt.get("event") == "done":
+                done_reason = evt.get("data", {}).get("reason", "complete")
             yield f"data: {json.dumps(evt, default=str)}\n\n"
         yield "data: [DONE]\n\n"
+
+        # Finalize session in background (non-blocking)
+        asyncio.create_task(
+            finalize_session(agent_session.id, collected, list(body.messages), done_reason)
+        )
 
     return StreamingResponse(
         event_stream(),

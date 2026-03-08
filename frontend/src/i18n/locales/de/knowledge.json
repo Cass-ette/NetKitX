@@ -1,0 +1,16 @@
+{
+  "sessions": "Sitzungsverlauf",
+  "sessionsDescription": "Vergangene AI-Agent-Sitzungen durchsuchen und wiedergeben.",
+  "title": "Titel",
+  "mode": "Modus",
+  "security": "Sicherheit",
+  "turns": "Runden",
+  "status": "Status",
+  "date": "Datum",
+  "noSessions": "Noch keine Sitzungen. Starten Sie ein AI-Agent-Gespräch, um es hier zu sehen.",
+  "totalSessions": "{{count}} Sitzung(en)",
+  "loading": "Laden...",
+  "knowledge": "Wissensdatenbank",
+  "knowledgeDescription": "Aus Sitzungen extrahiertes Angriffs-/Verteidigungswissen.",
+  "noKnowledge": "Noch keine Wissenseinträge."
+}

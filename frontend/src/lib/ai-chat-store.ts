@@ -23,6 +23,7 @@ interface AIChatStore {
   agentMode: AgentMode;
   currentTurn: number;
   maxTurns: number;
+  currentSessionId: number | null;
 
   // Conversation actions
   setMessages: (updater: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => void;
@@ -32,6 +33,7 @@ interface AIChatStore {
   setMode: (mode: "defense" | "offense") => void;
   setAgentMode: (mode: AgentMode) => void;
   setCurrentTurn: (turn: number) => void;
+  setCurrentSessionId: (id: number | null) => void;
   clearChat: () => void;
 }
 
@@ -63,6 +65,7 @@ export const useAIChatStore = create<AIChatStore>((set) => ({
   agentMode: "chat",
   currentTurn: 0,
   maxTurns: 0,
+  currentSessionId: null,
 
   // Conversation actions
   setMessages: (updater) =>
@@ -75,5 +78,6 @@ export const useAIChatStore = create<AIChatStore>((set) => ({
   setMode: (mode) => set({ mode }),
   setAgentMode: (agentMode) => set({ agentMode }),
   setCurrentTurn: (turn) => set({ currentTurn: turn }),
-  clearChat: () => set({ messages: [], input: "", error: null, currentTurn: 0 }),
+  setCurrentSessionId: (id) => set({ currentSessionId: id }),
+  clearChat: () => set({ messages: [], input: "", error: null, currentTurn: 0, currentSessionId: null }),
 }));
