@@ -15,6 +15,9 @@ from app.services.agent_service import (
     _action_fingerprint,
     _is_similar,
     count_similar_recent,
+    _compress_output,
+    _strip_html,
+    compress_result,
     MAX_CONSECUTIVE_ERRORS,
 )
 from app.services.sandbox import is_command_safe
@@ -639,3 +642,105 @@ def test_count_similar_recent_no_matches():
     ]
     current = "shell:curl http://example.com"
     assert count_similar_recent(history, current) == 0
+
+
+# ---------------------------------------------------------------------------
+# Output compression tests
+# ---------------------------------------------------------------------------
+
+
+def test_strip_html_removes_tags():
+    html = "<html><body><h1>Title</h1><p>Content</p></body></html>"
+    result = _strip_html(html)
+    assert "<h1>" not in result
+    assert "Title" in result
+    assert "Content" in result
+
+
+def test_strip_html_removes_script_and_style():
+    html = "<script>alert(1)</script><style>.x{color:red}</style><p>Hello</p>"
+    result = _strip_html(html)
+    assert "alert" not in result
+    assert "color" not in result
+    assert "Hello" in result
+
+
+def test_strip_html_decodes_entities():
+    html = "&lt;tag&gt; &amp; &quot;quoted&quot;"
+    result = _strip_html(html)
+    assert "<tag>" in result
+    assert '& "quoted"' in result
+
+
+def test_compress_output_strips_ansi():
+    text = "\x1b[31mERROR\x1b[0m: something failed"
+    result = _compress_output(text)
+    assert "\x1b[" not in result
+    assert "ERROR" in result
+
+
+def test_compress_output_collapses_blank_lines():
+    text = "line1\n\n\n\n\nline2"
+    result = _compress_output(text)
+    assert "\n\n\n" not in result
+    assert "line1" in result
+    assert "line2" in result
+
+
+def test_compress_output_strips_html():
+    text = "<html><body><div>Important: flag{abc}</div></body></html>"
+    result = _compress_output(text)
+    assert "<div>" not in result
+    assert "flag{abc}" in result
+
+
+def test_compress_output_smart_truncation():
+    # Create output larger than _FIELD_MAX (12000)
+    head = "HEAD_DATA " * 600  # ~6000 chars
+    middle = "MIDDLE " * 2000  # ~14000 chars
+    tail = "TAIL_DATA " * 600  # ~6000 chars
+    text = head + middle + tail
+    result = _compress_output(text)
+    assert "HEAD_DATA" in result
+    assert "TAIL_DATA" in result
+    assert "chars omitted" in result
+    assert len(result) < len(text)
+
+
+def test_compress_output_empty():
+    assert _compress_output("") == ""
+
+
+def test_compress_output_short_text_unchanged():
+    text = "simple output"
+    assert _compress_output(text) == text
+
+
+def test_compress_result_processes_stdout_stderr():
+    result = {
+        "stdout": "<html><body>OK</body></html>",
+        "stderr": "\x1b[33mWarning\x1b[0m: test",
+        "exit_code": 0,
+    }
+    compressed = compress_result(result)
+    assert "<html>" not in compressed["stdout"]
+    assert "OK" in compressed["stdout"]
+    assert "\x1b[" not in compressed["stderr"]
+    assert "Warning" in compressed["stderr"]
+    assert compressed["exit_code"] == 0
+
+
+def test_compress_result_ignores_non_string():
+    result = {"error": "not found", "exit_code": -1}
+    compressed = compress_result(result)
+    assert compressed == result
+
+
+def test_format_action_result_compresses():
+    """Verify format_action_result uses compression."""
+    action = {"type": "shell", "command": "curl http://target"}
+    html_output = "<html><head><title>Test</title></head><body><p>flag{test123}</p></body></html>"
+    result = {"stdout": html_output, "stderr": "", "exit_code": 0}
+    formatted = format_action_result(action, result)
+    assert "<html>" not in formatted
+    assert "flag{test123}" in formatted

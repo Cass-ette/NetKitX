@@ -254,6 +254,71 @@ async def execute_plugin_action(action: dict[str, Any]) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Output compression (clean result before injecting into conversation)
+# ---------------------------------------------------------------------------
+
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]")
+_BLANK_LINES_RE = re.compile(r"\n{3,}")
+_WHITESPACE_LINES_RE = re.compile(r"\n[ \t]+\n")
+
+# Max chars to keep from a single stdout/stderr field before smart truncation
+_FIELD_MAX = 12000
+_FIELD_HEAD = 5000
+_FIELD_TAIL = 5000
+
+
+def _strip_html(text: str) -> str:
+    """Remove HTML tags, keep text content."""
+    text = re.sub(r"<script[^>]*>.*?</script>", "", text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<style[^>]*>.*?</style>", "", text, flags=re.DOTALL | re.IGNORECASE)
+    text = _HTML_TAG_RE.sub("", text)
+    # Decode common HTML entities
+    for entity, char in [
+        ("&amp;", "&"),
+        ("&lt;", "<"),
+        ("&gt;", ">"),
+        ("&quot;", '"'),
+        ("&#39;", "'"),
+        ("&nbsp;", " "),
+    ]:
+        text = text.replace(entity, char)
+    return text
+
+
+def _compress_output(text: str) -> str:
+    """Clean and compress command output for token efficiency."""
+    if not text:
+        return text
+    # Strip ANSI color codes
+    text = _ANSI_RE.sub("", text)
+    # Strip HTML if detected
+    if "<html" in text.lower() or "<body" in text.lower() or "<div" in text.lower():
+        text = _strip_html(text)
+    # Collapse excessive blank lines
+    text = _WHITESPACE_LINES_RE.sub("\n\n", text)
+    text = _BLANK_LINES_RE.sub("\n\n", text)
+    text = text.strip()
+    # Smart truncation: keep head + tail, cut middle
+    if len(text) > _FIELD_MAX:
+        head = text[:_FIELD_HEAD]
+        tail = text[-_FIELD_TAIL:]
+        cut = len(text) - _FIELD_HEAD - _FIELD_TAIL
+        text = f"{head}\n\n...[{cut} chars omitted]...\n\n{tail}"
+    return text
+
+
+def compress_result(result: dict[str, Any]) -> dict[str, Any]:
+    """Compress stdout/stderr in a shell result dict."""
+    out = dict(result)
+    if "stdout" in out and isinstance(out["stdout"], str):
+        out["stdout"] = _compress_output(out["stdout"])
+    if "stderr" in out and isinstance(out["stderr"], str):
+        out["stderr"] = _compress_output(out["stderr"])
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Format result for conversation injection
 # ---------------------------------------------------------------------------
 
@@ -270,7 +335,9 @@ def format_action_result(action: dict[str, Any], result: dict[str, Any]) -> str:
     else:
         header = "[Action Result]"
 
-    result_str = json.dumps(result, default=str, ensure_ascii=False)
+    # Compress output before serialization
+    compressed = compress_result(result)
+    result_str = json.dumps(compressed, default=str, ensure_ascii=False)
     if len(result_str) > MAX_RESULT_CHARS:
         result_str = result_str[:MAX_RESULT_CHARS] + "...(truncated)"
 
