@@ -124,6 +124,14 @@ When this happens:
 - If you have failed multiple consecutive times, continue analysis in plain text.
 """
 
+_AGENT_STRATEGY = """
+## Strategy
+- RECON FIRST: Before attacking, map the environment (OS, versions, configs, permissions, restrictions) with simple commands.
+- SAME APPROACH 3 TIMES MAX: If an approach fails 3 times, switch to a completely different technique.
+- MULTI-LAYER ENCODING: When data passes through multiple layers (shell → curl → HTTP → eval), use base64 or chr() to avoid escaping issues.
+- SILENT FAILURES: If a command returns no useful output, verify each step individually with the simplest possible command before adding complexity.
+"""
+
 _AGENT_INSTRUCTIONS = {
     "semi_auto": AGENT_INSTRUCTION_SEMI_AUTO,
     "full_auto": AGENT_INSTRUCTION_FULL_AUTO,
@@ -136,7 +144,7 @@ def get_agent_system_prompt(agent_mode: str, security_mode: str, lang: str) -> s
     base = get_system_prompt(security_mode, lang)
     agent_inst = _AGENT_INSTRUCTIONS.get(agent_mode, "")
     catalog = build_plugin_catalog()
-    return f"{base}\n\n{agent_inst}\n\n{_AGENT_ERROR_HANDLING}\n\n{catalog}"
+    return f"{base}\n\n{agent_inst}\n\n{_AGENT_ERROR_HANDLING}\n\n{_AGENT_STRATEGY}\n\n{catalog}"
 
 
 # ---------------------------------------------------------------------------
