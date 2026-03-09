@@ -130,8 +130,15 @@ export default function LoginPage() {
       if (!completeRes.ok) throw new Error("Failed to complete passkey login");
       const { access_token } = await completeRes.json();
 
-      // Store token and redirect
-      localStorage.setItem("token", access_token);
+      // Get user info
+      const userRes = await fetch(`${API_BASE}/api/v1/auth/me`, {
+        headers: { Authorization: `Bearer ${access_token}` },
+      });
+      if (!userRes.ok) throw new Error("Failed to get user info");
+      const user = await userRes.json();
+
+      // Update auth store
+      useAuth.getState().setAuth(access_token, user);
       router.push("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : t("somethingWentWrong"));
