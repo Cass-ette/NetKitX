@@ -164,7 +164,7 @@ async def github_callback(code: str, session: AsyncSession = Depends(get_session
             await session.commit()
 
     # Generate JWT and redirect to frontend with token
-    jwt_token = create_access_token(subject=user.id)
+    jwt_token = create_access_token(subject=user.username)
     redirect_url = (
         f"{settings.ALLOWED_ORIGINS[0]}/auth/github?token={jwt_token}&username={user.username}"
     )
