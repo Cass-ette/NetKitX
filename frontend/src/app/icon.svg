@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f8fafc"/>
+      <stop offset="100%" style="stop-color:#e2e8f0"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded square background -->
+  <rect width="512" height="512" rx="96" ry="96" fill="url(#bg)"/>
+  <!-- N - bold geometric style -->
+  <path d="M80 380V132h48l112 168V132h48v248h-48L128 212v168H80z" fill="#1e40af"/>
+  <!-- X - bold geometric style -->
+  <path d="M312 132h56l52 104 52-104h56L468 256l60 124h-56l-52-104-52 104h-56l60-124z" fill="#2563eb"/>
+  <!-- Bottom accent line -->
+  <rect x="80" y="408" width="400" height="6" rx="3" fill="#2563eb" opacity="0.5"/>
+</svg>
