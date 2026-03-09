@@ -55,19 +55,3 @@
   "whitelistIp": "IP 位址",
   "whitelistCidr": "CIDR 網段"
 }
-,
-  "whitelistTitle": "授權目標",
-  "whitelistDesc": "管理安全測試的授權目標",
-  "whitelistType": "目標類型",
-  "whitelistValue": "目標值",
-  "whitelistNotes": "備註",
-  "whitelistNotesPlaceholder": "授權詳情或測試範圍",
-  "whitelistDeclaration": "我聲明已獲得測試此目標的合法授權",
-  "whitelistEmpty": "無授權目標。執行掃描前請先新增目標。",
-  "whitelistAdd": "新增目標",
-  "whitelistAdded": "目標新增成功",
-  "whitelistRemoved": "目標刪除成功",
-  "whitelistDomain": "網域",
-  "whitelistIp": "IP 位址",
-  "whitelistCidr": "CIDR 網段"
-}
