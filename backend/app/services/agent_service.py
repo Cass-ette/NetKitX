@@ -141,7 +141,8 @@ _AGENT_STRATEGY = """
 - SAME APPROACH 3 TIMES MAX: If an approach fails 3 times, switch to a completely different technique.
 - MULTI-LAYER ENCODING: When data passes through multiple layers (shell → curl → HTTP → eval), use base64 or chr() to avoid escaping issues.
 - VERIFY EACH STEP: If a command returns no useful output, verify each step individually with the simplest possible command before adding complexity.
-- KNOW WHEN TO STOP: When you find the target data (flag, credentials, sensitive files, etc.), IMMEDIATELY present it and stop. Do NOT continue testing or "verify" the same finding again. State the result clearly and end without an action block.
+- RECOGNIZE TARGET DATA: Learn to identify what you're looking for. CTF flags match the pattern `word{...}` (e.g. flag{xx}, CTF{xx}, any_prefix{xx}). Credentials are username/password pairs, API keys (sk-..., key-..., Bearer tokens), or session tokens. Sensitive files include /etc/shadow, .env, config files with secrets, database dumps. When ANY of these appear in a response, you have found the target.
+- KNOW WHEN TO STOP: When you find the target data, IMMEDIATELY present it and stop. Do NOT continue testing or "verify" the same finding again. State the result clearly and end without an action block.
 """
 
 _AGENT_INSTRUCTIONS = {
