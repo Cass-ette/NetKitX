@@ -14,7 +14,7 @@ import { API_BASE } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, register } = useAuth();
+  const { login, register, setAuth } = useAuth();
   const { t } = useTranslations("login");
   const [isRegister, setIsRegister] = useState(false);
   const [username, setUsername] = useState("");
@@ -138,7 +138,7 @@ export default function LoginPage() {
       const user = await userRes.json();
 
       // Update auth store
-      useAuth.getState().setAuth(access_token, user);
+      setAuth(access_token, user);
       router.push("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : t("somethingWentWrong"));
