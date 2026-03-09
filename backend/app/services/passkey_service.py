@@ -22,19 +22,33 @@ from webauthn.helpers.structs import (
 from webauthn.helpers.cose import COSEAlgorithmIdentifier
 
 from app.core.config import settings
+from app.core.redis import get_redis
 from app.models.passkey import PasskeyCredential
 from app.models.user import User
-
-
-# Temporary in-memory challenge storage (use Redis in production)
-_challenge_store: dict[int, bytes] = {}
-_auth_challenge: bytes | None = None  # For authentication (no user ID yet)
 
 
 # WebAuthn configuration
 RP_ID = settings.DOMAIN or "localhost"
 RP_NAME = "NetKitX"
 ORIGIN = f"https://{RP_ID}" if settings.DOMAIN else "http://localhost:3000"
+
+# Redis keys for challenge storage
+CHALLENGE_TTL = 300  # 5 minutes
+
+
+async def _store_challenge(key: str, challenge: bytes) -> None:
+    """Store challenge in Redis with TTL."""
+    redis = await get_redis()
+    await redis.setex(key, CHALLENGE_TTL, base64.b64encode(challenge).decode())
+
+
+async def _get_challenge(key: str) -> bytes | None:
+    """Retrieve and delete challenge from Redis."""
+    redis = await get_redis()
+    value = await redis.getdel(key)
+    if value:
+        return base64.b64decode(value)
+    return None
 
 
 async def begin_registration(
@@ -69,11 +83,9 @@ async def begin_registration(
         ],
     )
 
-    # Store challenge for this user
-    _challenge_store[user.id] = options.challenge
+    # Store challenge in Redis
+    await _store_challenge(f"passkey:reg:{user.id}", options.challenge)
 
-    # Store challenge in session (in production, use Redis or similar)
-    # For now, we'll return it and expect it back
     return json.loads(options_to_json(options))
 
 
@@ -85,8 +97,8 @@ async def complete_registration(
     name: str | None = None,
 ) -> PasskeyCredential:
     """Verify and store a new passkey credential."""
-    # Retrieve stored challenge
-    expected_challenge = _challenge_store.pop(user.id, None)
+    # Retrieve stored challenge from Redis
+    expected_challenge = await _get_challenge(f"passkey:reg:{user.id}")
     if not expected_challenge:
         raise ValueError("No challenge found for this user")
 
@@ -118,8 +130,6 @@ async def begin_authentication(
     session: AsyncSession,
 ) -> dict:
     """Generate authentication options for passkey login."""
-    global _auth_challenge
-
     # Get all credentials (we don't know which user yet)
     # In production, you might want to limit this or use resident keys
     result = await session.execute(select(PasskeyCredential))
@@ -139,8 +149,8 @@ async def begin_authentication(
         user_verification=UserVerificationRequirement.PREFERRED,
     )
 
-    # Store challenge globally (since we don't know the user yet)
-    _auth_challenge = options.challenge
+    # Store challenge in Redis with a global key (no user ID yet)
+    await _store_challenge("passkey:auth:global", options.challenge)
 
     return json.loads(options_to_json(options))
 
@@ -151,9 +161,9 @@ async def complete_authentication(
     challenge: str,
 ) -> User:
     """Verify passkey assertion and return authenticated user."""
-    global _auth_challenge
-
-    if not _auth_challenge:
+    # Retrieve stored challenge from Redis
+    expected_challenge = await _get_challenge("passkey:auth:global")
+    if not expected_challenge:
         raise ValueError("No authentication challenge found")
 
     # Extract credential ID from response (base64url without padding)
@@ -176,15 +186,12 @@ async def complete_authentication(
     # Verify the assertion
     verification = verify_authentication_response(
         credential=credential_data,
-        expected_challenge=_auth_challenge,
+        expected_challenge=expected_challenge,
         expected_origin=ORIGIN,
         expected_rp_id=RP_ID,
         credential_public_key=credential.public_key,
         credential_current_sign_count=credential.sign_count,
     )
-
-    # Clear the challenge
-    _auth_challenge = None
 
     # Update sign count and last used
     credential.sign_count = verification.new_sign_count
