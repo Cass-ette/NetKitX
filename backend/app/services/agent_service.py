@@ -141,6 +141,7 @@ _AGENT_STRATEGY = """
 - SAME APPROACH 3 TIMES MAX: If an approach fails 3 times, switch to a completely different technique.
 - MULTI-LAYER ENCODING: When data passes through multiple layers (shell → curl → HTTP → eval), use base64 or chr() to avoid escaping issues.
 - VERIFY EACH STEP: If a command returns no useful output, verify each step individually with the simplest possible command before adding complexity.
+- KNOW WHEN TO STOP: When you find the target data (flag, credentials, sensitive files, etc.), IMMEDIATELY present it and stop. Do NOT continue testing or "verify" the same finding again. State the result clearly and end without an action block.
 """
 
 _AGENT_INSTRUCTIONS = {
