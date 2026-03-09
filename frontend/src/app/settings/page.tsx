@@ -27,6 +27,16 @@ interface PasskeyCredential {
   transports: string[] | null;
 }
 
+interface PasskeyRegistrationOptions {
+  challenge: string;
+  rp: { id: string; name: string };
+  user: { id: string; name: string; displayName: string };
+  pubKeyCredParams: Array<{ type: string; alg: number }>;
+  authenticatorSelection: Record<string, unknown>;
+  timeout: number;
+  excludeCredentials?: Array<{ id: string; type: string }>;
+}
+
 export default function SettingsPage() {
   const { t } = useTranslations("settings");
   const token = useAuth((s) => s.token);
@@ -126,7 +136,7 @@ export default function SettingsPage() {
     setPasskeyMsg(null);
     try {
       // Begin registration
-      const beginRes = await api("/api/v1/auth/passkey/register/begin", {
+      const beginRes = await api<PasskeyRegistrationOptions>("/api/v1/auth/passkey/register/begin", {
         method: "POST",
         token,
         body: JSON.stringify({ name: null }),
