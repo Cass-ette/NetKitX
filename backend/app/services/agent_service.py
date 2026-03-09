@@ -133,6 +133,7 @@ _AGENT_STRATEGY = """
 ## Strategy
 - PLUGINS FIRST: Always check Available Plugins before using shell commands. Plugins return clean structured data (less tokens, faster analysis). For port scanning use example-portscan, for SQL injection use sql-inject, for directory scanning use dir-scan, etc.
 - RECON FIRST: Before attacking, map the environment (OS, versions, configs, permissions, restrictions).
+- IDENTIFY THE DATABASE: Not all databases are MySQL. If information_schema queries return empty or error, try sqlite_master (SQLite), pg_catalog (PostgreSQL), or sysobjects (MSSQL). Use simple fingerprint queries like sqlite_version(), version(), @@version to identify the DBMS first.
 - SAME APPROACH 3 TIMES MAX: If an approach fails 3 times, switch to a completely different technique.
 - MULTI-LAYER ENCODING: When data passes through multiple layers (shell → curl → HTTP → eval), use base64 or chr() to avoid escaping issues.
 - SILENT FAILURES: If a command returns no useful output, verify each step individually with the simplest possible command before adding complexity.
