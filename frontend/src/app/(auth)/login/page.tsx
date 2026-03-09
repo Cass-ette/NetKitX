@@ -98,15 +98,26 @@ export default function LoginPage() {
 
       // Prepare credential data for server
       const response = credential.response as AuthenticatorAssertionResponse;
+
+      // Helper to convert ArrayBuffer to base64url
+      const bufferToBase64url = (buffer: ArrayBuffer) => {
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+      };
+
       const credentialData = {
         id: credential.id,
-        rawId: btoa(String.fromCharCode(...new Uint8Array(credential.rawId))),
+        rawId: credential.id,  // id is already base64url
         type: credential.type,
         response: {
-          clientDataJSON: btoa(String.fromCharCode(...new Uint8Array(response.clientDataJSON))),
-          authenticatorData: btoa(String.fromCharCode(...new Uint8Array(response.authenticatorData))),
-          signature: btoa(String.fromCharCode(...new Uint8Array(response.signature))),
-          userHandle: response.userHandle ? btoa(String.fromCharCode(...new Uint8Array(response.userHandle))) : null,
+          clientDataJSON: bufferToBase64url(response.clientDataJSON),
+          authenticatorData: bufferToBase64url(response.authenticatorData),
+          signature: bufferToBase64url(response.signature),
+          userHandle: response.userHandle ? bufferToBase64url(response.userHandle) : null,
         },
       };
 
