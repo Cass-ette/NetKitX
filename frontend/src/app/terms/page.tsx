@@ -9,6 +9,7 @@ import { Loader2, Shield } from "lucide-react";
 import { useTranslations } from "@/i18n/use-translations";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
+import type { User } from "@/types";
 
 export default function TermsPage() {
   const { t } = useTranslations("settings");
@@ -45,7 +46,7 @@ export default function TermsPage() {
     setLoading(true);
     setError(null);
     try {
-      const user = await api("/api/v1/auth/accept-terms", { method: "POST", token });
+      const user = await api<User>("/api/v1/auth/accept-terms", { method: "POST", token });
       setAuth(token, user);
       router.push("/dashboard");
     } catch (err) {
