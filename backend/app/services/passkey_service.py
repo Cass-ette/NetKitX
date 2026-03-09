@@ -4,6 +4,7 @@ import base64
 import json
 from datetime import datetime
 
+import redis.asyncio as aioredis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from webauthn import (
@@ -22,7 +23,6 @@ from webauthn.helpers.structs import (
 from webauthn.helpers.cose import COSEAlgorithmIdentifier
 
 from app.core.config import settings
-from app.core.redis import get_redis
 from app.models.passkey import PasskeyCredential
 from app.models.user import User
 
@@ -36,19 +36,30 @@ ORIGIN = f"https://{RP_ID}" if settings.DOMAIN else "http://localhost:3000"
 CHALLENGE_TTL = 300  # 5 minutes
 
 
+def _get_redis():
+    """Get Redis connection."""
+    return aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+
+
 async def _store_challenge(key: str, challenge: bytes) -> None:
     """Store challenge in Redis with TTL."""
-    redis = await get_redis()
-    await redis.setex(key, CHALLENGE_TTL, base64.b64encode(challenge).decode())
+    redis = _get_redis()
+    try:
+        await redis.setex(key, CHALLENGE_TTL, base64.b64encode(challenge).decode())
+    finally:
+        await redis.aclose()
 
 
 async def _get_challenge(key: str) -> bytes | None:
     """Retrieve and delete challenge from Redis."""
-    redis = await get_redis()
-    value = await redis.getdel(key)
-    if value:
-        return base64.b64decode(value)
-    return None
+    redis = _get_redis()
+    try:
+        value = await redis.getdel(key)
+        if value:
+            return base64.b64decode(value)
+        return None
+    finally:
+        await redis.aclose()
 
 
 async def begin_registration(
