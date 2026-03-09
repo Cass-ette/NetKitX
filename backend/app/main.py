@@ -21,6 +21,7 @@ from app.api.v1 import (
     terminal,
     admin,
     knowledge,
+    passkey,
 )
 from app.plugins.loader import load_all_plugins
 
@@ -96,6 +97,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
+app.include_router(passkey.router, prefix="/api/v1/auth/passkey", tags=["passkey"])
 app.include_router(tools.router, prefix="/api/v1/tools", tags=["tools"])
 app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["tasks"])
 app.include_router(plugins.router, prefix="/api/v1/plugins", tags=["plugins"])

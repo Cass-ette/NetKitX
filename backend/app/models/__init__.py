@@ -14,6 +14,7 @@ from app.models.ai_settings import AISettings
 from app.models.audit_log import AuditLog
 from app.models.announcement import Announcement
 from app.models.knowledge import AgentSession, SessionTurn, KnowledgeEntry
+from app.models.passkey import PasskeyCredential
 
 __all__ = [
     "User",
@@ -32,4 +33,5 @@ __all__ = [
     "AgentSession",
     "SessionTurn",
     "KnowledgeEntry",
+    "PasskeyCredential",
 ]

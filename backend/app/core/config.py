@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     # CORS
     ALLOWED_ORIGINS: list[str] = ["http://localhost:3000"]
 
+    # WebAuthn / Passkey
+    DOMAIN: str | None = None  # e.g. "wql.me" for production, None for localhost
+
     class Config:
         env_file = ".env"
 

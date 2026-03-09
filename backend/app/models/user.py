@@ -1,11 +1,14 @@
 import datetime
 
 from sqlalchemy import Integer, String
-from sqlalchemy.orm import Mapped, mapped_column
-from typing import Optional
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from typing import Optional, TYPE_CHECKING
 from sqlalchemy.sql import func
 
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.passkey import PasskeyCredential
 
 
 class User(Base):
@@ -21,3 +24,8 @@ class User(Base):
     max_concurrent_tasks: Mapped[int] = mapped_column(Integer, default=5)
     max_daily_tasks: Mapped[int] = mapped_column(Integer, default=100)
     created_at: Mapped[datetime.datetime] = mapped_column(server_default=func.now())
+
+    # Relationships
+    passkey_credentials: Mapped[list["PasskeyCredential"]] = relationship(
+        "PasskeyCredential", back_populates="user", cascade="all, delete-orphan"
+    )

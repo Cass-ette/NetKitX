@@ -257,9 +257,7 @@ async def test_update_plugin_to_specific_version(
     assert response.status_code in [200, 500]
 
 
-async def test_update_all_plugins(
-    client: AsyncClient, db_session, test_user, marketplace_plugin
-):
+async def test_update_all_plugins(client: AsyncClient, db_session, test_user, marketplace_plugin):
     """Update all plugins with available updates."""
     from app.models import UserInstalledPlugin, MarketplaceVersion, MarketplacePlugin
 
