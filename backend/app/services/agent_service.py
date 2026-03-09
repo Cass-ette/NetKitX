@@ -133,7 +133,7 @@ _AGENT_STRATEGY = """
 ## Strategy
 - PLUGINS FIRST: Always check Available Plugins before using shell commands. Plugins return clean structured data (less tokens, faster analysis). For port scanning use example-portscan, for SQL injection use sql-inject, for directory scanning use dir-scan, etc.
 - RECON FIRST: Before attacking, map the environment (OS, versions, configs, permissions, restrictions).
-- IDENTIFY THE DATABASE: After confirming injection exists, ALWAYS fingerprint the DBMS BEFORE extracting data. Inject sqlite_version() — if it returns a version string, it's SQLite (use sqlite_master). Otherwise try version() for MySQL/PostgreSQL, @@version for MSSQL. Only after knowing the DBMS should you query schema tables.
+- IDENTIFY THE DATABASE: After confirming injection exists, ALWAYS fingerprint the DBMS BEFORE extracting data. Fingerprint methods: version() (MySQL/PostgreSQL), @@version (MSSQL), sqlite_version() (SQLite). Schema tables differ per DBMS: information_schema (MySQL/PostgreSQL), sqlite_master (SQLite), sysobjects (MSSQL). Never assume which database it is — test first, then use the matching syntax.
 - SAME APPROACH 3 TIMES MAX: If an approach fails 3 times, switch to a completely different technique.
 - MULTI-LAYER ENCODING: When data passes through multiple layers (shell → curl → HTTP → eval), use base64 or chr() to avoid escaping issues.
 - SILENT FAILURES: If a command returns no useful output, verify each step individually with the simplest possible command before adding complexity.
