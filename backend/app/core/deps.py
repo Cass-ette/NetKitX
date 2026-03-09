@@ -6,7 +6,7 @@ from app.core.config import settings
 from app.core.database import get_session
 from app.core.security import decode_access_token
 from app.models.user import User
-from app.services.auth_service import get_user_by_id
+from app.services.auth_service import get_user_by_id, get_user_by_username
 
 bearer = HTTPBearer()
 
@@ -15,10 +15,10 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer),
     session: AsyncSession = Depends(get_session),
 ) -> User:
-    user_id = decode_access_token(credentials.credentials)
-    if not user_id:
+    username = decode_access_token(credentials.credentials)
+    if not username:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-    user = await get_user_by_id(session, int(user_id))
+    user = await get_user_by_username(session, username)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     return user
