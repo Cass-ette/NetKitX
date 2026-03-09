@@ -38,16 +38,12 @@ async def complete_passkey_registration(
     session: AsyncSession = Depends(get_session),
 ):
     """Complete passkey registration."""
-    # Extract challenge from the credential response
-    # In production, retrieve this from Redis/session storage
-    challenge = request.credential.get("response", {}).get("clientDataJSON", "")
-
     try:
         credential = await passkey_service.complete_registration(
             session=session,
             user=current_user,
             credential_data=request.credential,
-            challenge=challenge,
+            challenge="",  # Challenge is retrieved from server-side storage
             name=request.name,
         )
         return PasskeyCredentialResponse.model_validate(credential)
@@ -74,14 +70,11 @@ async def complete_passkey_login(
     session: AsyncSession = Depends(get_session),
 ):
     """Complete passkey authentication and return access token."""
-    # Extract challenge from the credential response
-    challenge = request.credential.get("response", {}).get("clientDataJSON", "")
-
     try:
         user = await passkey_service.complete_authentication(
             session=session,
             credential_data=request.credential,
-            challenge=challenge,
+            challenge="",  # Challenge is retrieved from server-side storage
         )
 
         access_token = create_access_token(data={"sub": user.username})
