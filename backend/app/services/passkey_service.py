@@ -156,8 +156,13 @@ async def complete_authentication(
     if not _auth_challenge:
         raise ValueError("No authentication challenge found")
 
-    # Extract credential ID from response
-    credential_id = base64.urlsafe_b64decode(credential_data["id"])
+    # Extract credential ID from response (base64url without padding)
+    cred_id_b64url = credential_data["id"]
+    # Add padding if needed
+    padding = 4 - (len(cred_id_b64url) % 4)
+    if padding != 4:
+        cred_id_b64url += "=" * padding
+    credential_id = base64.urlsafe_b64decode(cred_id_b64url)
 
     # Find the credential
     result = await session.execute(
