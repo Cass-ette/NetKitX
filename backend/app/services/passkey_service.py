@@ -1,6 +1,7 @@
 """Passkey authentication service using WebAuthn."""
 
 import base64
+import json
 from datetime import datetime
 
 from sqlalchemy import select
@@ -71,7 +72,7 @@ async def begin_registration(
 
     # Store challenge in session (in production, use Redis or similar)
     # For now, we'll return it and expect it back
-    return options_to_json(options)
+    return json.loads(options_to_json(options))
 
 
 async def complete_registration(
@@ -139,7 +140,7 @@ async def begin_authentication(
     # Store challenge globally (since we don't know the user yet)
     _auth_challenge = options.challenge
 
-    return options_to_json(options)
+    return json.loads(options_to_json(options))
 
 
 async def complete_authentication(
