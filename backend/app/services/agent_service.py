@@ -92,9 +92,10 @@ AGENT_INSTRUCTION_TERMINAL = """
 ## Agent Mode: Terminal (Plugins + Shell)
 You are an autonomous AI agent that can execute plugins and shell commands.
 
-**ALWAYS prefer plugins over shell commands.** Plugins return structured JSON data, which is
-more compact, more reliable, and easier to analyze. Check the Available Plugins list first.
-Only fall back to shell commands when no suitable plugin exists for the task.
+Use the right tool for the job:
+- **Plugins** return structured JSON — ideal for standard scans (port scan, dir scan, SQL injection tests).
+- **Shell commands** offer full flexibility — ideal for custom payloads, command chaining, and anything plugins don't cover.
+Check the Available Plugins list for built-in capabilities, but use shell freely when you need more control.
 
 To use a plugin:
 
@@ -106,7 +107,7 @@ To use a plugin:
   <reason>Why you want to run this</reason>
 </action>
 
-To run a shell command (only when no plugin covers the task):
+To run a shell command:
 
 <action type="shell">
   <command>your command here</command>
@@ -131,12 +132,12 @@ When this happens:
 
 _AGENT_STRATEGY = """
 ## Strategy
-- PLUGINS FIRST: Always check Available Plugins before using shell commands. Plugins return clean structured data (less tokens, faster analysis). For port scanning use example-portscan, for SQL injection use sql-inject, for directory scanning use dir-scan, etc.
-- RECON FIRST: Before attacking, map the environment (OS, versions, configs, permissions, restrictions).
-- IDENTIFY THE DATABASE: After confirming injection exists, ALWAYS fingerprint the DBMS BEFORE extracting data. Fingerprint methods: version() (MySQL/PostgreSQL), @@version (MSSQL), sqlite_version() (SQLite). Schema tables differ per DBMS: information_schema (MySQL/PostgreSQL), sqlite_master (SQLite), sysobjects (MSSQL). Never assume which database it is — test first, then use the matching syntax.
+- RIGHT TOOL: Use plugins for standard scans (structured data, fewer tokens). Use shell for custom payloads, chaining, or when plugins don't fit. Don't force a plugin where a curl one-liner would be simpler.
+- RECON FIRST: Before attacking, map the environment (OS, versions, services, technologies).
+- OBSERVE, DON'T ASSUME: Infer database type, framework, and config from error messages, response headers, and behavioral differences. If clues are already visible, act on them immediately — don't waste turns on redundant fingerprinting. When truly unknown, test with version()/@@version/sqlite_version() to confirm.
 - SAME APPROACH 3 TIMES MAX: If an approach fails 3 times, switch to a completely different technique.
 - MULTI-LAYER ENCODING: When data passes through multiple layers (shell → curl → HTTP → eval), use base64 or chr() to avoid escaping issues.
-- SILENT FAILURES: If a command returns no useful output, verify each step individually with the simplest possible command before adding complexity.
+- VERIFY EACH STEP: If a command returns no useful output, verify each step individually with the simplest possible command before adding complexity.
 """
 
 _AGENT_INSTRUCTIONS = {
@@ -284,6 +285,11 @@ _SEC_ATTR_RE = re.compile(
 )
 _ATTR_PAIR_RE = re.compile(r'(\w+)\s*=\s*["\']([^"\']*)["\']')
 
+# Small inline scripts (< threshold) may contain tokens/endpoints — keep them.
+# Large scripts (bundled JS, libraries) are noise — strip them.
+_SCRIPT_RE = re.compile(r"<script[^>]*>(.*?)</script>", re.DOTALL | re.IGNORECASE)
+_SCRIPT_KEEP_THRESHOLD = 1000  # chars
+
 # Max chars to keep from a single stdout/stderr field before smart truncation
 _FIELD_MAX = 12000
 _FIELD_HEAD = 5000
@@ -304,13 +310,20 @@ def _preserve_sec_attrs(match: re.Match) -> str:
 def _strip_html(text: str) -> str:
     """Remove HTML tags, preserve security-relevant content.
 
-    - Keeps <script> body (may contain tokens, endpoints, secrets)
+    - Keeps small inline <script> bodies (may contain tokens, endpoints, secrets)
+    - Strips large <script> blocks (bundled JS / library noise)
     - Extracts attributes from form/input/a/iframe/meta tags
     - Strips <style> blocks and purely presentational tags
     """
     # Strip style blocks (CSS is noise for security analysis)
     text = re.sub(r"<style[^>]*>.*?</style>", "", text, flags=re.DOTALL | re.IGNORECASE)
-    # Keep script CONTENT but strip the <script> tags themselves (done by _HTML_TAG_RE below)
+
+    # Keep small inline scripts, strip large ones (bundled JS is noise)
+    def _handle_script(m: re.Match) -> str:
+        content = m.group(1).strip()
+        return content if len(content) <= _SCRIPT_KEEP_THRESHOLD else ""
+
+    text = _SCRIPT_RE.sub(_handle_script, text)
     # Extract security-relevant tag attributes before stripping
     text = _SEC_ATTR_RE.sub(_preserve_sec_attrs, text)
     # Strip remaining tags
