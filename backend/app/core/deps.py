@@ -6,7 +6,7 @@ from app.core.config import settings
 from app.core.database import get_session
 from app.core.security import decode_access_token
 from app.models.user import User
-from app.services.auth_service import get_user_by_id, get_user_by_username
+from app.services.auth_service import get_user_by_username
 
 bearer = HTTPBearer()
 

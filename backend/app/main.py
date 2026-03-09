@@ -22,6 +22,7 @@ from app.api.v1 import (
     admin,
     knowledge,
     passkey,
+    whitelist,
 )
 from app.plugins.loader import load_all_plugins
 
@@ -108,6 +109,7 @@ app.include_router(ai.router, prefix="/api/v1/ai", tags=["ai"])
 app.include_router(terminal.router, prefix="/api/v1/terminal", tags=["terminal"])
 app.include_router(admin.router, prefix="/api/v1")
 app.include_router(knowledge.router, prefix="/api/v1", tags=["knowledge"])
+app.include_router(whitelist.router, prefix="/api/v1", tags=["whitelist"])
 
 
 @app.get("/api/health")

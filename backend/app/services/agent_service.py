@@ -475,6 +475,7 @@ async def run_agent_loop(
     max_turns: int,
     confirm_action: dict | None = None,
     user_id: int | None = None,
+    is_admin: bool = False,
     user_token: str | None = None,
     base_url: str | None = None,
 ) -> AsyncIterator[dict]:
@@ -496,7 +497,7 @@ async def run_agent_loop(
 
         if approved and action:
             yield {"event": "action_status", "data": {"status": "executing", "action": action}}
-            result = await _execute_action(action, agent_mode, user_id, user_token)
+            result = await _execute_action(action, agent_mode, user_id, is_admin, user_token)
             yield {"event": "action_result", "data": {"result": result, "action": action}}
             # Inject result into messages
             result_text = format_action_result(action, result)
@@ -626,7 +627,7 @@ async def run_agent_loop(
         # Mode B/C: auto-execute
         yield {"event": "action_status", "data": {"status": "executing", "action": action}}
         try:
-            result = await _execute_action(action, agent_mode, user_id, user_token)
+            result = await _execute_action(action, agent_mode, user_id, is_admin, user_token)
         except Exception as e:
             logger.exception("Action execution error in agent loop")
             yield {
@@ -726,12 +727,24 @@ async def _execute_action(
     action: dict[str, Any],
     agent_mode: str,
     user_id: int | None = None,
+    is_admin: bool = False,
     user_token: str | None = None,
 ) -> dict[str, Any]:
     """Execute an action based on its type."""
     action_type = action.get("type", "")
 
     if action_type == "plugin":
+        # Validate whitelist for non-admin users
+        if not is_admin and user_id:
+            from app.core.database import async_session
+            from app.services.whitelist_service import validate_targets
+
+            params = action.get("params", {})
+            async with async_session() as session:
+                is_valid, error_msg = await validate_targets(session, user_id, False, params)
+                if not is_valid:
+                    return {"error": f"Unauthorized target: {error_msg}"}
+
         return await execute_plugin_action(action)
     elif action_type == "shell":
         if agent_mode != "terminal":

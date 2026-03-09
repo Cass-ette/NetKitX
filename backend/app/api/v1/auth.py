@@ -1,4 +1,5 @@
 import httpx
+from datetime import datetime as dt
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy import func, select
@@ -8,6 +9,7 @@ from app.core.config import settings
 from app.core.database import get_session
 from app.core.deps import get_current_user
 from app.core.security import create_access_token
+from app.core.terms import get_terms
 from app.models.user import User
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserResponse
 from app.services.auth_service import (
@@ -46,6 +48,24 @@ async def get_current_user_info(
     current_user: User = Depends(get_current_user),
 ):
     """Get current authenticated user's information."""
+    return current_user
+
+
+@router.get("/terms")
+async def get_terms_content(lang: str = "en"):
+    """Get terms of service content."""
+    return get_terms(lang)
+
+
+@router.post("/accept-terms", response_model=UserResponse)
+async def accept_terms(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Accept terms of service."""
+    current_user.terms_accepted_at = dt.utcnow()
+    await session.commit()
+    await session.refresh(current_user)
     return current_user
 
 

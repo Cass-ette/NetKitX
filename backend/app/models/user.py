@@ -23,6 +23,7 @@ class User(Base):
     avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True, default=None)
     max_concurrent_tasks: Mapped[int] = mapped_column(Integer, default=5)
     max_daily_tasks: Mapped[int] = mapped_column(Integer, default=100)
+    terms_accepted_at: Mapped[datetime.datetime | None] = mapped_column(nullable=True, default=None)
     created_at: Mapped[datetime.datetime] = mapped_column(server_default=func.now())
 
     # Relationships

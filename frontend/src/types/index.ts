@@ -41,6 +41,7 @@ export interface User {
   email: string;
   role: "admin" | "user";
   avatar_url?: string | null;
+  terms_accepted_at?: string | null;
   created_at: string; // ISO datetime string from backend
 }
 
@@ -224,5 +225,14 @@ export interface KnowledgeEntry {
   summary: string;
   learning_report: string;
   extraction_status: string;
+  created_at: string;
+}
+
+export interface AuthorizedTarget {
+  id: number;
+  target_type: "domain" | "ip" | "cidr";
+  target_value: string;
+  declaration: boolean;
+  notes?: string | null;
   created_at: string;
 }

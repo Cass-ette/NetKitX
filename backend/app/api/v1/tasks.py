@@ -78,6 +78,15 @@ async def create(
     if quota_error:
         raise HTTPException(status_code=429, detail=quota_error)
 
+    # Validate authorized targets
+    from app.services.whitelist_service import validate_targets
+
+    is_valid, error_msg = await validate_targets(
+        session, user.id, user.role == "admin", body.params or {}
+    )
+    if not is_valid:
+        raise HTTPException(status_code=403, detail=error_msg)
+
     task = await create_task(session, body.plugin_name, body.params, user.id, body.project_id)
 
     # Dispatch as background asyncio task

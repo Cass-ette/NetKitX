@@ -25,6 +25,7 @@ class UserResponse(BaseModel):
     email: str
     role: str
     avatar_url: str | None = None
+    terms_accepted_at: datetime | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

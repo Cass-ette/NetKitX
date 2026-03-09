@@ -81,6 +81,7 @@ async def complete_passkey_login(
         return TokenResponse(access_token=access_token, token_type="bearer")
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

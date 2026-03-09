@@ -264,6 +264,7 @@ async def agent(
                 max_turns=body.max_turns,
                 confirm_action=confirm,
                 user_id=user.id,
+                is_admin=user.role == "admin",
                 user_token=user_token,
                 base_url=ai.base_url,
             ):

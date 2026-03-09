@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -13,11 +15,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Save, Trash2, Fingerprint, Plus } from "lucide-react";
+import { Loader2, Save, Trash2, Fingerprint, Plus, Shield } from "lucide-react";
 import { useTranslations } from "@/i18n/use-translations";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
-import type { AISettings } from "@/types";
+import type { AISettings, AuthorizedTarget } from "@/types";
 
 interface PasskeyCredential {
   id: number;
@@ -55,6 +57,14 @@ export default function SettingsPage() {
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [passkeyMsg, setPasskeyMsg] = useState<string | null>(null);
 
+  const [whitelist, setWhitelist] = useState<AuthorizedTarget[]>([]);
+  const [whitelistType, setWhitelistType] = useState<"domain" | "ip" | "cidr">("domain");
+  const [whitelistValue, setWhitelistValue] = useState("");
+  const [whitelistNotes, setWhitelistNotes] = useState("");
+  const [whitelistDeclaration, setWhitelistDeclaration] = useState(true);
+  const [whitelistLoading, setWhitelistLoading] = useState(false);
+  const [whitelistMsg, setWhitelistMsg] = useState<string | null>(null);
+
   const loadAiSettings = useCallback(async () => {
     if (!token) return;
     try {
@@ -79,14 +89,25 @@ export default function SettingsPage() {
     }
   }, [token]);
 
+  const loadWhitelist = useCallback(async () => {
+    if (!token) return;
+    try {
+      const data = await api<AuthorizedTarget[]>("/api/v1/whitelist", { token });
+      setWhitelist(data);
+    } catch {
+      setWhitelist([]);
+    }
+  }, [token]);
+
   useEffect(() => {
     loadAiSettings();
     loadPasskeys();
+    loadWhitelist();
     setPasskeySupported(
       typeof window !== "undefined" &&
       window.PublicKeyCredential !== undefined
     );
-  }, [loadAiSettings, loadPasskeys]);
+  }, [loadAiSettings, loadPasskeys, loadWhitelist]);
 
   const handleAiSave = async () => {
     if (!token || !aiApiKey) return;
@@ -232,6 +253,47 @@ export default function SettingsPage() {
       setPasskeyMsg(err instanceof Error ? err.message : "Error");
     } finally {
       setPasskeyLoading(false);
+    }
+  };
+
+  const handleAddWhitelist = async () => {
+    if (!token || !whitelistValue || !whitelistDeclaration) return;
+    setWhitelistLoading(true);
+    setWhitelistMsg(null);
+    try {
+      await api("/api/v1/whitelist", {
+        method: "POST",
+        token,
+        body: JSON.stringify({
+          target_type: whitelistType,
+          target_value: whitelistValue,
+          declaration: whitelistDeclaration,
+          notes: whitelistNotes || null,
+        }),
+      });
+      setWhitelistValue("");
+      setWhitelistNotes("");
+      setWhitelistMsg(t("whitelistAdded"));
+      await loadWhitelist();
+    } catch (err) {
+      setWhitelistMsg(err instanceof Error ? err.message : "Error");
+    } finally {
+      setWhitelistLoading(false);
+    }
+  };
+
+  const handleDeleteWhitelist = async (id: number) => {
+    if (!token) return;
+    setWhitelistLoading(true);
+    setWhitelistMsg(null);
+    try {
+      await api(`/api/v1/whitelist/${id}`, { method: "DELETE", token });
+      setWhitelistMsg(t("whitelistRemoved"));
+      await loadWhitelist();
+    } catch (err) {
+      setWhitelistMsg(err instanceof Error ? err.message : "Error");
+    } finally {
+      setWhitelistLoading(false);
     }
   };
 
@@ -420,6 +482,118 @@ export default function SettingsPage() {
           {passkeyMsg && (
             <p className="text-sm text-muted-foreground">{passkeyMsg}</p>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Authorized Targets Whitelist Card */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                {t("whitelistTitle")}
+              </CardTitle>
+              <CardDescription>{t("whitelistDesc")}</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {whitelist.length === 0 && (
+            <p className="text-sm text-muted-foreground">{t("whitelistEmpty")}</p>
+          )}
+
+          {whitelist.length > 0 && (
+            <div className="space-y-2">
+              {whitelist.map((target) => (
+                <div key={target.id} className="flex items-center justify-between rounded-md border p-3">
+                  <div className="space-y-1 flex-1">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">{t(`whitelist${target.target_type.charAt(0).toUpperCase() + target.target_type.slice(1)}`)}</Badge>
+                      <span className="text-sm font-medium">{target.target_value}</span>
+                    </div>
+                    {target.notes && (
+                      <p className="text-xs text-muted-foreground">{target.notes}</p>
+                    )}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteWhitelist(target.id)}
+                    disabled={whitelistLoading}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="space-y-3 rounded-md border p-4 bg-muted/30">
+            <div className="space-y-2">
+              <Label>{t("whitelistType")}</Label>
+              <Select value={whitelistType} onValueChange={(v: "domain" | "ip" | "cidr") => setWhitelistType(v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="domain">{t("whitelistDomain")}</SelectItem>
+                  <SelectItem value="ip">{t("whitelistIp")}</SelectItem>
+                  <SelectItem value="cidr">{t("whitelistCidr")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>{t("whitelistValue")}</Label>
+              <Input
+                placeholder={whitelistType === "domain" ? "example.com" : whitelistType === "ip" ? "192.168.1.1" : "192.168.1.0/24"}
+                value={whitelistValue}
+                onChange={(e) => setWhitelistValue(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>{t("whitelistNotes")}</Label>
+              <Textarea
+                placeholder={t("whitelistNotesPlaceholder")}
+                value={whitelistNotes}
+                onChange={(e) => setWhitelistNotes(e.target.value)}
+                rows={2}
+              />
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="whitelist-declaration"
+                checked={whitelistDeclaration}
+                onCheckedChange={(c) => setWhitelistDeclaration(!!c)}
+              />
+              <label
+                htmlFor="whitelist-declaration"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                {t("whitelistDeclaration")}
+              </label>
+            </div>
+
+            {whitelistMsg && (
+              <p className="text-sm text-muted-foreground">{whitelistMsg}</p>
+            )}
+
+            <Button
+              onClick={handleAddWhitelist}
+              disabled={whitelistLoading || !whitelistValue || !whitelistDeclaration}
+              className="w-full"
+            >
+              {whitelistLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Plus className="mr-2 h-4 w-4" />
+              )}
+              {t("whitelistAdd")}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
