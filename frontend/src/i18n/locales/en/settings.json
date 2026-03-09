@@ -22,5 +22,17 @@
   "aiBaseUrlHint": "Optional. For third-party API proxies (OpenAI-compatible).",
   "aiCustom": "Custom (OpenAI-compatible)",
   "aiSaved": "AI settings saved",
-  "aiDeleted": "AI settings deleted"
+  "aiDeleted": "AI settings deleted",
+  "passkeyTitle": "Passkey Management",
+  "passkeyDesc": "Manage your WebAuthn passkeys for passwordless login",
+  "passkeyName": "Name",
+  "passkeyCreated": "Created",
+  "passkeyLastUsed": "Last Used",
+  "passkeyNever": "Never",
+  "passkeyAdd": "Add Passkey",
+  "passkeyDelete": "Delete",
+  "passkeyAdded": "Passkey added successfully",
+  "passkeyDeleted": "Passkey deleted successfully",
+  "passkeyNotSupported": "Passkey is not supported in this browser",
+  "passkeyNoCredentials": "No passkeys registered"
 }

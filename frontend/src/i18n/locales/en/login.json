@@ -11,5 +11,7 @@
   "dontHaveAccount": "Don't have an account?",
   "signInLink": "Sign in",
   "registerLink": "Register",
-  "somethingWentWrong": "Something went wrong"
+  "somethingWentWrong": "Something went wrong",
+  "signInWithPasskey": "Sign in with Passkey",
+  "passkeyNotSupported": "Passkey is not supported in this browser"
 }

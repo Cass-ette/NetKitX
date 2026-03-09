@@ -22,5 +22,17 @@
   "aiBaseUrlHint": "可选。用于第三方 API 代理（OpenAI 兼容格式）。",
   "aiCustom": "自定义（OpenAI 兼容）",
   "aiSaved": "AI 配置已保存",
-  "aiDeleted": "AI 配置已删除"
+  "aiDeleted": "AI 配置已删除",
+  "passkeyTitle": "安全密钥管理",
+  "passkeyDesc": "管理您的 WebAuthn 安全密钥以实现无密码登录",
+  "passkeyName": "名称",
+  "passkeyCreated": "创建时间",
+  "passkeyLastUsed": "最后使用",
+  "passkeyNever": "从未",
+  "passkeyAdd": "添加安全密钥",
+  "passkeyDelete": "删除",
+  "passkeyAdded": "安全密钥添加成功",
+  "passkeyDeleted": "安全密钥删除成功",
+  "passkeyNotSupported": "此浏览器不支持安全密钥",
+  "passkeyNoCredentials": "未注册安全密钥"
 }

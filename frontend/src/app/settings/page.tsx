@@ -13,11 +13,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Save, Trash2 } from "lucide-react";
+import { Loader2, Save, Trash2, Fingerprint, Plus } from "lucide-react";
 import { useTranslations } from "@/i18n/use-translations";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import type { AISettings } from "@/types";
+
+interface PasskeyCredential {
+  id: number;
+  name: string | null;
+  created_at: string;
+  last_used_at: string | null;
+  transports: string[] | null;
+}
 
 export default function SettingsPage() {
   const { t } = useTranslations("settings");
@@ -31,6 +39,11 @@ export default function SettingsPage() {
   const [aiMasked, setAiMasked] = useState("");
   const [aiSaving, setAiSaving] = useState(false);
   const [aiMsg, setAiMsg] = useState<string | null>(null);
+
+  const [passkeys, setPasskeys] = useState<PasskeyCredential[]>([]);
+  const [passkeySupported, setPasskeySupported] = useState(false);
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
+  const [passkeyMsg, setPasskeyMsg] = useState<string | null>(null);
 
   const loadAiSettings = useCallback(async () => {
     if (!token) return;
@@ -46,9 +59,25 @@ export default function SettingsPage() {
     }
   }, [token]);
 
+  const loadPasskeys = useCallback(async () => {
+    if (!token) return;
+    try {
+      const data = await api<PasskeyCredential[]>("/api/v1/auth/passkey/credentials", { token });
+      setPasskeys(data);
+    } catch {
+      setPasskeys([]);
+    }
+  }, [token]);
+
   useEffect(() => {
     loadAiSettings();
-  }, [loadAiSettings]);
+    loadPasskeys();
+    setPasskeySupported(
+      typeof window !== "undefined" &&
+      window.PublicKeyCredential !== undefined &&
+      typeof window.PublicKeyCredential === "function"
+    );
+  }, [loadAiSettings, loadPasskeys]);
 
   const handleAiSave = async () => {
     if (!token || !aiApiKey) return;
@@ -88,6 +117,101 @@ export default function SettingsPage() {
       setAiMsg(err instanceof Error ? err.message : "Error");
     } finally {
       setAiSaving(false);
+    }
+  };
+
+  const handleAddPasskey = async () => {
+    if (!token || !passkeySupported) return;
+    setPasskeyLoading(true);
+    setPasskeyMsg(null);
+    try {
+      // Begin registration
+      const beginRes = await api("/api/v1/auth/passkey/register/begin", {
+        method: "POST",
+        token,
+        body: JSON.stringify({ name: null }),
+      });
+
+      // Convert challenge from base64url to Uint8Array
+      const challenge = Uint8Array.from(
+        atob(beginRes.challenge.replace(/-/g, "+").replace(/_/g, "/")),
+        (c) => c.charCodeAt(0)
+      );
+
+      // Convert user.id
+      const userId = Uint8Array.from(
+        atob(beginRes.user.id.replace(/-/g, "+").replace(/_/g, "/")),
+        (c) => c.charCodeAt(0)
+      );
+
+      // Convert excludeCredentials
+      const excludeCredentials = beginRes.excludeCredentials?.map((cred: { id: string; type: string }) => ({
+        id: Uint8Array.from(
+          atob(cred.id.replace(/-/g, "+").replace(/_/g, "/")),
+          (c) => c.charCodeAt(0)
+        ),
+        type: cred.type,
+      }));
+
+      // Create credential
+      const credential = await navigator.credentials.create({
+        publicKey: {
+          challenge,
+          rp: beginRes.rp,
+          user: {
+            id: userId,
+            name: beginRes.user.name,
+            displayName: beginRes.user.displayName,
+          },
+          pubKeyCredParams: beginRes.pubKeyCredParams,
+          authenticatorSelection: beginRes.authenticatorSelection,
+          timeout: beginRes.timeout,
+          excludeCredentials,
+        },
+      }) as PublicKeyCredential;
+
+      if (!credential) throw new Error("No credential returned");
+
+      // Prepare credential data for server
+      const response = credential.response as AuthenticatorAttestationResponse;
+      const credentialData = {
+        id: credential.id,
+        rawId: btoa(String.fromCharCode(...new Uint8Array(credential.rawId))),
+        type: credential.type,
+        response: {
+          clientDataJSON: btoa(String.fromCharCode(...new Uint8Array(response.clientDataJSON))),
+          attestationObject: btoa(String.fromCharCode(...new Uint8Array(response.attestationObject))),
+        },
+      };
+
+      // Complete registration
+      await api("/api/v1/auth/passkey/register/complete", {
+        method: "POST",
+        token,
+        body: JSON.stringify({ credential: credentialData }),
+      });
+
+      setPasskeyMsg(t("passkeyAdded"));
+      await loadPasskeys();
+    } catch (err) {
+      setPasskeyMsg(err instanceof Error ? err.message : "Error");
+    } finally {
+      setPasskeyLoading(false);
+    }
+  };
+
+  const handleDeletePasskey = async (id: number) => {
+    if (!token) return;
+    setPasskeyLoading(true);
+    setPasskeyMsg(null);
+    try {
+      await api(`/api/v1/auth/passkey/credentials/${id}`, { method: "DELETE", token });
+      setPasskeyMsg(t("passkeyDeleted"));
+      await loadPasskeys();
+    } catch (err) {
+      setPasskeyMsg(err instanceof Error ? err.message : "Error");
+    } finally {
+      setPasskeyLoading(false);
     }
   };
 
@@ -214,6 +338,68 @@ export default function SettingsPage() {
               </Button>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Passkey Management Card */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Fingerprint className="h-5 w-5" />
+                {t("passkeyTitle")}
+              </CardTitle>
+              <CardDescription>{t("passkeyDesc")}</CardDescription>
+            </div>
+            {passkeySupported && (
+              <Button onClick={handleAddPasskey} disabled={passkeyLoading} size="sm">
+                <Plus className="mr-2 h-4 w-4" />
+                {t("passkeyAdd")}
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!passkeySupported && (
+            <p className="text-sm text-muted-foreground">{t("passkeyNotSupported")}</p>
+          )}
+
+          {passkeySupported && passkeys.length === 0 && (
+            <p className="text-sm text-muted-foreground">{t("passkeyNoCredentials")}</p>
+          )}
+
+          {passkeySupported && passkeys.length > 0 && (
+            <div className="space-y-2">
+              {passkeys.map((pk) => (
+                <div key={pk.id} className="flex items-center justify-between rounded-md border p-3">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">
+                      {pk.name || `Passkey #${pk.id}`}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("passkeyCreated")}: {new Date(pk.created_at).toLocaleDateString()}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("passkeyLastUsed")}: {pk.last_used_at ? new Date(pk.last_used_at).toLocaleDateString() : t("passkeyNever")}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeletePasskey(pk.id)}
+                    disabled={passkeyLoading}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {passkeyMsg && (
+            <p className="text-sm text-muted-foreground">{passkeyMsg}</p>
+          )}
         </CardContent>
       </Card>
 

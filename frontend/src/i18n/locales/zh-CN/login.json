@@ -11,5 +11,7 @@
   "dontHaveAccount": "没有账户？",
   "signInLink": "登录",
   "registerLink": "注册",
-  "somethingWentWrong": "出了点问题"
+  "somethingWentWrong": "出了点问题",
+  "signInWithPasskey": "使用安全密钥登录",
+  "passkeyNotSupported": "此浏览器不支持安全密钥"
 }

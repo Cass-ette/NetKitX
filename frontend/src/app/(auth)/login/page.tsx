@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Shield, Github } from "lucide-react";
+import { Shield, Github, Fingerprint } from "lucide-react";
 import { useTranslations } from "@/i18n/use-translations";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { API_BASE } from "@/lib/api";
@@ -22,6 +22,15 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [passkeySupported, setPasskeySupported] = useState(false);
+
+  useEffect(() => {
+    setPasskeySupported(
+      typeof window !== "undefined" &&
+      window.PublicKeyCredential !== undefined &&
+      typeof window.PublicKeyCredential === "function"
+    );
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,6 +42,85 @@ export default function LoginPage() {
       } else {
         await login(username, password);
       }
+      router.push("/dashboard");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("somethingWentWrong"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasskeyLogin = async () => {
+    if (!passkeySupported) {
+      setError(t("passkeyNotSupported"));
+      return;
+    }
+    setError("");
+    setLoading(true);
+    try {
+      // Begin authentication
+      const beginRes = await fetch(`${API_BASE}/api/v1/auth/passkey/login/begin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!beginRes.ok) throw new Error("Failed to begin passkey login");
+      const options = await beginRes.json();
+
+      // Convert challenge from base64url to Uint8Array
+      const challenge = Uint8Array.from(
+        atob(options.challenge.replace(/-/g, "+").replace(/_/g, "/")),
+        (c) => c.charCodeAt(0)
+      );
+
+      // Convert allowCredentials
+      const allowCredentials = options.allowCredentials?.map((cred: { id: string; type: string; transports?: string[] }) => ({
+        id: Uint8Array.from(
+          atob(cred.id.replace(/-/g, "+").replace(/_/g, "/")),
+          (c) => c.charCodeAt(0)
+        ),
+        type: cred.type,
+        transports: cred.transports,
+      }));
+
+      // Get credential from authenticator
+      const credential = await navigator.credentials.get({
+        publicKey: {
+          challenge,
+          allowCredentials,
+          rpId: options.rpId,
+          userVerification: options.userVerification,
+          timeout: options.timeout,
+        },
+      }) as PublicKeyCredential;
+
+      if (!credential) throw new Error("No credential returned");
+
+      // Prepare credential data for server
+      const response = credential.response as AuthenticatorAssertionResponse;
+      const credentialData = {
+        id: credential.id,
+        rawId: btoa(String.fromCharCode(...new Uint8Array(credential.rawId))),
+        type: credential.type,
+        response: {
+          clientDataJSON: btoa(String.fromCharCode(...new Uint8Array(response.clientDataJSON))),
+          authenticatorData: btoa(String.fromCharCode(...new Uint8Array(response.authenticatorData))),
+          signature: btoa(String.fromCharCode(...new Uint8Array(response.signature))),
+          userHandle: response.userHandle ? btoa(String.fromCharCode(...new Uint8Array(response.userHandle))) : null,
+        },
+      };
+
+      // Complete authentication
+      const completeRes = await fetch(`${API_BASE}/api/v1/auth/passkey/login/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential: credentialData }),
+      });
+      if (!completeRes.ok) throw new Error("Failed to complete passkey login");
+      const { access_token } = await completeRes.json();
+
+      // Store token and redirect
+      localStorage.setItem("token", access_token);
       router.push("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : t("somethingWentWrong"));
@@ -111,6 +199,17 @@ export default function LoginPage() {
             <Github className="mr-2 h-4 w-4" />
             GitHub
           </Button>
+          {passkeySupported && (
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={handlePasskeyLogin}
+              disabled={loading}
+            >
+              <Fingerprint className="mr-2 h-4 w-4" />
+              {t("signInWithPasskey")}
+            </Button>
+          )}
           <div className="mt-4 text-center text-sm text-muted-foreground">
             {isRegister ? t("alreadyHaveAccount") : t("dontHaveAccount")}{" "}
             <button
