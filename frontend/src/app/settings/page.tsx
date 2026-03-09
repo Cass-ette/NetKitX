@@ -84,8 +84,7 @@ export default function SettingsPage() {
     loadPasskeys();
     setPasskeySupported(
       typeof window !== "undefined" &&
-      window.PublicKeyCredential !== undefined &&
-      typeof window.PublicKeyCredential === "function"
+      window.PublicKeyCredential !== undefined
     );
   }, [loadAiSettings, loadPasskeys]);
 

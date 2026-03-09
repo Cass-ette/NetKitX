@@ -27,8 +27,7 @@ export default function LoginPage() {
   useEffect(() => {
     setPasskeySupported(
       typeof window !== "undefined" &&
-      window.PublicKeyCredential !== undefined &&
-      typeof window.PublicKeyCredential === "function"
+      window.PublicKeyCredential !== undefined
     );
   }, []);
 
