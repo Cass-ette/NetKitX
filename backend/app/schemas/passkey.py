@@ -16,6 +16,7 @@ class PasskeyRegistrationComplete(BaseModel):
     credential: dict = Field(
         ..., description="WebAuthn credential from navigator.credentials.create()"
     )
+    name: str | None = Field(None, max_length=100, description="Optional name for this passkey")
 
 
 class PasskeyLoginBegin(BaseModel):
