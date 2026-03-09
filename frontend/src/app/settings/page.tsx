@@ -31,7 +31,7 @@ interface PasskeyRegistrationOptions {
   challenge: string;
   rp: { id: string; name: string };
   user: { id: string; name: string; displayName: string };
-  pubKeyCredParams: Array<{ type: string; alg: number }>;
+  pubKeyCredParams: Array<{ type: "public-key"; alg: number }>;
   authenticatorSelection: Record<string, unknown>;
   timeout: number;
   excludeCredentials?: Array<{ id: string; type: string }>;
@@ -160,7 +160,7 @@ export default function SettingsPage() {
           atob(cred.id.replace(/-/g, "+").replace(/_/g, "/")),
           (c) => c.charCodeAt(0)
         ),
-        type: cred.type,
+        type: "public-key" as const,
       }));
 
       // Create credential
