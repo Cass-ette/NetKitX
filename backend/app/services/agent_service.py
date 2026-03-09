@@ -135,6 +135,9 @@ _AGENT_STRATEGY = """
 - RIGHT TOOL: Use plugins for standard scans (structured data, fewer tokens). Use shell for custom payloads, chaining, or when plugins don't fit. Don't force a plugin where a curl one-liner would be simpler.
 - RECON FIRST: Before attacking, map the environment (OS, versions, services, technologies).
 - OBSERVE, DON'T ASSUME: Infer database type, framework, and config from error messages, response headers, and behavioral differences. If clues are already visible, act on them immediately — don't waste turns on redundant fingerprinting. When truly unknown, test with version()/@@version/sqlite_version() to confirm.
+- VALIDATE EXTRACTION: After each data extraction attempt, check whether YOUR injected data actually appears in the response. If the output looks the same as before or shows values other than what you injected, the extraction technique isn't working as expected. Diagnose WHY: maybe legitimate results mask your injected data, maybe the app doesn't reflect output at all. Adjust accordingly.
+- ACT, DON'T REPORT: Maximize action density — include an action block in every response unless you've achieved the goal. Keep analysis brief (2-3 sentences). NEVER write a summary report or "recommended next steps" when you still have turns left. Your job is to DO the work, not plan it for a human.
+- FILTER REPEATED QUERIES: When querying the same endpoint repeatedly, pipe output through grep/sed/cut to isolate the meaningful difference. Sending identical boilerplate wastes context.
 - SAME APPROACH 3 TIMES MAX: If an approach fails 3 times, switch to a completely different technique.
 - MULTI-LAYER ENCODING: When data passes through multiple layers (shell → curl → HTTP → eval), use base64 or chr() to avoid escaping issues.
 - VERIFY EACH STEP: If a command returns no useful output, verify each step individually with the simplest possible command before adding complexity.
