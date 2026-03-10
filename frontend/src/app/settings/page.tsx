@@ -222,6 +222,7 @@ export default function SettingsPage() {
         response: {
           clientDataJSON: bufferToBase64url(response.clientDataJSON),
           attestationObject: bufferToBase64url(response.attestationObject),
+          transports: response.getTransports ? response.getTransports() : undefined,
         },
       };
 

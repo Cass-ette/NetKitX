@@ -141,22 +141,12 @@ async def begin_authentication(
     session: AsyncSession,
 ) -> dict:
     """Generate authentication options for passkey login."""
-    # Get all credentials (we don't know which user yet)
-    # In production, you might want to limit this or use resident keys
-    result = await session.execute(select(PasskeyCredential))
-    all_creds = result.scalars().all()
-
-    allow_credentials = [
-        PublicKeyCredentialDescriptor(
-            id=cred.credential_id,
-            transports=cred.transports or [],
-        )
-        for cred in all_creds
-    ]
-
+    # Use discoverable credentials flow (no allowCredentials).
+    # This lets the browser/OS offer all available passkeys including
+    # synced ones (iCloud Keychain, Google Password Manager) and
+    # cross-device authentication via QR code / BLE.
     options = generate_authentication_options(
         rp_id=RP_ID,
-        allow_credentials=allow_credentials if allow_credentials else None,
         user_verification=UserVerificationRequirement.PREFERRED,
     )
 
