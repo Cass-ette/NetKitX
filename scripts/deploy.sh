@@ -24,6 +24,9 @@ git push origin develop
 echo "🔄 Pulling latest code on server..."
 ssh $SERVER "cd $PROJECT_PATH && git pull"
 
+echo "📦 Updating plugin submodules..."
+ssh $SERVER "cd $PROJECT_PATH && git submodule update --init --recursive --remote"
+
 echo "🐳 Building and restarting containers..."
 ssh $SERVER "cd $PROJECT_PATH && docker compose -f $COMPOSE_FILE up -d --build"
 
