@@ -236,7 +236,20 @@ export default function SettingsPage() {
       setPasskeyMsg(t("passkeyAdded"));
       await loadPasskeys();
     } catch (err) {
-      setPasskeyMsg(err instanceof Error ? err.message : "Error");
+      console.error("Passkey registration error:", err);
+      let errorMsg = "Error";
+      if (err instanceof Error) {
+        if (err.name === "NotAllowedError") {
+          errorMsg = "Passkey registration was cancelled or timed out";
+        } else if (err.name === "InvalidStateError") {
+          errorMsg = "This passkey is already registered";
+        } else if (err.name === "NotSupportedError") {
+          errorMsg = "Passkey is not supported on this device";
+        } else {
+          errorMsg = err.message;
+        }
+      }
+      setPasskeyMsg(errorMsg);
     } finally {
       setPasskeyLoading(false);
     }

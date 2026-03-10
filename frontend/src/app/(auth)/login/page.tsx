@@ -72,21 +72,23 @@ export default function LoginPage() {
         (c) => c.charCodeAt(0)
       );
 
-      // Convert allowCredentials
-      const allowCredentials = options.allowCredentials?.map((cred: { id: string; type: string; transports?: string[] }) => ({
-        id: Uint8Array.from(
-          atob(cred.id.replace(/-/g, "+").replace(/_/g, "/")),
-          (c) => c.charCodeAt(0)
-        ),
-        type: cred.type,
-        transports: cred.transports,
-      }));
+      // Convert allowCredentials (only if non-empty)
+      const allowCredentials = options.allowCredentials?.length > 0
+        ? options.allowCredentials.map((cred: { id: string; type: string; transports?: string[] }) => ({
+            id: Uint8Array.from(
+              atob(cred.id.replace(/-/g, "+").replace(/_/g, "/")),
+              (c) => c.charCodeAt(0)
+            ),
+            type: cred.type,
+            transports: cred.transports,
+          }))
+        : undefined;
 
       // Get credential from authenticator
       const credential = await navigator.credentials.get({
         publicKey: {
           challenge,
-          allowCredentials,
+          ...(allowCredentials && { allowCredentials }),
           rpId: options.rpId,
           userVerification: options.userVerification,
           timeout: options.timeout,
@@ -140,7 +142,20 @@ export default function LoginPage() {
       setAuth(access_token, user);
       router.push("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("somethingWentWrong"));
+      console.error("Passkey login error:", err);
+      let errorMsg = t("somethingWentWrong");
+      if (err instanceof Error) {
+        if (err.name === "NotAllowedError") {
+          errorMsg = "Passkey authentication was cancelled or timed out";
+        } else if (err.name === "InvalidStateError") {
+          errorMsg = "This passkey is already registered";
+        } else if (err.name === "NotSupportedError") {
+          errorMsg = "Passkey is not supported on this device";
+        } else {
+          errorMsg = err.message;
+        }
+      }
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
