@@ -251,6 +251,8 @@ export default function SettingsPage() {
           errorMsg = "Passkey is not supported on this device";
         } else if (err.name === "SecurityError") {
           errorMsg = `Security error: ${err.message}`;
+        } else if (err.name === "NotReadableError") {
+          errorMsg = "Cannot access biometric sensor. Please check: 1) Browser has biometric permission 2) No other app is using fingerprint 3) Google Play Services is installed (Android)";
         } else if (err.name === "UnknownError") {
           errorMsg = `Unknown error: ${err.message}. Check if biometric/screen lock is enabled.`;
         } else {

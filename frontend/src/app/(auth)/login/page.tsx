@@ -151,6 +151,8 @@ export default function LoginPage() {
           errorMsg = "This passkey is already registered";
         } else if (err.name === "NotSupportedError") {
           errorMsg = "Passkey is not supported on this device";
+        } else if (err.name === "NotReadableError") {
+          errorMsg = "Cannot access biometric sensor. Please check: 1) Browser has biometric permission 2) No other app is using fingerprint 3) Google Play Services is installed (Android)";
         } else {
           errorMsg = err.message;
         }
