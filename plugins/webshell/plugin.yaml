@@ -1,0 +1,74 @@
+name: webshell
+version: 1.0.0
+description: WebShell 管理工具 - 连接测试/命令执行/文件管理/数据库操作
+category: exploit
+engine: python
+
+params:
+  - name: url
+    label: WebShell URL
+    type: string
+    required: true
+    placeholder: "http://target.com/shell.php"
+
+  - name: password
+    label: 连接密码
+    type: string
+    required: true
+    default: "cmd"
+    placeholder: "Shell 参数名或密码"
+
+  - name: shell_type
+    label: Shell 类型
+    type: select
+    options:
+      - "php_eval"
+      - "php_assert"
+      - "php_base64"
+      - "asp_eval"
+      - "jsp_eval"
+    default: "php_eval"
+
+  - name: operation
+    label: 操作类型
+    type: select
+    options:
+      - "test"        # 连接测试
+      - "exec"        # 执行命令
+      - "listdir"     # 列目录
+      - "readfile"    # 读文件
+      - "writefile"   # 写文件
+      - "sysinfo"     # 系统信息
+    default: "test"
+
+  - name: command
+    label: 执行命令
+    type: string
+    placeholder: "id (Linux) 或 whoami (Windows)"
+
+  - name: path
+    label: 文件/目录路径
+    type: string
+    placeholder: "/tmp 或 C:\\Windows\\Temp"
+
+  - name: content
+    label: 文件内容
+    type: string
+    placeholder: "写入文件的内容"
+
+  - name: timeout
+    label: 超时(秒)
+    type: number
+    default: 15
+
+output:
+  type: table
+  columns:
+    - key: operation
+      label: 操作
+    - key: status
+      label: 状态
+    - key: output
+      label: 输出
+    - key: details
+      label: 详情
