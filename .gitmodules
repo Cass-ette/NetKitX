@@ -1,0 +1,3 @@
+[submodule "plugins/community"]
+	path = plugins/community
+	url = git@github.com:Cass-ette/NetKitX-Plugins.git
