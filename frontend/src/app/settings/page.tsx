@@ -239,14 +239,22 @@ export default function SettingsPage() {
       console.error("Passkey registration error:", err);
       let errorMsg = "Error";
       if (err instanceof Error) {
+        // Show detailed error info for debugging
+        const errorDetails = `Name: ${err.name}, Message: ${err.message}`;
+        console.error("Error details:", errorDetails);
+
         if (err.name === "NotAllowedError") {
           errorMsg = "Passkey registration was cancelled or timed out";
         } else if (err.name === "InvalidStateError") {
           errorMsg = "This passkey is already registered";
         } else if (err.name === "NotSupportedError") {
           errorMsg = "Passkey is not supported on this device";
+        } else if (err.name === "SecurityError") {
+          errorMsg = `Security error: ${err.message}`;
+        } else if (err.name === "UnknownError") {
+          errorMsg = `Unknown error: ${err.message}. Check if biometric/screen lock is enabled.`;
         } else {
-          errorMsg = err.message;
+          errorMsg = `${err.name}: ${err.message}`;
         }
       }
       setPasskeyMsg(errorMsg);
