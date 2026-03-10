@@ -13,6 +13,9 @@ from app.schemas.knowledge import (
     AgentSessionResponse,
     KnowledgeEntryResponse,
     KnowledgeListResponse,
+    KnowledgeSearchRequest,
+    KnowledgeSearchResponse,
+    KnowledgeSearchResult,
     SessionListResponse,
     SessionTurnResponse,
 )
@@ -134,3 +137,27 @@ async def _run_extraction(session_id: int, user_id: int) -> None:
         logging.getLogger(__name__).exception(
             "Background extraction failed for session %d", session_id
         )
+
+
+@router.post("/knowledge/search", response_model=KnowledgeSearchResponse)
+async def search_knowledge(
+    body: KnowledgeSearchRequest,
+    user: User = Depends(get_current_user),
+):
+    """Search knowledge entries by semantic similarity."""
+    from app.core.config import settings
+    from app.services.embedding_service import search_similar_knowledge
+
+    if not settings.RAG_ENABLED:
+        return KnowledgeSearchResponse(results=[])
+
+    results = await search_similar_knowledge(body.query, user.id, limit=body.limit)
+    return KnowledgeSearchResponse(
+        results=[
+            KnowledgeSearchResult(
+                knowledge=KnowledgeEntryResponse.model_validate(entry),
+                similarity=round(sim, 4),
+            )
+            for entry, sim in results
+        ]
+    )

@@ -647,6 +647,15 @@ async def extract_knowledge(session_id: int, user_id: int) -> int:
             logger.info(
                 "Knowledge extraction complete for session %d, entry %d", session_id, entry_id
             )
+
+            # Auto-embed if RAG is enabled
+            try:
+                from app.services.embedding_service import embed_knowledge_entry
+
+                await embed_knowledge_entry(entry_id)
+            except Exception:
+                logger.exception("Auto-embed failed for entry %d", entry_id)
+
             return entry_id
 
     except Exception:

@@ -481,7 +481,7 @@ async def test_retryable_error_continues_loop():
         else:
             yield "Understood, the plugin was not found. Here is my analysis."
 
-    async def mock_execute(action, agent_mode, user_id=None, user_token=None):
+    async def mock_execute(action, agent_mode, user_id=None, is_admin=False, user_token=None):
         return {"error": "Plugin 'nonexistent' not found or not enabled"}
 
     with (
@@ -559,7 +559,7 @@ async def test_successful_action_resets_error_counter():
         else:
             yield "Done."
 
-    async def mock_execute(action, agent_mode, user_id=None, user_token=None):
+    async def mock_execute(action, agent_mode, user_id=None, is_admin=False, user_token=None):
         return {"items": [{"result": "ok"}], "logs": []}
 
     with (

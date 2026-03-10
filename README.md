@@ -140,6 +140,25 @@ npm run dev
 
 ## 插件开发
 
+### 社区插件仓库
+
+社区和官方插件统一维护在独立仓库 [NetKitX-Plugins](https://github.com/Cass-ette/NetKitX-Plugins)，通过 Git submodule 集成到主项目：
+
+```bash
+# 添加社区插件（已作为 submodule 配置）
+git submodule update --init --recursive
+
+# 手动添加
+git submodule add https://github.com/Cass-ette/NetKitX-Plugins.git plugins/community
+```
+
+仓库结构：
+- `community/` — 经过审核的稳定插件
+- `experimental/` — 实验性插件（使用需谨慎）
+- `templates/` — 插件开发模板
+
+欢迎向插件仓库提交 PR 贡献你的插件。
+
 ### 创建 Python 插件
 
 ```python
@@ -213,6 +232,7 @@ NetKitX/
 │   │   └── types/        # TypeScript 类型
 │   └── package.json
 ├── plugins/              # 插件目录
+│   ├── community/        # 社区插件（Git submodule → NetKitX-Plugins）
 │   ├── example_ping/
 │   ├── example_portscan/
 │   └── sql_inject/       # SQL 注入测试插件（v2.0.0）
@@ -380,6 +400,7 @@ MIT License
 
 ## 相关链接
 
+- [插件专用仓库（NetKitX-Plugins）](https://github.com/Cass-ette/NetKitX-Plugins)
 - [架构设计文档](./docs/architecture.md)
 - [插件开发指南](./docs/plugin-development.md)
 - [CI/CD 配置](./docs/ci-cd.md)

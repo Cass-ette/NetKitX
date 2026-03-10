@@ -72,3 +72,12 @@ class KnowledgeListResponse(BaseModel):
 class KnowledgeSearchRequest(BaseModel):
     query: str
     limit: int = 10
+
+
+class KnowledgeSearchResult(BaseModel):
+    knowledge: KnowledgeEntryResponse
+    similarity: float
+
+
+class KnowledgeSearchResponse(BaseModel):
+    results: list[KnowledgeSearchResult]

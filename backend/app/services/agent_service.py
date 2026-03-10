@@ -7,6 +7,7 @@ from collections.abc import AsyncIterator
 from difflib import SequenceMatcher
 from typing import Any
 
+from app.core.config import settings
 from app.plugins.registry import registry
 from app.services.ai_service import (
     get_system_prompt,
@@ -487,6 +488,19 @@ async def run_agent_loop(
     """
     system_prompt = get_agent_system_prompt(agent_mode, security_mode, lang)
     lang_reminder = get_lang_reminder(lang)
+
+    # RAG: inject related historical knowledge into system prompt
+    if settings.RAG_ENABLED and user_id:
+        user_query = next((m["content"] for m in messages if m["role"] == "user"), "")
+        if user_query:
+            try:
+                from app.services.embedding_service import search_and_format_knowledge
+
+                rag_context = await search_and_format_knowledge(user_query, user_id, lang)
+                if rag_context:
+                    system_prompt += f"\n\n{rag_context}"
+            except Exception:
+                logger.warning("RAG context injection failed, continuing without it")
 
     # If this is a confirm_action continuation (Mode A), execute and inject result
     if confirm_action is not None:

@@ -45,6 +45,15 @@ class Settings(BaseSettings):
     # WebAuthn / Passkey
     DOMAIN: str | None = None  # e.g. "wql.me" for production, None for localhost
 
+    # RAG
+    RAG_ENABLED: bool = False
+    RAG_EMBEDDING_PROVIDER: str = ""  # "openai" | "zhipuai"
+    RAG_EMBEDDING_API_KEY: str = ""
+    RAG_EMBEDDING_MODEL: str = "text-embedding-3-small"
+    RAG_EMBEDDING_DIM: int = 1536
+    RAG_TOP_K: int = 5
+    RAG_SIMILARITY_THRESHOLD: float = 0.6
+
     class Config:
         env_file = ".env"
 

@@ -2,6 +2,7 @@
 
 from unittest.mock import MagicMock
 
+from app.services.embedding_service import build_embedding_text, format_rag_context
 from app.services.knowledge_service import (
     _compress_action_result,
     _events_to_turns,
@@ -361,3 +362,104 @@ class TestSanitizeExtraction:
         result = _sanitize_extraction(data)
         assert len(result["scenario"]) == 500
         assert len(result["attack_chain"]) == 2000
+
+
+# =====================================================================
+# Phase 3: RAG / Embedding helpers
+# =====================================================================
+
+
+class TestBuildEmbeddingText:
+    """build_embedding_text constructs text for embedding from a knowledge entry."""
+
+    def test_full_entry(self):
+        entry = {
+            "scenario": "SQL injection on login form",
+            "summary": "Found union-based SQLi",
+            "key_findings": "MySQL 5.7, union select works",
+            "target_type": "web",
+            "vulnerability_type": "sqli",
+            "tags": ["sqli", "mysql", "web"],
+            "tools_used": ["sqlmap", "curl"],
+        }
+        text = build_embedding_text(entry)
+        assert "SQL injection on login form" in text
+        assert "union-based SQLi" in text
+        assert "MySQL 5.7" in text
+        assert "web" in text
+        assert "sqli" in text
+        assert "sqlmap" in text
+
+    def test_missing_fields(self):
+        entry = {"scenario": "Basic scan"}
+        text = build_embedding_text(entry)
+        assert "Basic scan" in text
+        # Should not crash on missing fields
+        assert "Tags" not in text
+        assert "Tools" not in text
+
+    def test_empty_entry(self):
+        text = build_embedding_text({})
+        assert text == ""
+
+    def test_orm_like_object(self):
+        mock_entry = MagicMock()
+        mock_entry.scenario = "ShellShock exploit"
+        mock_entry.summary = "Exploited via User-Agent header"
+        mock_entry.key_findings = "CGI endpoint vulnerable"
+        mock_entry.target_type = "web"
+        mock_entry.vulnerability_type = "shellshock"
+        mock_entry.tags = ["shellshock", "cgi"]
+        mock_entry.tools_used = ["curl"]
+        text = build_embedding_text(mock_entry)
+        assert "ShellShock exploit" in text
+        assert "CGI endpoint" in text
+        assert "shellshock" in text
+
+
+class TestFormatRagContext:
+    """format_rag_context builds a system prompt section."""
+
+    def _make_entry(self, **kwargs):
+        entry = MagicMock()
+        entry.scenario = kwargs.get("scenario", "Test scenario")
+        entry.target_type = kwargs.get("target_type", "web")
+        entry.vulnerability_type = kwargs.get("vulnerability_type", "sqli")
+        entry.tools_used = kwargs.get("tools_used", ["nmap"])
+        entry.key_findings = kwargs.get("key_findings", "Port 80 open")
+        entry.outcome = kwargs.get("outcome", "success")
+        return entry
+
+    def test_empty_results(self):
+        result = format_rag_context([])
+        assert result == ""
+
+    def test_single_result(self):
+        entry = self._make_entry(scenario="SQL injection test")
+        result = format_rag_context([(entry, 0.85)])
+        assert "SQL injection test" in result
+        assert "85%" in result
+        assert "nmap" in result
+        assert "Port 80 open" in result
+
+    def test_multiple_results(self):
+        e1 = self._make_entry(scenario="Scenario A")
+        e2 = self._make_entry(scenario="Scenario B")
+        result = format_rag_context([(e1, 0.9), (e2, 0.7)])
+        assert "Scenario A" in result
+        assert "Scenario B" in result
+        assert "90%" in result
+        assert "70%" in result
+
+    def test_chinese_lang(self):
+        entry = self._make_entry(scenario="SQL注入测试")
+        result = format_rag_context([(entry, 0.85)], lang="zh")
+        assert "相关历史经验" in result
+        assert "目标类型" in result
+        assert "SQL注入测试" in result
+
+    def test_english_lang(self):
+        entry = self._make_entry(scenario="SQL injection test")
+        result = format_rag_context([(entry, 0.85)], lang="en")
+        assert "Related Historical Experience" in result
+        assert "Target type" in result

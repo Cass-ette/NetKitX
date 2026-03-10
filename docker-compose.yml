@@ -52,7 +52,7 @@ services:
     command: npm run dev
 
   db:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: netkitx
       POSTGRES_PASSWORD: netkitx

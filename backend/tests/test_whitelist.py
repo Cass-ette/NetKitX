@@ -1,6 +1,5 @@
 """Unit tests for whitelist service."""
 
-
 from app.services.whitelist_service import (
     extract_targets_from_params,
     _is_subdomain,

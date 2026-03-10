@@ -4,7 +4,8 @@ import datetime
 
 from typing import Optional
 
-from sqlalchemy import ForeignKey, Index, String, Text
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import Column, ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -63,6 +64,7 @@ class KnowledgeEntry(Base):
     summary: Mapped[str] = mapped_column(Text, default="")
     raw_data: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
     learning_report: Mapped[str] = mapped_column(Text, default="")
+    embedding = Column(Vector(1536), nullable=True)
     extraction_status: Mapped[str] = mapped_column(String(20), default="pending")
     created_at: Mapped[datetime.datetime] = mapped_column(server_default=func.now())
 

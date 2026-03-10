@@ -59,7 +59,7 @@ services:
     restart: always
 
   db:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: netkitx
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
