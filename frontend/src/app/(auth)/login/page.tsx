@@ -25,10 +25,23 @@ export default function LoginPage() {
   const [passkeySupported, setPasskeySupported] = useState(false);
 
   useEffect(() => {
-    setPasskeySupported(
-      typeof window !== "undefined" &&
-      window.PublicKeyCredential !== undefined
-    );
+    // Check if platform authenticator (biometric) is available
+    // This will return false on Android without Google Play Services
+    const checkPasskeySupport = async () => {
+      if (typeof window === "undefined" || !window.PublicKeyCredential) {
+        setPasskeySupported(false);
+        return;
+      }
+
+      try {
+        const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+        setPasskeySupported(available);
+      } catch {
+        setPasskeySupported(false);
+      }
+    };
+
+    checkPasskeySupport();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {

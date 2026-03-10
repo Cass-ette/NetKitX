@@ -103,10 +103,24 @@ export default function SettingsPage() {
     loadAiSettings();
     loadPasskeys();
     loadWhitelist();
-    setPasskeySupported(
-      typeof window !== "undefined" &&
-      window.PublicKeyCredential !== undefined
-    );
+
+    // Check if platform authenticator (biometric) is available
+    // This will return false on Android without Google Play Services
+    const checkPasskeySupport = async () => {
+      if (typeof window === "undefined" || !window.PublicKeyCredential) {
+        setPasskeySupported(false);
+        return;
+      }
+
+      try {
+        const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+        setPasskeySupported(available);
+      } catch {
+        setPasskeySupported(false);
+      }
+    };
+
+    checkPasskeySupport();
   }, [loadAiSettings, loadPasskeys, loadWhitelist]);
 
   const handleAiSave = async () => {
