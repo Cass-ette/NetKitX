@@ -1,6 +1,6 @@
 name: webshell
-version: 1.0.0
-description: WebShell 管理工具 - 连接测试/命令执行/文件管理/数据库操作
+version: 2.0.0
+description: WebShell 管理工具 - 连接测试/命令执行/文件管理/数据库操作/Shell检测
 category: exploit
 engine: python
 
@@ -38,7 +38,12 @@ params:
       - "listdir"     # 列目录
       - "readfile"    # 读文件
       - "writefile"   # 写文件
+      - "delete"      # 删除文件/目录
+      - "download"    # 下载文件 (base64)
+      - "fileinfo"    # 文件详情
       - "sysinfo"     # 系统信息
+      - "dbquery"     # 数据库查询
+      - "detect"      # 自动检测 Shell 类型
     default: "test"
 
   - name: command
@@ -55,6 +60,33 @@ params:
     label: 文件内容
     type: string
     placeholder: "写入文件的内容"
+
+  - name: db_host
+    label: 数据库主机
+    type: string
+    default: "localhost"
+    placeholder: "127.0.0.1"
+
+  - name: db_user
+    label: 数据库用户
+    type: string
+    default: "root"
+    placeholder: "root"
+
+  - name: db_pass
+    label: 数据库密码
+    type: string
+    placeholder: "数据库密码"
+
+  - name: db_name
+    label: 数据库名
+    type: string
+    placeholder: "目标数据库名"
+
+  - name: sql
+    label: SQL 语句
+    type: string
+    placeholder: "SELECT * FROM users LIMIT 10"
 
   - name: timeout
     label: 超时(秒)
