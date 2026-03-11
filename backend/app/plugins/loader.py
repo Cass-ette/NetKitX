@@ -5,7 +5,7 @@ from pathlib import Path
 
 import yaml
 
-from app.plugins.base import PluginBase, PluginMeta
+from app.plugins.base import PluginBase, PluginMeta, SessionPlugin
 from app.plugins.engine import GoEnginePlugin
 from app.plugins.registry import registry
 
@@ -28,6 +28,7 @@ def load_plugin_meta(plugin_dir: Path) -> PluginMeta | None:
         description=config.get("description", ""),
         category=config.get("category", "utils"),
         engine=config.get("engine", "python"),
+        mode=config.get("mode", "oneshot"),
         params=config.get("params", []),
         output=config.get("output", {}),
     )
@@ -50,7 +51,11 @@ def load_python_plugin(plugin_dir: Path) -> PluginBase | None:
     # Find the PluginBase subclass in the module
     for attr_name in dir(module):
         attr = getattr(module, attr_name)
-        if isinstance(attr, type) and issubclass(attr, PluginBase) and attr is not PluginBase:
+        if (
+            isinstance(attr, type)
+            and issubclass(attr, PluginBase)
+            and attr not in (PluginBase, SessionPlugin)
+        ):
             return attr()
     return None
 
@@ -67,9 +72,16 @@ def load_single_plugin(plugin_dir: Path, engines_dir: str = "engines/bin") -> bo
     if meta.engine == "python":
         plugin = load_python_plugin(plugin_dir)
         if plugin:
+            # Validate session mode plugins
+            if meta.mode == "session" and not isinstance(plugin, SessionPlugin):
+                logger.warning(
+                    f"Plugin {meta.name} declares mode=session but "
+                    f"does not extend SessionPlugin, loading as oneshot"
+                )
+                meta.mode = "oneshot"
             plugin.meta = meta
             registry.register(plugin)
-            logger.info(f"Loaded plugin: {meta.name} v{meta.version}")
+            logger.info(f"Loaded plugin: {meta.name} v{meta.version} (mode={meta.mode})")
             return True
     elif meta.engine in ("go", "cli"):
         yaml_path = plugin_dir / "plugin.yaml"

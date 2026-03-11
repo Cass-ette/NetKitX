@@ -19,6 +19,7 @@ export interface PluginMeta {
   description: string;
   category: "recon" | "vuln" | "exploit" | "utils";
   engine: "python" | "go" | "cli";
+  mode?: "oneshot" | "session";
   params: PluginParam[];
   output: PluginOutput;
   enabled?: boolean;
@@ -235,4 +236,14 @@ export interface AuthorizedTarget {
   declaration: boolean;
   notes?: string | null;
   created_at: string;
+}
+
+// ── Plugin Session Types ──────────────────────────────────────────────
+
+export interface PluginSession {
+  session_id: string;
+  plugin_name: string;
+  user_id: number;
+  created_at: string;
+  last_active: string;
 }

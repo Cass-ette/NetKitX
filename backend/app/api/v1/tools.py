@@ -15,6 +15,7 @@ async def list_tools():
             "description": m.description,
             "category": m.category,
             "engine": m.engine,
+            "mode": m.mode,
             "params": m.params,
             "output": m.output,
         }
@@ -36,6 +37,7 @@ async def get_tool(name: str):
         "description": meta.description,
         "category": meta.category,
         "engine": meta.engine,
+        "mode": meta.mode,
         "params": meta.params,
         "output": meta.output,
     }

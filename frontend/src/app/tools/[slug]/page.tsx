@@ -17,8 +17,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Play, Loader2, Download, FileText, FileDown, Bot } from "lucide-react";
+import { Play, Loader2, Download, FileText, FileDown, Bot, Terminal } from "lucide-react";
 import type { PluginMeta, Task } from "@/types";
+import Link from "next/link";
 import { TaskTerminal } from "@/components/terminal/task-terminal";
 import { AIAnalysisSheet } from "@/components/ai/ai-analysis-sheet";
 import { API_BASE } from "@/lib/api";
@@ -173,10 +174,25 @@ export default function ToolDetailPage({
             <Badge>{tool.category}</Badge>
             <Badge variant="outline">{tool.engine}</Badge>
             <Badge variant="outline">v{tool.version}</Badge>
+            {tool.mode === "session" && (
+              <Badge variant="secondary">
+                <Terminal className="mr-1 h-3 w-3" />
+                Session
+              </Badge>
+            )}
           </div>
         </div>
-        {taskStatus === "done" && taskId && (
-          <div className="flex gap-2">
+        <div className="flex gap-2">
+          {tool.mode === "session" && (
+            <Link href={`/tools/${slug}/session`}>
+              <Button variant="outline">
+                <Terminal className="mr-2 h-4 w-4" />
+                Session Mode
+              </Button>
+            </Link>
+          )}
+          {taskStatus === "done" && taskId && (
+            <>
             <Button variant="outline" onClick={() => setAiSheetOpen(true)}>
               <Bot className="mr-2 h-4 w-4" />
               {t("aiAnalyze")}
@@ -199,8 +215,9 @@ export default function ToolDetailPage({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Parameter Form */}

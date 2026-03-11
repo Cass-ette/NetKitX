@@ -23,6 +23,7 @@ from app.api.v1 import (
     knowledge,
     passkey,
     whitelist,
+    plugin_sessions,
 )
 from app.plugins.loader import load_all_plugins
 
@@ -110,6 +111,7 @@ app.include_router(terminal.router, prefix="/api/v1/terminal", tags=["terminal"]
 app.include_router(admin.router, prefix="/api/v1")
 app.include_router(knowledge.router, prefix="/api/v1", tags=["knowledge"])
 app.include_router(whitelist.router, prefix="/api/v1", tags=["whitelist"])
+app.include_router(plugin_sessions.router, prefix="/api/v1", tags=["plugin-sessions"])
 
 
 @app.get("/api/health")
@@ -171,3 +173,9 @@ async def task_websocket(websocket: WebSocket, task_id: int):
             await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(tid, websocket)
+
+
+@app.websocket("/api/v1/ws/plugin-sessions/{session_id}")
+async def plugin_session_ws(websocket: WebSocket, session_id: str):
+    """WebSocket endpoint for plugin session communication."""
+    await plugin_sessions.plugin_session_websocket(websocket, session_id)

