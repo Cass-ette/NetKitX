@@ -24,6 +24,7 @@ from app.api.v1 import (
     passkey,
     whitelist,
     plugin_sessions,
+    workflows,
 )
 from app.plugins.loader import load_all_plugins
 
@@ -112,6 +113,7 @@ app.include_router(admin.router, prefix="/api/v1")
 app.include_router(knowledge.router, prefix="/api/v1", tags=["knowledge"])
 app.include_router(whitelist.router, prefix="/api/v1", tags=["whitelist"])
 app.include_router(plugin_sessions.router, prefix="/api/v1", tags=["plugin-sessions"])
+app.include_router(workflows.router, prefix="/api/v1", tags=["workflows"])
 
 
 @app.get("/api/health")

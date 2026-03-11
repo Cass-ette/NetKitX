@@ -8,7 +8,7 @@ import { useTranslations } from "@/i18n/use-translations";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, User, Bot, Sparkles, Loader2, BookOpen } from "lucide-react";
+import { ArrowLeft, User, Bot, Sparkles, Loader2, BookOpen, GitBranch } from "lucide-react";
 import { AgentActionCard } from "@/components/ai/agent-action-card";
 import ReactMarkdown from "react-markdown";
 import type { AgentSessionDetail, SessionTurn, AgentAction, AgentActionResult, KnowledgeEntry } from "@/types";
@@ -30,6 +30,7 @@ export default function SessionDetailPage() {
   const [isPending, startTransition] = useTransition();
   const [knowledge, setKnowledge] = useState<KnowledgeEntry | null>(null);
   const [extracting, setExtracting] = useState(false);
+  const [savingWorkflow, setSavingWorkflow] = useState(false);
 
   const fetchKnowledge = useCallback(async () => {
     if (!token) return;
@@ -86,6 +87,21 @@ export default function SessionDetailPage() {
     }
   };
 
+  const handleSaveWorkflow = async () => {
+    if (!token || savingWorkflow) return;
+    setSavingWorkflow(true);
+    try {
+      const data = await api<{ id: number }>(
+        `/api/v1/workflows/from-session/${sessionId}`,
+        { method: "POST", token },
+      );
+      router.push(`/workflows/${data.id}`);
+    } catch (err) {
+      console.error("Save workflow failed:", err);
+      setSavingWorkflow(false);
+    }
+  };
+
   if (isPending || !session) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -122,6 +138,18 @@ export default function SessionDetailPage() {
             </span>
           </div>
         </div>
+        <Button
+          onClick={handleSaveWorkflow}
+          disabled={savingWorkflow || session.status !== "completed"}
+          variant="outline"
+          size="sm"
+        >
+          {savingWorkflow ? (
+            <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("saving")}</>
+          ) : (
+            <><GitBranch className="h-4 w-4 mr-2" />{t("saveAsWorkflow")}</>
+          )}
+        </Button>
         <Button
           onClick={handleExtract}
           disabled={isProcessing || hasReport !== false}

@@ -26,5 +26,7 @@
   "keyFindings": "주요 발견",
   "attackChain": "공격 체인",
   "toolsUsed": "사용 도구",
-  "tags": "태그"
+  "tags": "태그",
+  "saveAsWorkflow": "워크플로로 저장",
+  "saving": "저장 중..."
 }

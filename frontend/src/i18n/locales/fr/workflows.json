@@ -1,0 +1,15 @@
+{
+  "title": "Workflows",
+  "subtitle": "Visualisez et rejouez les chaînes d'attaque extraites des sessions d'agent IA.",
+  "noWorkflows": "Aucun workflow. Enregistrez un workflow depuis une session d'agent terminée.",
+  "saveAsWorkflow": "Enregistrer comme workflow",
+  "runWorkflow": "Rejouer",
+  "running": "En cours...",
+  "completed": "Terminé",
+  "failed": "Échoué",
+  "nodeCount": "{{count}} nœuds",
+  "confirmDelete": "Supprimer ce workflow ?",
+  "deleted": "Workflow supprimé",
+  "totalWorkflows": "{{count}} workflow(s)",
+  "loading": "Chargement..."
+}

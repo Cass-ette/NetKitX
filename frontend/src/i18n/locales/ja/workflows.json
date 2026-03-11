@@ -1,0 +1,15 @@
+{
+  "title": "ワークフロー",
+  "subtitle": "AIエージェントセッションから抽出した攻撃チェーンを可視化・再生します。",
+  "noWorkflows": "ワークフローはまだありません。完了したエージェントセッションからワークフローを保存してください。",
+  "saveAsWorkflow": "ワークフローとして保存",
+  "runWorkflow": "再生",
+  "running": "実行中...",
+  "completed": "完了",
+  "failed": "失敗",
+  "nodeCount": "{{count}} ノード",
+  "confirmDelete": "このワークフローを削除しますか？",
+  "deleted": "ワークフローを削除しました",
+  "totalWorkflows": "{{count}} 件のワークフロー",
+  "loading": "読み込み中..."
+}

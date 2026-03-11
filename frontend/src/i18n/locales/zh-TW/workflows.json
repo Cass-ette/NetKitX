@@ -1,0 +1,15 @@
+{
+  "title": "工作流程",
+  "subtitle": "視覺化並回放從 AI Agent 會話中提取的攻擊鏈。",
+  "noWorkflows": "尚無工作流程。從已完成的 Agent 會話中儲存工作流程。",
+  "saveAsWorkflow": "儲存為工作流程",
+  "runWorkflow": "回放",
+  "running": "執行中...",
+  "completed": "已完成",
+  "failed": "失敗",
+  "nodeCount": "{{count}} 個節點",
+  "confirmDelete": "確認刪除此工作流程？",
+  "deleted": "工作流程已刪除",
+  "totalWorkflows": "共 {{count}} 個工作流程",
+  "loading": "載入中..."
+}

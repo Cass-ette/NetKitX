@@ -26,5 +26,7 @@
   "keyFindings": "Wichtige Erkenntnisse",
   "attackChain": "Angriffskette",
   "toolsUsed": "Verwendete Tools",
-  "tags": "Tags"
+  "tags": "Tags",
+  "saveAsWorkflow": "Als Workflow speichern",
+  "saving": "Speichern..."
 }
