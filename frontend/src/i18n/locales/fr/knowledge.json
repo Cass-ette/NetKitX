@@ -26,5 +26,7 @@
   "keyFindings": "Découvertes clés",
   "attackChain": "Chaîne d'attaque",
   "toolsUsed": "Outils utilisés",
-  "tags": "Tags"
+  "tags": "Tags",
+  "saveAsWorkflow": "Enregistrer comme workflow",
+  "saving": "Enregistrement..."
 }

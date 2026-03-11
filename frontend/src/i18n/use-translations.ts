@@ -15,6 +15,7 @@ import en_ai from "./locales/en/ai.json";
 import en_admin from "./locales/en/admin.json";
 import en_developers from "./locales/en/developers.json";
 import en_knowledge from "./locales/en/knowledge.json";
+import en_workflows from "./locales/en/workflows.json";
 
 import zhCN_common from "./locales/zh-CN/common.json";
 import zhCN_login from "./locales/zh-CN/login.json";
@@ -29,6 +30,7 @@ import zhCN_ai from "./locales/zh-CN/ai.json";
 import zhCN_admin from "./locales/zh-CN/admin.json";
 import zhCN_developers from "./locales/zh-CN/developers.json";
 import zhCN_knowledge from "./locales/zh-CN/knowledge.json";
+import zhCN_workflows from "./locales/zh-CN/workflows.json";
 
 import zhTW_common from "./locales/zh-TW/common.json";
 import zhTW_login from "./locales/zh-TW/login.json";
@@ -43,6 +45,7 @@ import zhTW_ai from "./locales/zh-TW/ai.json";
 import zhTW_admin from "./locales/zh-TW/admin.json";
 import zhTW_developers from "./locales/zh-TW/developers.json";
 import zhTW_knowledge from "./locales/zh-TW/knowledge.json";
+import zhTW_workflows from "./locales/zh-TW/workflows.json";
 
 import ja_common from "./locales/ja/common.json";
 import ja_login from "./locales/ja/login.json";
@@ -57,6 +60,7 @@ import ja_ai from "./locales/ja/ai.json";
 import ja_admin from "./locales/ja/admin.json";
 import ja_developers from "./locales/ja/developers.json";
 import ja_knowledge from "./locales/ja/knowledge.json";
+import ja_workflows from "./locales/ja/workflows.json";
 
 import ko_common from "./locales/ko/common.json";
 import ko_login from "./locales/ko/login.json";
@@ -71,6 +75,7 @@ import ko_ai from "./locales/ko/ai.json";
 import ko_admin from "./locales/ko/admin.json";
 import ko_developers from "./locales/ko/developers.json";
 import ko_knowledge from "./locales/ko/knowledge.json";
+import ko_workflows from "./locales/ko/workflows.json";
 
 import de_common from "./locales/de/common.json";
 import de_login from "./locales/de/login.json";
@@ -85,6 +90,7 @@ import de_ai from "./locales/de/ai.json";
 import de_admin from "./locales/de/admin.json";
 import de_developers from "./locales/de/developers.json";
 import de_knowledge from "./locales/de/knowledge.json";
+import de_workflows from "./locales/de/workflows.json";
 
 import fr_common from "./locales/fr/common.json";
 import fr_login from "./locales/fr/login.json";
@@ -99,6 +105,7 @@ import fr_ai from "./locales/fr/ai.json";
 import fr_admin from "./locales/fr/admin.json";
 import fr_developers from "./locales/fr/developers.json";
 import fr_knowledge from "./locales/fr/knowledge.json";
+import fr_workflows from "./locales/fr/workflows.json";
 
 import ru_common from "./locales/ru/common.json";
 import ru_login from "./locales/ru/login.json";
@@ -113,6 +120,7 @@ import ru_ai from "./locales/ru/ai.json";
 import ru_admin from "./locales/ru/admin.json";
 import ru_developers from "./locales/ru/developers.json";
 import ru_knowledge from "./locales/ru/knowledge.json";
+import ru_workflows from "./locales/ru/workflows.json";
 
 type Namespace =
   | "common"
@@ -127,7 +135,8 @@ type Namespace =
   | "ai"
   | "admin"
   | "developers"
-  | "knowledge";
+  | "knowledge"
+  | "workflows";
 
 type Messages = Record<string, string>;
 
@@ -146,6 +155,7 @@ const messages: Record<Locale, Record<Namespace, Messages>> = {
     admin: en_admin,
     developers: en_developers,
     knowledge: en_knowledge,
+    workflows: en_workflows,
   },
   "zh-CN": {
     common: zhCN_common,
@@ -161,6 +171,7 @@ const messages: Record<Locale, Record<Namespace, Messages>> = {
     admin: zhCN_admin,
     developers: zhCN_developers,
     knowledge: zhCN_knowledge,
+    workflows: zhCN_workflows,
   },
   "zh-TW": {
     common: zhTW_common,
@@ -176,6 +187,7 @@ const messages: Record<Locale, Record<Namespace, Messages>> = {
     admin: zhTW_admin,
     developers: zhTW_developers,
     knowledge: zhTW_knowledge,
+    workflows: zhTW_workflows,
   },
   ja: {
     common: ja_common,
@@ -191,6 +203,7 @@ const messages: Record<Locale, Record<Namespace, Messages>> = {
     admin: ja_admin,
     developers: ja_developers,
     knowledge: ja_knowledge,
+    workflows: ja_workflows,
   },
   ko: {
     common: ko_common,
@@ -206,6 +219,7 @@ const messages: Record<Locale, Record<Namespace, Messages>> = {
     admin: ko_admin,
     developers: ko_developers,
     knowledge: ko_knowledge,
+    workflows: ko_workflows,
   },
   de: {
     common: de_common,
@@ -221,6 +235,7 @@ const messages: Record<Locale, Record<Namespace, Messages>> = {
     admin: de_admin,
     developers: de_developers,
     knowledge: de_knowledge,
+    workflows: de_workflows,
   },
   fr: {
     common: fr_common,
@@ -236,6 +251,7 @@ const messages: Record<Locale, Record<Namespace, Messages>> = {
     admin: fr_admin,
     developers: fr_developers,
     knowledge: fr_knowledge,
+    workflows: fr_workflows,
   },
   ru: {
     common: ru_common,
@@ -251,6 +267,7 @@ const messages: Record<Locale, Record<Namespace, Messages>> = {
     admin: ru_admin,
     developers: ru_developers,
     knowledge: ru_knowledge,
+    workflows: ru_workflows,
   },
 };
 

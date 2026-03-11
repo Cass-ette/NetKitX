@@ -1,0 +1,15 @@
+{
+  "title": "워크플로",
+  "subtitle": "AI 에이전트 세션에서 추출한 공격 체인을 시각화하고 재생합니다.",
+  "noWorkflows": "워크플로가 없습니다. 완료된 에이전트 세션에서 워크플로를 저장하세요.",
+  "saveAsWorkflow": "워크플로로 저장",
+  "runWorkflow": "재생",
+  "running": "실행 중...",
+  "completed": "완료",
+  "failed": "실패",
+  "nodeCount": "{{count}}개 노드",
+  "confirmDelete": "이 워크플로를 삭제하시겠습니까?",
+  "deleted": "워크플로가 삭제되었습니다",
+  "totalWorkflows": "{{count}}개 워크플로",
+  "loading": "로딩 중..."
+}

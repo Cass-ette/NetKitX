@@ -16,6 +16,7 @@ from app.models.announcement import Announcement
 from app.models.knowledge import AgentSession, SessionTurn, KnowledgeEntry
 from app.models.passkey import PasskeyCredential
 from app.models.whitelist import AuthorizedTarget
+from app.models.workflow import Workflow
 
 __all__ = [
     "User",
@@ -36,4 +37,5 @@ __all__ = [
     "KnowledgeEntry",
     "PasskeyCredential",
     "AuthorizedTarget",
+    "Workflow",
 ]

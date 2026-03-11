@@ -26,5 +26,7 @@
   "keyFindings": "关键发现",
   "attackChain": "攻击链",
   "toolsUsed": "使用工具",
-  "tags": "标签"
+  "tags": "标签",
+  "saveAsWorkflow": "保存为工作流",
+  "saving": "保存中..."
 }

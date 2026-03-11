@@ -1,0 +1,15 @@
+{
+  "title": "Workflows",
+  "subtitle": "Visualisieren und wiedergeben von Angriffsketten aus AI-Agent-Sitzungen.",
+  "noWorkflows": "Noch keine Workflows. Speichern Sie einen Workflow aus einer abgeschlossenen Agent-Sitzung.",
+  "saveAsWorkflow": "Als Workflow speichern",
+  "runWorkflow": "Wiedergabe",
+  "running": "Läuft...",
+  "completed": "Abgeschlossen",
+  "failed": "Fehlgeschlagen",
+  "nodeCount": "{{count}} Knoten",
+  "confirmDelete": "Diesen Workflow löschen?",
+  "deleted": "Workflow gelöscht",
+  "totalWorkflows": "{{count}} Workflow(s)",
+  "loading": "Laden..."
+}

@@ -26,5 +26,7 @@
   "keyFindings": "Key Findings",
   "attackChain": "Attack Chain",
   "toolsUsed": "Tools Used",
-  "tags": "Tags"
+  "tags": "Tags",
+  "saveAsWorkflow": "Save as Workflow",
+  "saving": "Saving..."
 }

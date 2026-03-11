@@ -26,5 +26,7 @@
   "keyFindings": "主な発見",
   "attackChain": "攻撃チェーン",
   "toolsUsed": "使用ツール",
-  "tags": "タグ"
+  "tags": "タグ",
+  "saveAsWorkflow": "ワークフローとして保存",
+  "saving": "保存中..."
 }

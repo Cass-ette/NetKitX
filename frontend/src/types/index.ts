@@ -264,3 +264,54 @@ export interface PluginSession {
   created_at: string;
   last_active: string;
 }
+
+// ── Workflow Types ──────────────────────────────────────────────────
+
+export interface WorkflowNodeData {
+  plugin?: string;
+  command?: string;
+  params?: Record<string, string>;
+  reason?: string;
+  result_summary?: string;
+}
+
+export interface WorkflowNode {
+  id: string;
+  type: "action-plugin" | "action-shell" | "start" | "end";
+  label: string;
+  data: WorkflowNodeData;
+}
+
+export interface WorkflowEdge {
+  id: string;
+  source: string;
+  target: string;
+}
+
+export interface Workflow {
+  id: number;
+  user_id: number;
+  session_id?: number | null;
+  name: string;
+  description: string;
+  nodes: WorkflowNode[];
+  edges: WorkflowEdge[];
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorkflowListItem {
+  id: number;
+  name: string;
+  description: string;
+  session_id?: number | null;
+  node_count: number;
+  status: string;
+  created_at: string;
+}
+
+export interface WorkflowListResponse {
+  items: WorkflowListItem[];
+  total: number;
+}

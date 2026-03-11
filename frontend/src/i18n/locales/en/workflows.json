@@ -1,0 +1,15 @@
+{
+  "title": "Workflows",
+  "subtitle": "Visualize and replay attack chains extracted from AI agent sessions.",
+  "noWorkflows": "No workflows yet. Save a workflow from a completed agent session.",
+  "saveAsWorkflow": "Save as Workflow",
+  "runWorkflow": "Replay",
+  "running": "Running...",
+  "completed": "Completed",
+  "failed": "Failed",
+  "nodeCount": "{{count}} nodes",
+  "confirmDelete": "Delete this workflow?",
+  "deleted": "Workflow deleted",
+  "totalWorkflows": "{{count}} workflow(s)",
+  "loading": "Loading..."
+}
