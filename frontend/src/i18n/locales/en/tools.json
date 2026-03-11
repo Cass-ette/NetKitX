@@ -18,5 +18,8 @@
   "toolNotFound": "Tool not found",
   "failedToCreateTask": "Failed to create task",
   "failedToExport": "Failed to export report",
-  "aiAnalyze": "AI Analyze"
+  "aiAnalyze": "AI Analyze",
+  "chartView": "Charts",
+  "table": "Table",
+  "noChartData": "No chart data available"
 }

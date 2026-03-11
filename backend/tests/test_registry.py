@@ -59,3 +59,50 @@ def test_registry_enabled_state():
     registry.set_enabled("test-plugin", True)
     assert registry.is_enabled("test-plugin") is True
     assert len(registry.list_enabled()) == 1
+
+
+def test_meta_ui_component_default():
+    """Test that ui_component defaults to None."""
+    meta = PluginMeta(
+        name="no-ui",
+        version="1.0.0",
+        description="Plugin without custom UI",
+        category="utils",
+    )
+    assert meta.ui_component is None
+
+
+def test_meta_ui_component_set():
+    """Test that ui_component can be set."""
+    meta = PluginMeta(
+        name="chart-plugin",
+        version="1.0.0",
+        description="Plugin with chart UI",
+        category="recon",
+        ui_component="chart",
+    )
+    assert meta.ui_component == "chart"
+
+
+def test_registry_preserves_ui_component():
+    """Test that registry preserves ui_component after registration."""
+
+    class ChartPlugin(PluginBase):
+        meta = PluginMeta(
+            name="chart-test",
+            version="1.0.0",
+            description="Chart test",
+            category="recon",
+            ui_component="chart",
+        )
+
+        async def execute(self, params):
+            yield
+
+    registry = PluginRegistry()
+    plugin = ChartPlugin()
+    registry.register(plugin)
+
+    retrieved_meta = registry.get_meta("chart-test")
+    assert retrieved_meta is not None
+    assert retrieved_meta.ui_component == "chart"

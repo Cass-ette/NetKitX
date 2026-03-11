@@ -18,5 +18,8 @@
   "toolNotFound": "Werkzeug nicht gefunden",
   "failedToCreateTask": "Aufgabe konnte nicht erstellt werden",
   "failedToExport": "Bericht konnte nicht exportiert werden",
-  "aiAnalyze": "KI-Analyse"
+  "aiAnalyze": "KI-Analyse",
+  "chartView": "Diagramme",
+  "table": "Tabelle",
+  "noChartData": "Keine Diagrammdaten verfügbar"
 }

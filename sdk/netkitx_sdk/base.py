@@ -27,6 +27,8 @@ class PluginMeta:
     description: str
     category: str  # recon | vuln | exploit | utils
     engine: str = "python"  # python | go | cli
+    mode: str = "oneshot"  # oneshot | session
+    ui_component: str | None = None  # custom UI component name
     params: list[dict[str, Any]] = field(default_factory=list)
     output: dict[str, Any] = field(default_factory=dict)
 
@@ -73,3 +75,33 @@ class PluginBase(ABC):
 
     async def cleanup(self) -> None:
         """Release resources after execution (called even on error)."""
+
+
+class SessionPlugin(PluginBase):
+    """Base class for session-mode plugins that support persistent connections.
+
+    Instead of a single execute() call, session plugins maintain state across
+    multiple messages within a session.
+    """
+
+    mode: str = "session"
+
+    async def on_session_start(self, params: dict[str, Any]) -> dict[str, Any]:
+        """Initialize session state. Returns initial state dict."""
+        return {}
+
+    async def on_message(
+        self, session_id: str, message: dict[str, Any], state: dict[str, Any]
+    ) -> AsyncIterator[PluginEvent]:
+        """Handle incoming message within a session. Yields events."""
+        yield PluginEvent(type="error", data={"error": "not implemented"})
+
+    async def on_session_end(self, session_id: str, state: dict[str, Any]) -> None:
+        """Cleanup when session is destroyed."""
+
+    async def execute(self, params: dict[str, Any]) -> AsyncIterator[PluginEvent]:
+        """Fallback: run as one-shot if called outside session context."""
+        state = await self.on_session_start(params)
+        async for event in self.on_message("oneshot", {"type": "execute", "params": params}, state):
+            yield event
+        await self.on_session_end("oneshot", state)

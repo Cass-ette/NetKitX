@@ -1,8 +1,9 @@
 name: webshell
-version: 2.0.0
+version: 2.1.0
 description: WebShell 管理工具 - 连接测试/命令执行/文件管理/数据库操作/Shell检测
 category: exploit
 engine: python
+mode: session
 
 params:
   - name: url

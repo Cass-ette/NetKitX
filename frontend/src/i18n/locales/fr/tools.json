@@ -18,5 +18,8 @@
   "toolNotFound": "Outil non trouvé",
   "failedToCreateTask": "Échec de la création de la tâche",
   "failedToExport": "Échec de l'exportation du rapport",
-  "aiAnalyze": "Analyse IA"
+  "aiAnalyze": "Analyse IA",
+  "chartView": "Graphiques",
+  "table": "Tableau",
+  "noChartData": "Aucune donnée graphique disponible"
 }

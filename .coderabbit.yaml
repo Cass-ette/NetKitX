@@ -1,0 +1,11 @@
+language: zh-CN
+
+reviews:
+  path_filters:
+    - "!**/*.lock"
+  auto_review:
+    enabled: true
+    base_branches:
+      - main
+      - develop
+      - "feature/**"

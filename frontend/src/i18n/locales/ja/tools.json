@@ -18,5 +18,8 @@
   "toolNotFound": "ツールが見つかりません",
   "failedToCreateTask": "タスクの作成に失敗しました",
   "failedToExport": "レポートのエクスポートに失敗しました",
-  "aiAnalyze": "AI分析"
+  "aiAnalyze": "AI分析",
+  "chartView": "チャート",
+  "table": "テーブル",
+  "noChartData": "チャートデータがありません"
 }
