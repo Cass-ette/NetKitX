@@ -23,6 +23,7 @@ from app.api.v1 import (
     knowledge,
     passkey,
     whitelist,
+    plugin_sessions,
 )
 from app.plugins.loader import load_all_plugins
 
@@ -110,6 +111,7 @@ app.include_router(terminal.router, prefix="/api/v1/terminal", tags=["terminal"]
 app.include_router(admin.router, prefix="/api/v1")
 app.include_router(knowledge.router, prefix="/api/v1", tags=["knowledge"])
 app.include_router(whitelist.router, prefix="/api/v1", tags=["whitelist"])
+app.include_router(plugin_sessions.router, prefix="/api/v1", tags=["plugin-sessions"])
 
 
 @app.get("/api/health")
@@ -162,7 +164,15 @@ async def public_announcements(session: AsyncSession = Depends(get_session)):
 
 @app.websocket("/api/v1/ws/tasks/{task_id}")
 async def task_websocket(websocket: WebSocket, task_id: int):
-    """WebSocket endpoint for real-time task updates."""
+    """
+    Establishes a WebSocket connection and subscribes it to updates for a specific task.
+    
+    Registers the connection under the task's id, keeps the connection alive by awaiting client messages, and unregisters the connection when the client disconnects.
+    
+    Parameters:
+        websocket (WebSocket): The client's WebSocket connection.
+        task_id (int): Identifier of the task whose real-time updates this connection should receive.
+    """
     tid = str(task_id)
     await manager.connect(tid, websocket)
     try:
@@ -171,3 +181,16 @@ async def task_websocket(websocket: WebSocket, task_id: int):
             await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(tid, websocket)
+
+
+@app.websocket("/api/v1/ws/plugin-sessions/{session_id}")
+async def plugin_session_ws(websocket: WebSocket, session_id: str):
+    """
+    Handle a WebSocket connection for a plugin session.
+    
+    This endpoint attaches the provided WebSocket to the plugin session identified by `session_id` and manages bidirectional communication for that session.
+    
+    Parameters:
+        session_id (str): Identifier of the plugin session to connect the WebSocket to.
+    """
+    await plugin_sessions.plugin_session_websocket(websocket, session_id)

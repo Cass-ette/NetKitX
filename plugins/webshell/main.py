@@ -1,4 +1,4 @@
-"""WebShell 管理插件 v2.0.0 - 连接测试/命令执行/文件管理/数据库操作/Shell检测"""
+"""WebShell 管理插件 v2.1.0 - 会话模式 + 单次模式"""
 
 import base64
 from typing import Any, AsyncIterator
@@ -6,6 +6,7 @@ from typing import Any, AsyncIterator
 import httpx
 
 from netkitx_sdk import PluginBase, PluginEvent, PluginMeta
+from netkitx_sdk.base import SessionPlugin
 
 _MARKER = "NETKITX_OK"
 
@@ -24,24 +25,165 @@ _OP_LABELS = {
 }
 
 
-class WebShellPlugin(PluginBase):
-    """WebShell 管理插件"""
+class WebShellPlugin(SessionPlugin):
+    """WebShell 管理插件 — 支持会话模式"""
 
     meta = PluginMeta(
         name="webshell",
-        version="2.0.0",
+        version="2.1.0",
         description="WebShell 管理工具 - 连接测试/命令执行/文件管理/数据库操作/Shell检测",
         category="exploit",
         engine="python",
+        mode="session",
     )
 
     def __init__(self):
+        """
+        Initialize the plugin and prepare an HTTP client placeholder.
+        
+        Sets up the base SessionPlugin state and initializes `self.client` to `None`. `self.client` is intended to hold an `httpx.AsyncClient` instance when a network client is created.
+        """
         super().__init__()
         self.client: httpx.AsyncClient | None = None
+
+    # ── session lifecycle ─────────────────────────────────────────────
+
+    async def on_session_start(self, params: dict[str, Any]) -> dict[str, Any]:
+        """
+        Create the initial session state from the provided connection parameters.
+        
+        Parameters:
+            params (dict[str, Any]): Input parameters; expected keys:
+                - "url": target webshell URL (string, trimmed; defaults to empty string if missing).
+                - "password": webshell password/key (string, trimmed; defaults to empty string if missing).
+                - "shell_type": payload engine identifier (string; defaults to "php_eval").
+                - "timeout": request timeout in seconds (int-like; defaults to 15).
+        
+        Returns:
+            dict[str, Any]: Session state containing:
+                - "url": normalized URL string.
+                - "password": normalized password string.
+                - "shell_type": selected shell type.
+                - "timeout": timeout as an integer number of seconds.
+                - "cwd": initial current working directory, set to "/".
+        """
+        url = params.get("url", "").strip()
+        password = params.get("password", "").strip()
+        shell_type = params.get("shell_type", "php_eval")
+        timeout = int(params.get("timeout", 15))
+
+        return {
+            "url": url,
+            "password": password,
+            "shell_type": shell_type,
+            "timeout": timeout,
+            "cwd": "/",
+        }
+
+    async def on_message(
+        self, session_id: str, message: dict[str, Any], state: dict[str, Any]
+    ) -> AsyncIterator[PluginEvent]:
+        """
+        Process a single session command message and emit PluginEvent objects representing results or errors.
+        
+        Parameters:
+            session_id (str): Identifier of the active session.
+            message (dict[str, Any]): Incoming message; expected to contain a "command" string.
+            state (dict[str, Any]): Mutable session state containing at least `url`, `password`, `shell_type`, and optionally `timeout` and `cwd`. The `cwd` value will be updated when a `cd` command is received.
+        
+        Returns:
+            AsyncIterator[PluginEvent]: An iterator that yields PluginEvent instances for command results or error conditions (e.g., connection failures, timeouts).
+        """
+        command = message.get("command", "").strip()
+        if not command:
+            yield PluginEvent(type="error", data={"error": "命令不能为空"})
+            return
+
+        url = state["url"]
+        password = state["password"]
+        shell_type = state["shell_type"]
+        timeout = state.get("timeout", 15)
+        cwd = state.get("cwd", "/")
+
+        client = httpx.AsyncClient(
+            timeout=timeout,
+            verify=False,
+            follow_redirects=True,
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "Accept": "*/*",
+            },
+        )
+
+        try:
+            # Handle cd command — update cwd in state
+            if command.startswith("cd "):
+                target = command[3:].strip()
+                if target.startswith("/"):
+                    new_cwd = target
+                else:
+                    new_cwd = f"{cwd.rstrip('/')}/{target}"
+                state["cwd"] = new_cwd
+                yield PluginEvent(type="result", data={"output": f"cd → {new_cwd}", "cwd": new_cwd})
+                return
+
+            # Prepend cwd to command
+            full_cmd = f"cd {cwd} && {command}" if cwd != "/" else command
+            payload = self._build_payload(shell_type, "exec", command=full_cmd)
+            resp = await client.post(url, data={password: payload})
+            output = resp.text.strip()
+
+            yield PluginEvent(
+                type="result",
+                data={"output": output if output else "(无输出)", "cwd": cwd},
+            )
+        except httpx.TimeoutException:
+            yield PluginEvent(type="error", data={"error": "连接超时"})
+        except httpx.ConnectError as e:
+            yield PluginEvent(type="error", data={"error": f"连接失败: {e}"})
+        except Exception as e:
+            yield PluginEvent(type="error", data={"error": f"执行失败: {e}"})
+        finally:
+            await client.aclose()
+
+    async def on_session_end(self, session_id: str, state: dict[str, Any]) -> None:
+        """
+        Handle end-of-session cleanup and finalization.
+        
+        Called when a session is terminated; implementations may release resources, persist final state, or perform other cleanup related to the given session. The default implementation performs no action.
+        
+        Parameters:
+            session_id (str): Identifier of the session that is ending.
+            state (dict[str, Any]): Final session state data available at termination.
+        """
+        pass
 
     # ── execute ──────────────────────────────────────────────────────
 
     async def execute(self, params: dict[str, Any]) -> AsyncIterator[PluginEvent]:
+        """
+        Execute a one-shot operation against a remote web shell and stream PluginEvent updates describing progress and results.
+        
+        Parameters:
+            params (dict[str, Any]): Execution options. Expected keys:
+                - url: target URL of the web shell (string).
+                - password: request parameter name or password used to invoke the shell (string).
+                - shell_type: shell payload type (e.g., "php_eval", "php_base64", "asp_eval", "jsp_eval"); defaults to "php_eval".
+                - operation: operation to perform (e.g., "test", "exec", "readfile", "listdir", "detect"); defaults to "test".
+                - timeout: request timeout in seconds; defaults to 15.
+                Additional operation-specific parameters may be required (e.g., "command", "path", "content", "sql") as validated by the plugin.
+        
+        Returns:
+            AsyncIterator[PluginEvent]: An iterator that yields PluginEvent objects representing:
+                - log events with informational messages,
+                - progress events indicating percentage and status messages,
+                - result events containing the operation result structure,
+                - error events describing failures or validation errors.
+        
+        Notes:
+            - The function creates and closes an HTTP client as part of its operation.
+            - Validation failures and runtime errors are reported via yielded error events rather than raised exceptions.
+        """
         url = params["url"].strip()
         password = params["password"].strip()
         shell_type = params.get("shell_type", "php_eval")

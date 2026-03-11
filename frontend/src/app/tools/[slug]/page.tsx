@@ -17,8 +17,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Play, Loader2, Download, FileText, FileDown, Bot } from "lucide-react";
+import { Play, Loader2, Download, FileText, FileDown, Bot, Terminal } from "lucide-react";
 import type { PluginMeta, Task } from "@/types";
+import Link from "next/link";
 import { TaskTerminal } from "@/components/terminal/task-terminal";
 import { AIAnalysisSheet } from "@/components/ai/ai-analysis-sheet";
 import { API_BASE } from "@/lib/api";
@@ -35,6 +36,17 @@ interface WSEvent {
   data: Record<string, unknown>;
 }
 
+/**
+ * Renders the tool detail page: fetches tool metadata, displays and edits parameters,
+ * runs the tool as a background task, streams progress/results via WebSocket, and
+ * exposes terminal logs, export, and AI analysis features.
+ *
+ * This component manages local UI state for form values, running status, progress,
+ * results, errors, task status/ID, and visibility of the terminal and AI analysis sheet.
+ *
+ * @param params - A Promise that resolves to an object containing the route `slug` used to load the tool
+ * @returns The React element for the tool detail view
+ */
 export default function ToolDetailPage({
   params,
 }: {
@@ -173,10 +185,25 @@ export default function ToolDetailPage({
             <Badge>{tool.category}</Badge>
             <Badge variant="outline">{tool.engine}</Badge>
             <Badge variant="outline">v{tool.version}</Badge>
+            {tool.mode === "session" && (
+              <Badge variant="secondary">
+                <Terminal className="mr-1 h-3 w-3" />
+                Session
+              </Badge>
+            )}
           </div>
         </div>
-        {taskStatus === "done" && taskId && (
-          <div className="flex gap-2">
+        <div className="flex gap-2">
+          {tool.mode === "session" && (
+            <Link href={`/tools/${slug}/session`}>
+              <Button variant="outline">
+                <Terminal className="mr-2 h-4 w-4" />
+                Session Mode
+              </Button>
+            </Link>
+          )}
+          {taskStatus === "done" && taskId && (
+            <>
             <Button variant="outline" onClick={() => setAiSheetOpen(true)}>
               <Bot className="mr-2 h-4 w-4" />
               {t("aiAnalyze")}
@@ -199,8 +226,9 @@ export default function ToolDetailPage({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Parameter Form */}
