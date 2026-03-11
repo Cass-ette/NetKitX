@@ -1,6 +1,10 @@
 """Tests for workflow service pure functions."""
 
-from app.services.workflow_service import _summarize_result, extract_workflow_from_turns
+from app.services.workflow_service import (
+    _summarize_result,
+    build_reflection_prompt,
+    extract_workflow_from_turns,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -305,3 +309,73 @@ class TestExtractWorkflowFromTurns:
         assert edges[1]["target"] == "action-2"
         assert edges[2]["source"] == "action-2"
         assert edges[2]["target"] == "end"
+
+
+# ---------------------------------------------------------------------------
+# build_reflection_prompt
+# ---------------------------------------------------------------------------
+
+
+class TestBuildReflectionPrompt:
+    def test_reflection_prompt_basic(self):
+        prompt = build_reflection_prompt(
+            workflow_name="Port Scan Chain",
+            completed_steps=[],
+            current_label="port-scan",
+            current_result={"items": [{"port": 80}, {"port": 443}]},
+            step=1,
+            total=3,
+            lang="en",
+        )
+        assert "step 1/3" in prompt
+        assert "port-scan" in prompt
+        assert '"port": 80' in prompt
+        assert "English" in prompt
+        assert "**Findings**" in prompt
+        assert "**Significance**" in prompt
+        assert "**Next**" in prompt
+
+    def test_reflection_prompt_with_history(self):
+        completed = [
+            {"label": "port-scan", "type": "plugin", "result_summary": "5 result(s)"},
+            {"label": "dir-scan", "type": "plugin", "result_summary": "3 result(s)"},
+        ]
+        prompt = build_reflection_prompt(
+            workflow_name="Full Chain",
+            completed_steps=completed,
+            current_label="sql-inject",
+            current_result={"items": [{"vulnerable": True}]},
+            step=3,
+            total=4,
+            lang="en",
+        )
+        assert "Completed steps:" in prompt
+        assert "port-scan" in prompt
+        assert "dir-scan" in prompt
+        assert "5 result(s)" in prompt
+        assert "sql-inject" in prompt
+
+    def test_reflection_prompt_empty_result(self):
+        prompt = build_reflection_prompt(
+            workflow_name="Test",
+            completed_steps=[],
+            current_label="scan",
+            current_result={},
+            step=1,
+            total=1,
+            lang="en",
+        )
+        assert "step 1/1" in prompt
+        assert "{}" in prompt
+
+    def test_reflection_prompt_lang_zh(self):
+        prompt = build_reflection_prompt(
+            workflow_name="Test",
+            completed_steps=[],
+            current_label="scan",
+            current_result={"items": []},
+            step=1,
+            total=2,
+            lang="zh-CN",
+        )
+        assert "Simplified Chinese" in prompt

@@ -2,9 +2,11 @@
 
 import json
 import logging
+import time
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
@@ -16,6 +18,8 @@ from app.schemas.workflow import (
     WorkflowResponse,
 )
 from app.services.workflow_service import (
+    _summarize_result,
+    build_reflection_prompt,
     create_workflow_from_session,
     delete_workflow,
     get_workflow,
@@ -92,6 +96,8 @@ async def create_from_session(
 @router.post("/workflows/{workflow_id}/run")
 async def run_workflow(
     workflow_id: int,
+    reflect: bool = Query(False),
+    lang: str = Query("en"),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
@@ -105,12 +111,42 @@ async def run_workflow(
 
     nodes = workflow.nodes if isinstance(workflow.nodes, list) else []
     wf_id = workflow.id
+    wf_name = workflow.name
+    user_id = user.id
+
+    # Count action nodes for step progress
+    action_nodes = [n for n in nodes if n.get("type", "") not in ("start", "end")]
+    total_steps = len(action_nodes)
 
     async def event_stream():
         from app.core.database import async_session
         from app.services.agent_service import execute_plugin_action
 
         final_status = "completed"
+        completed_steps: list[dict] = []
+        step_num = 0
+        start_time = time.time()
+
+        # Load AI settings once if reflect is enabled
+        ai_config = None
+        if reflect:
+            try:
+                async with async_session() as ai_db:
+                    from app.models.ai_settings import AISettings
+                    from app.services.ai_service import decrypt_key
+
+                    ai_row = (
+                        await ai_db.execute(select(AISettings).where(AISettings.user_id == user_id))
+                    ).scalar_one_or_none()
+                    if ai_row:
+                        ai_config = {
+                            "provider": ai_row.provider,
+                            "api_key": decrypt_key(ai_row.api_key_enc),
+                            "model": ai_row.model,
+                            "base_url": getattr(ai_row, "base_url", None),
+                        }
+            except Exception:
+                logger.exception("Failed to load AI settings for reflection")
 
         for node in nodes:
             node_type = node.get("type", "")
@@ -120,8 +156,10 @@ async def run_workflow(
             if node_type in ("start", "end"):
                 continue
 
-            # Emit node_start
-            yield f"data: {json.dumps({'event': 'node_start', 'node_id': node_id, 'label': node.get('label', '')})}\n\n"
+            step_num += 1
+
+            # Emit node_start with step progress
+            yield f"data: {json.dumps({'event': 'node_start', 'node_id': node_id, 'label': node.get('label', ''), 'step': step_num, 'total_steps': total_steps})}\n\n"
 
             data = node.get("data", {})
             try:
@@ -149,14 +187,55 @@ async def run_workflow(
                     yield f"data: {json.dumps({'event': 'node_error', 'node_id': node_id, 'error': result['error']})}\n\n"
                     final_status = "failed"
                 else:
-                    yield f"data: {json.dumps({'event': 'node_result', 'node_id': node_id, 'result': result})}\n\n"
+                    result_summary = _summarize_result(result)
+                    yield f"data: {json.dumps({'event': 'node_result', 'node_id': node_id, 'result': result, 'result_summary': result_summary})}\n\n"
+
+                    # AI reflection
+                    if reflect and ai_config:
+                        try:
+                            from app.services.ai_service import call_ai
+
+                            prompt = build_reflection_prompt(
+                                workflow_name=wf_name,
+                                completed_steps=completed_steps,
+                                current_label=node.get("label", ""),
+                                current_result=result,
+                                step=step_num,
+                                total=total_steps,
+                                lang=lang,
+                            )
+                            reflection = await call_ai(
+                                provider=ai_config["provider"],
+                                api_key=ai_config["api_key"],
+                                model=ai_config["model"],
+                                messages=[
+                                    {
+                                        "role": "system",
+                                        "content": "You are a penetration testing workflow analyst.",
+                                    },
+                                    {"role": "user", "content": prompt},
+                                ],
+                                base_url=ai_config.get("base_url"),
+                            )
+                            yield f"data: {json.dumps({'event': 'node_reflection', 'node_id': node_id, 'reflection': reflection})}\n\n"
+                        except Exception:
+                            logger.exception("Reflection failed for node %s", node_id)
+
+                    completed_steps.append(
+                        {
+                            "label": node.get("label", ""),
+                            "type": node_type.replace("action-", ""),
+                            "result_summary": _summarize_result(result),
+                        }
+                    )
 
             except Exception as e:
                 logger.exception("Workflow node %s failed", node_id)
                 yield f"data: {json.dumps({'event': 'node_error', 'node_id': node_id, 'error': str(e)})}\n\n"
                 final_status = "failed"
 
-        yield f"data: {json.dumps({'event': 'workflow_done', 'status': final_status})}\n\n"
+        total_time_ms = int((time.time() - start_time) * 1000)
+        yield f"data: {json.dumps({'event': 'workflow_done', 'status': final_status, 'total_time_ms': total_time_ms})}\n\n"
 
         # Update workflow status back to ready
         try:

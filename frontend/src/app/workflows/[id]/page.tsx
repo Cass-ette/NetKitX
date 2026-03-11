@@ -5,16 +5,19 @@ import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { useTranslations } from "@/i18n/use-translations";
+import { useLocaleStore } from "@/i18n/store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Play, Loader2 } from "lucide-react";
 import { WorkflowGraph } from "@/components/workflow/workflow-graph";
+import { NodeDetailPanel } from "@/components/workflow/node-detail-panel";
 import type { Workflow } from "@/types";
 
 export default function WorkflowDetailPage() {
   const { t } = useTranslations("workflows");
   const token = useAuth((s) => s.token);
+  const locale = useLocaleStore((s) => s.locale);
   const params = useParams();
   const router = useRouter();
   const workflowId = params.id as string;
@@ -23,6 +26,12 @@ export default function WorkflowDetailPage() {
   const [isPending, startTransition] = useTransition();
   const [isRunning, setIsRunning] = useState(false);
   const [nodeStatuses, setNodeStatuses] = useState<Record<string, string>>({});
+  const [nodeResults, setNodeResults] = useState<Record<string, unknown>>({});
+  const [nodeReflections, setNodeReflections] = useState<Record<string, string>>({});
+  const [nodeSummaries, setNodeSummaries] = useState<Record<string, string>>({});
+  const [reflectionLoading, setReflectionLoading] = useState<Record<string, boolean>>({});
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [currentStep, setCurrentStep] = useState<{ step: number; total: number } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -44,6 +53,11 @@ export default function WorkflowDetailPage() {
     if (!token || !workflowId || isRunning) return;
     setIsRunning(true);
     setNodeStatuses({});
+    setNodeResults({});
+    setNodeReflections({});
+    setNodeSummaries({});
+    setReflectionLoading({});
+    setCurrentStep(null);
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -51,7 +65,7 @@ export default function WorkflowDetailPage() {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
       const resp = await fetch(
-        `${apiUrl}/api/v1/workflows/${workflowId}/run`,
+        `${apiUrl}/api/v1/workflows/${workflowId}/run?reflect=true&lang=${locale}`,
         {
           method: "POST",
           headers: {
@@ -85,22 +99,30 @@ export default function WorkflowDetailPage() {
             const event = payload.event as string;
 
             if (event === "node_start") {
-              setNodeStatuses((prev) => ({
-                ...prev,
-                [payload.node_id]: "running",
-              }));
+              const nodeId = payload.node_id as string;
+              setNodeStatuses((prev) => ({ ...prev, [nodeId]: "running" }));
+              setCurrentStep({ step: payload.step, total: payload.total_steps });
+              setSelectedNodeId(nodeId);
+              setReflectionLoading((prev) => ({ ...prev, [nodeId]: true }));
             } else if (event === "node_result") {
-              setNodeStatuses((prev) => ({
-                ...prev,
-                [payload.node_id]: "done",
-              }));
+              const nodeId = payload.node_id as string;
+              setNodeStatuses((prev) => ({ ...prev, [nodeId]: "done" }));
+              setNodeResults((prev) => ({ ...prev, [nodeId]: payload.result }));
+              if (payload.result_summary) {
+                setNodeSummaries((prev) => ({ ...prev, [nodeId]: payload.result_summary }));
+              }
+            } else if (event === "node_reflection") {
+              const nodeId = payload.node_id as string;
+              setNodeReflections((prev) => ({ ...prev, [nodeId]: payload.reflection }));
+              setReflectionLoading((prev) => ({ ...prev, [nodeId]: false }));
             } else if (event === "node_error") {
-              setNodeStatuses((prev) => ({
-                ...prev,
-                [payload.node_id]: "failed",
-              }));
+              const nodeId = payload.node_id as string;
+              setNodeStatuses((prev) => ({ ...prev, [nodeId]: "failed" }));
+              setReflectionLoading((prev) => ({ ...prev, [nodeId]: false }));
             } else if (event === "workflow_done") {
               setIsRunning(false);
+              // Clear remaining loading states
+              setReflectionLoading({});
             }
           } catch {
             // skip malformed
@@ -115,13 +137,30 @@ export default function WorkflowDetailPage() {
       setIsRunning(false);
       abortRef.current = null;
     }
-  }, [token, workflowId, isRunning]);
+  }, [token, workflowId, isRunning, locale]);
 
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
     };
   }, []);
+
+  const handleNodeClick = useCallback((nodeId: string) => {
+    setSelectedNodeId(nodeId);
+  }, []);
+
+  const selectedNode = workflow?.nodes.find((n) => n.id === selectedNodeId) ?? null;
+
+  // Find step info for selected node
+  const selectedStepInfo = (() => {
+    if (!selectedNodeId || !workflow) return null;
+    const actionNodes = workflow.nodes.filter(
+      (n) => n.type !== "start" && n.type !== "end",
+    );
+    const idx = actionNodes.findIndex((n) => n.id === selectedNodeId);
+    if (idx === -1) return null;
+    return { step: idx + 1, total: actionNodes.length };
+  })();
 
   if (isPending || !workflow) {
     return (
@@ -171,6 +210,13 @@ export default function WorkflowDetailPage() {
         </Button>
       </div>
 
+      {/* Step progress */}
+      {currentStep && isRunning && (
+        <div className="text-sm text-muted-foreground">
+          {t("stepProgress", { step: currentStep.step, total: currentStep.total })}
+        </div>
+      )}
+
       {/* Graph */}
       <Card className="overflow-hidden">
         <CardContent className="p-0">
@@ -179,10 +225,25 @@ export default function WorkflowDetailPage() {
               nodes={workflow.nodes}
               edges={workflow.edges}
               nodeStatuses={nodeStatuses}
+              selectedNodeId={selectedNodeId}
+              nodeSummaries={nodeSummaries}
+              onNodeClick={handleNodeClick}
             />
           </div>
         </CardContent>
       </Card>
+
+      {/* Node Detail Panel */}
+      <NodeDetailPanel
+        node={selectedNode}
+        onClose={() => setSelectedNodeId(null)}
+        currentStep={selectedStepInfo}
+        nodeStatus={selectedNodeId ? nodeStatuses[selectedNodeId] : undefined}
+        result={selectedNodeId ? nodeResults[selectedNodeId] : undefined}
+        resultSummary={selectedNodeId ? nodeSummaries[selectedNodeId] : undefined}
+        reflection={selectedNodeId ? nodeReflections[selectedNodeId] : undefined}
+        reflectionLoading={selectedNodeId ? reflectionLoading[selectedNodeId] : false}
+      />
     </div>
   );
 }

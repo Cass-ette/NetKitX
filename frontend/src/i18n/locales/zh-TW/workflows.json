@@ -11,5 +11,13 @@
   "confirmDelete": "確認刪除此工作流程？",
   "deleted": "工作流程已刪除",
   "totalWorkflows": "共 {{count}} 個工作流程",
-  "loading": "載入中..."
+  "loading": "載入中...",
+  "stepProgress": "第 {{step}} 步，共 {{total}} 步",
+  "params": "參數",
+  "reason": "原因",
+  "result": "結果",
+  "reflection": "AI 反思",
+  "reflectionLoading": "分析中...",
+  "noReflection": "設定 AI 後可查看反思",
+  "expandResult": "展開詳情"
 }

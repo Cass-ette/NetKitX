@@ -11,5 +11,13 @@
   "confirmDelete": "Delete this workflow?",
   "deleted": "Workflow deleted",
   "totalWorkflows": "{{count}} workflow(s)",
-  "loading": "Loading..."
+  "loading": "Loading...",
+  "stepProgress": "Step {{step}} / {{total}}",
+  "params": "Parameters",
+  "reason": "Reason",
+  "result": "Result",
+  "reflection": "AI Reflection",
+  "reflectionLoading": "Analyzing...",
+  "noReflection": "Enable AI to see reflections",
+  "expandResult": "Show details"
 }

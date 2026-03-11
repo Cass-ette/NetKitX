@@ -11,5 +11,13 @@
   "confirmDelete": "このワークフローを削除しますか？",
   "deleted": "ワークフローを削除しました",
   "totalWorkflows": "{{count}} 件のワークフロー",
-  "loading": "読み込み中..."
+  "loading": "読み込み中...",
+  "stepProgress": "ステップ {{step}} / {{total}}",
+  "params": "パラメータ",
+  "reason": "理由",
+  "result": "結果",
+  "reflection": "AI 分析",
+  "reflectionLoading": "分析中...",
+  "noReflection": "AIを設定すると分析が表示されます",
+  "expandResult": "詳細を表示"
 }

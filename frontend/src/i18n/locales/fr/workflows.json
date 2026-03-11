@@ -11,5 +11,13 @@
   "confirmDelete": "Supprimer ce workflow ?",
   "deleted": "Workflow supprimé",
   "totalWorkflows": "{{count}} workflow(s)",
-  "loading": "Chargement..."
+  "loading": "Chargement...",
+  "stepProgress": "Étape {{step}} / {{total}}",
+  "params": "Paramètres",
+  "reason": "Raison",
+  "result": "Résultat",
+  "reflection": "Analyse IA",
+  "reflectionLoading": "Analyse en cours...",
+  "noReflection": "Activez l'IA pour voir les analyses",
+  "expandResult": "Afficher les détails"
 }

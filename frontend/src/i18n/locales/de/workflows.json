@@ -11,5 +11,13 @@
   "confirmDelete": "Diesen Workflow löschen?",
   "deleted": "Workflow gelöscht",
   "totalWorkflows": "{{count}} Workflow(s)",
-  "loading": "Laden..."
+  "loading": "Laden...",
+  "stepProgress": "Schritt {{step}} / {{total}}",
+  "params": "Parameter",
+  "reason": "Grund",
+  "result": "Ergebnis",
+  "reflection": "KI-Analyse",
+  "reflectionLoading": "Analysiere...",
+  "noReflection": "KI aktivieren, um Analysen zu sehen",
+  "expandResult": "Details anzeigen"
 }

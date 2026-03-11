@@ -11,5 +11,13 @@
   "confirmDelete": "Удалить этот процесс?",
   "deleted": "Процесс удалён",
   "totalWorkflows": "{{count}} процесс(ов)",
-  "loading": "Загрузка..."
+  "loading": "Загрузка...",
+  "stepProgress": "Шаг {{step}} / {{total}}",
+  "params": "Параметры",
+  "reason": "Причина",
+  "result": "Результат",
+  "reflection": "ИИ-анализ",
+  "reflectionLoading": "Анализ...",
+  "noReflection": "Настройте ИИ для просмотра анализа",
+  "expandResult": "Показать подробности"
 }

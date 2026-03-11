@@ -11,5 +11,13 @@
   "confirmDelete": "이 워크플로를 삭제하시겠습니까?",
   "deleted": "워크플로가 삭제되었습니다",
   "totalWorkflows": "{{count}}개 워크플로",
-  "loading": "로딩 중..."
+  "loading": "로딩 중...",
+  "stepProgress": "{{step}} / {{total}} 단계",
+  "params": "매개변수",
+  "reason": "이유",
+  "result": "결과",
+  "reflection": "AI 분석",
+  "reflectionLoading": "분석 중...",
+  "noReflection": "AI를 설정하면 분석을 볼 수 있습니다",
+  "expandResult": "상세 보기"
 }

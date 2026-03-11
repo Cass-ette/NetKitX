@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import {
   ReactFlow,
   Background,
@@ -8,6 +8,7 @@ import {
   type Node,
   type Edge,
   type NodeTypes,
+  type NodeMouseHandler,
 } from "@xyflow/react";
 import dagre from "@dagrejs/dagre";
 import {
@@ -30,12 +31,17 @@ interface WorkflowGraphProps {
   nodes: WorkflowNode[];
   edges: WorkflowEdge[];
   nodeStatuses?: Record<string, string>;
+  selectedNodeId?: string | null;
+  nodeSummaries?: Record<string, string>;
+  onNodeClick?: (nodeId: string) => void;
 }
 
 function layoutGraph(
   wfNodes: WorkflowNode[],
   wfEdges: WorkflowEdge[],
   nodeStatuses?: Record<string, string>,
+  selectedNodeId?: string | null,
+  nodeSummaries?: Record<string, string>,
 ) {
   const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
@@ -64,6 +70,8 @@ function layoutGraph(
         ...n.data,
         label: n.label,
         status: nodeStatuses?.[n.id] || "pending",
+        selected: n.id === selectedNodeId,
+        liveSummary: nodeSummaries?.[n.id],
       },
     };
   });
@@ -79,19 +87,34 @@ function layoutGraph(
   return { nodes, edges };
 }
 
-export function WorkflowGraph({ nodes: wfNodes, edges: wfEdges, nodeStatuses }: WorkflowGraphProps) {
+export function WorkflowGraph({
+  nodes: wfNodes,
+  edges: wfEdges,
+  nodeStatuses,
+  selectedNodeId,
+  nodeSummaries,
+  onNodeClick,
+}: WorkflowGraphProps) {
   const layout = useMemo(
-    () => layoutGraph(wfNodes, wfEdges, nodeStatuses),
-    [wfNodes, wfEdges, nodeStatuses],
+    () => layoutGraph(wfNodes, wfEdges, nodeStatuses, selectedNodeId, nodeSummaries),
+    [wfNodes, wfEdges, nodeStatuses, selectedNodeId, nodeSummaries],
+  );
+
+  const handleNodeClick: NodeMouseHandler = useCallback(
+    (_event, node) => {
+      onNodeClick?.(node.id);
+    },
+    [onNodeClick],
   );
 
   return (
     <div className="h-full w-full">
       <ReactFlow
-        key={JSON.stringify(nodeStatuses)}
+        key={JSON.stringify(nodeStatuses) + selectedNodeId}
         nodes={layout.nodes}
         edges={layout.edges}
         nodeTypes={nodeTypes}
+        onNodeClick={handleNodeClick}
         fitView
         proOptions={{ hideAttribution: true }}
       >
