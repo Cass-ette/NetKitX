@@ -18,5 +18,8 @@
   "toolNotFound": "Инструмент не найден",
   "failedToCreateTask": "Не удалось создать задачу",
   "failedToExport": "Не удалось экспортировать отчёт",
-  "aiAnalyze": "ИИ-анализ"
+  "aiAnalyze": "ИИ-анализ",
+  "chartView": "Графики",
+  "table": "Таблица",
+  "noChartData": "Нет данных для графиков"
 }

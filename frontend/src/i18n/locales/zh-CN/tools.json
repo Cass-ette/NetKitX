@@ -18,5 +18,8 @@
   "toolNotFound": "未找到工具",
   "failedToCreateTask": "创建任务失败",
   "failedToExport": "导出报告失败",
-  "aiAnalyze": "AI 分析"
+  "aiAnalyze": "AI 分析",
+  "chartView": "图表",
+  "table": "表格",
+  "noChartData": "无可用图表数据"
 }

@@ -29,6 +29,7 @@ def load_plugin_meta(plugin_dir: Path) -> PluginMeta | None:
         category=config.get("category", "utils"),
         engine=config.get("engine", "python"),
         mode=config.get("mode", "oneshot"),
+        ui_component=config.get("ui_component"),
         params=config.get("params", []),
         output=config.get("output", {}),
     )

@@ -16,6 +16,7 @@ async def list_tools():
             "category": m.category,
             "engine": m.engine,
             "mode": m.mode,
+            "ui_component": m.ui_component,
             "params": m.params,
             "output": m.output,
         }
@@ -38,6 +39,7 @@ async def get_tool(name: str):
         "category": meta.category,
         "engine": meta.engine,
         "mode": meta.mode,
+        "ui_component": meta.ui_component,
         "params": meta.params,
         "output": meta.output,
     }

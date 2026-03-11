@@ -11,6 +11,15 @@ export interface PluginParam {
 export interface PluginOutput {
   type: "table" | "json" | "terminal" | "chart";
   columns?: { key: string; label: string }[];
+  charts?: ChartConfig[];
+}
+
+export interface ChartConfig {
+  type: "bar" | "pie" | "line" | "area";
+  x?: string;
+  y?: string;
+  category?: string;
+  title?: string;
 }
 
 export interface PluginMeta {
@@ -20,9 +29,17 @@ export interface PluginMeta {
   category: "recon" | "vuln" | "exploit" | "utils";
   engine: "python" | "go" | "cli";
   mode?: "oneshot" | "session";
+  ui_component?: string | null;
   params: PluginParam[];
   output: PluginOutput;
   enabled?: boolean;
+}
+
+export interface PluginUIProps {
+  tool: PluginMeta;
+  results: Record<string, unknown>[];
+  taskId: number | null;
+  taskStatus: string | null;
 }
 
 export interface Task {

@@ -23,6 +23,7 @@ import Link from "next/link";
 import { TaskTerminal } from "@/components/terminal/task-terminal";
 import { AIAnalysisSheet } from "@/components/ai/ai-analysis-sheet";
 import { API_BASE } from "@/lib/api";
+import { PluginUIRenderer, isRegisteredUI } from "@/components/plugin-ui/registry";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -322,45 +323,63 @@ export default function ToolDetailPage({
         </Card>
       )}
 
-      {/* Results Table */}
-      {results.length > 0 && columns.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("results", { count: results.length })}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  {columns.map((col) => (
-                    <TableHead key={col.key}>{col.label}</TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {results.map((row, i) => (
-                  <TableRow key={i}>
+      {/* Results — custom UI or default table */}
+      {results.length > 0 && (
+        tool.ui_component && isRegisteredUI(tool.ui_component) ? (
+          <PluginUIRenderer
+            uiComponent={tool.ui_component}
+            tool={tool}
+            results={results}
+            taskId={taskId}
+            taskStatus={taskStatus}
+          />
+        ) : columns.length > 0 ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("results", { count: results.length })}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
                     {columns.map((col) => (
-                      <TableCell key={col.key}>{String(row[col.key] ?? "")}</TableCell>
+                      <TableHead key={col.key}>{col.label}</TableHead>
                     ))}
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                </TableHeader>
+                <TableBody>
+                  {results.map((row, i) => (
+                    <TableRow key={i}>
+                      {columns.map((col) => (
+                        <TableCell key={col.key}>{String(row[col.key] ?? "")}</TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader><CardTitle>{t("results", { count: results.length })}</CardTitle></CardHeader>
+            <CardContent>
+              <pre className="max-h-96 overflow-auto rounded bg-muted p-3 text-xs">
+                {JSON.stringify(results, null, 2)}
+              </pre>
+            </CardContent>
+          </Card>
+        )
       )}
 
-      {/* JSON fallback if no columns defined */}
-      {results.length > 0 && columns.length === 0 && (
-        <Card>
-          <CardHeader><CardTitle>{t("results", { count: results.length })}</CardTitle></CardHeader>
-          <CardContent>
-            <pre className="max-h-96 overflow-auto rounded bg-muted p-3 text-xs">
-              {JSON.stringify(results, null, 2)}
-            </pre>
-          </CardContent>
-        </Card>
+      {/* Topology: render even without results when task is done */}
+      {tool.ui_component === "topology" && taskId && taskStatus === "done" && results.length === 0 && (
+        <PluginUIRenderer
+          uiComponent="topology"
+          tool={tool}
+          results={results}
+          taskId={taskId}
+          taskStatus={taskStatus}
+        />
       )}
 
       {/* AI Analysis Sheet */}

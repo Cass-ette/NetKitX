@@ -28,6 +28,7 @@ class PluginMeta:
     category: str  # recon | vuln | exploit | utils
     engine: str = "python"  # python | go | cli
     mode: str = "oneshot"  # oneshot | session
+    ui_component: str | None = None  # custom UI component name
     params: list[dict[str, Any]] = field(default_factory=list)
     output: dict[str, Any] = field(default_factory=dict)
 
