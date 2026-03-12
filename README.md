@@ -125,10 +125,12 @@ npm run dev
 ### 工作流可视化
 
 - **自动生成** — Agent 会话自动转换为 DAG 工作流（start → actions → end）
+- **智能去重** — 跨 turn 相同命令/插件+参数自动去重，避免重试导致的重复节点
 - **逐步回放** — 节点依次执行，实时展示进度、结果摘要
+- **模拟模式** — 按 DAG 展示攻击路径 + 历史结果，不发送真实请求（适用于不可重演的攻击）
 - **AI 逐步反思** — 每步执行后 AI 分析发现/意义/下一步（可选）
 - **节点详情面板** — 点击节点查看参数、原因、完整结果、AI 反思（Markdown）
-- **可视化状态** — running 脉冲动画 + spinner，done 绿色，failed 红色
+- **可视化状态** — running 蓝色脉冲，done 绿色，simulated 琥珀色，failed 红色
 
 ### 插件市场
 
@@ -303,7 +305,7 @@ NetKitX/
 | `/api/v1/workflows` | GET | 列出工作流 |
 | `/api/v1/workflows/{id}` | GET | 获取工作流详情 |
 | `/api/v1/workflows/from-session/{id}` | POST | 从会话生成工作流 |
-| `/api/v1/workflows/{id}/run` | POST | 回放工作流（SSE + AI 反思） |
+| `/api/v1/workflows/{id}/run` | POST | 回放/模拟工作流（SSE + AI 反思，`?simulate=true` 模拟模式） |
 | `/api/v1/ws/tasks/{id}` | WS | 实时任务更新 |
 
 ## 开发

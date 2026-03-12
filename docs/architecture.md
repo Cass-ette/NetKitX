@@ -264,6 +264,7 @@ Agent 具备错误分类和重试能力：
 - 恢复格式错误的 XML action
 - 分类错误类型（网络、权限、超时、参数错误等）
 - 自动重试可恢复错误
+- **精准错误反馈**：多 action 并行部分失败时，逐条报告 OK/FAILED，AI 只重试失败的
 
 ### 知识提取
 
@@ -372,7 +373,11 @@ Agent 会话 → finalize_session() → build_session_digest()
 - Passkey (WebAuthn) 免密登录
 - HTTPS 配置 (Let's Encrypt)
 
+### Phase 9: 工作流增强 ✅
+- 工作流节点智能去重（跨 turn 相同命令/插件指纹去重）
+- Agent 精准错误反馈（多 action 部分失败时逐条 OK/FAILED）
+- 工作流模拟模式（按 DAG 展示攻击路径，不实际执行）
+
 ### 待定
-- 攻防知识库 Phase 3: RAG Prompt Injection（向量检索 → prompt 注入）
 - 网安专用模型微调
 - 高级功能（包签名、CDN）

@@ -47,9 +47,7 @@
 
 ### 🔧 待修复
 
-- [ ] 2 个 Agent 测试失败
-  - `test_retryable_error_continues_loop`
-  - `test_successful_action_resets_error_counter`
+- [x] ~~2 个 Agent 测试失败~~ (已修复)
 
 ---
 
@@ -499,6 +497,12 @@ workflow:
 
 ## 更新日志
 
+- **2026-03-13**: 工作流三项改进
+  - 工作流节点智能去重（跨 turn 相同命令/插件指纹去重）
+  - Agent 精准错误反馈（多 action 部分失败时逐条 OK/FAILED，AI 只重试失败的）
+  - 工作流模拟模式（按 DAG 展示攻击路径 + 历史结果，不实际执行）
+  - 3 项新测试（去重、不同参数保留、部分失败反馈）
+  - i18n 新增 3 key × 8 语言
 - **2024-03-11**: Plugin Engine 2.0 Phase 1 完成
   - SessionPlugin 基类 + SDK
   - Redis 会话管理 + WebSocket API
