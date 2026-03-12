@@ -378,6 +378,14 @@ Agent 会话 → finalize_session() → build_session_digest()
 - Agent 精准错误反馈（多 action 部分失败时逐条 OK/FAILED）
 - 工作流模拟模式（按 DAG 展示攻击路径，不实际执行）
 
+### Phase 10: Agent 停滞检测优化 + 靶场基础设施 ✅
+- **双层停滞检测**：
+  - 战术层：shell 指纹归一化（curl/wget/sqlmap 去 URL base），比较时去类型前缀
+  - 战略层：reasoning 指纹检测连续相似推理，第 3 轮警告、第 5 轮终止
+- **NULL 字节修复**：`finalize_session()` 写入前过滤 `\u0000`，防止 PostgreSQL 报错
+- **靶场部署**：服务器 `/opt/targets` 下运行 Juice Shop (4001)、DVWA (4002)、WebGoat (4003)
+- 新增 22 项单元测试（指纹归一化 13 项 + reasoning 停滞 6 项 + NULL 字节 7 项）
+
 ### 待定
 - 网安专用模型微调
 - 高级功能（包签名、CDN）

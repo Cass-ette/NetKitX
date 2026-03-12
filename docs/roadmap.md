@@ -497,6 +497,17 @@ workflow:
 
 ## 更新日志
 
+- **2026-03-13** (续): Agent 停滞检测优化 + 靶场基础设施
+  - **双层停滞检测**：战术层（shell 指纹归一化）+ 战略层（reasoning 指纹）
+    - curl/wget/sqlmap 指纹去除 URL base，不同路径探索不再误判为停滞
+    - 比较时剥离 `shell:`/`plugin:` 前缀，提高相似度计算精度
+    - reasoning 指纹：连续 3 轮相似推理→警告，连续 5 轮→终止
+  - **NULL 字节修复**：Juice Shop 靶场 HTML 含 `\u0000`，`finalize_session()` 写入 PostgreSQL 前过滤
+  - **靶场部署**：服务器部署 3 个训练靶场
+    - Juice Shop (port 4001) — OWASP 官方，100+ 挑战
+    - DVWA (port 4002) — 经典 PHP 靶场，4 难度等级
+    - WebGoat (port 4003) — OWASP 引导式教学靶场
+  - 22 项新测试，总计 234 项
 - **2026-03-13**: 工作流三项改进
   - 工作流节点智能去重（跨 turn 相同命令/插件指纹去重）
   - Agent 精准错误反馈（多 action 部分失败时逐条 OK/FAILED，AI 只重试失败的）
