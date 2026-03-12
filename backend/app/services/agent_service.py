@@ -704,6 +704,9 @@ async def run_agent_loop(
         all_ok = True
         result_texts = []
         max_similar = 0
+        # Snapshot history BEFORE this turn so same-turn actions don't count
+        # against each other (e.g. scanning 5 ports in parallel is not stagnation)
+        history_before_turn = list(action_history)
         for action, result in zip(actions, results):
             if isinstance(result, Exception):
                 result = {"error": str(result)}
@@ -732,9 +735,9 @@ async def run_agent_loop(
 
             result_texts.append(format_action_result(action, result))
 
-            # Stagnation detection per action
+            # Stagnation detection: compare against PREVIOUS turns only
             fingerprint = _action_fingerprint(action)
-            similar_count = count_similar_recent(action_history, fingerprint)
+            similar_count = count_similar_recent(history_before_turn, fingerprint)
             action_history.append(fingerprint)
             if similar_count > max_similar:
                 max_similar = similar_count
