@@ -551,6 +551,37 @@ def count_similar_recent(history: list[str], current: str) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Reasoning-level stagnation (catches "same strategy, different URLs")
+# ---------------------------------------------------------------------------
+
+_ACTION_TAG_RE = re.compile(r"<action[\s\S]*?</action>", re.DOTALL)
+
+REASONING_SIMILARITY = 0.80  # reasoning text similarity threshold
+REASONING_STAGNATION_WARN = 3  # consecutive similar reasoning → soft warning
+REASONING_STAGNATION_STOP = 5  # consecutive similar reasoning → terminate
+
+
+def _extract_reasoning(text: str) -> str:
+    """Extract the reasoning portion of an assistant message (strip action XML)."""
+    cleaned = _ACTION_TAG_RE.sub("", text).strip()
+    # Take first 200 chars — enough to capture the strategy statement
+    return cleaned[:200].lower()
+
+
+def _reasoning_stagnation(history: list[str], current: str) -> int:
+    """Count consecutive similar reasoning texts from the end of history."""
+    if not current:
+        return 0
+    count = 0
+    for prev in reversed(history):
+        if SequenceMatcher(None, prev, current).ratio() >= REASONING_SIMILARITY:
+            count += 1
+        else:
+            break  # must be consecutive
+    return count
+
+
+# ---------------------------------------------------------------------------
 # Main agent loop
 # ---------------------------------------------------------------------------
 
@@ -627,6 +658,7 @@ async def run_agent_loop(
     turn = 0
     consecutive_errors = 0
     action_history: list[str] = []
+    reasoning_history: list[str] = []
     while True:
         turn += 1
         if max_turns > 0 and turn > max_turns:
@@ -862,23 +894,51 @@ async def run_agent_loop(
         combined_result = "\n\n---\n\n".join(result_texts)
         full_messages.append({"role": "user", "content": combined_result})
 
-        if max_similar >= STAGNATION_STOP:
-            logger.warning("Stagnation STOP: max_similar=%d, terminating agent loop", max_similar)
+        # Reasoning-level stagnation (same strategy, different URLs)
+        reasoning_fp = _extract_reasoning(full_text)
+        reasoning_similar = _reasoning_stagnation(reasoning_history, reasoning_fp)
+        reasoning_history.append(reasoning_fp)
+        if reasoning_similar > 0:
+            logger.warning(
+                "Reasoning stagnation: %d consecutive similar, text=%.80s",
+                reasoning_similar,
+                reasoning_fp,
+            )
+
+        # Pick the more severe signal between action and reasoning stagnation
+        effective_stagnation = max(max_similar, reasoning_similar)
+
+        if (
+            effective_stagnation >= STAGNATION_STOP
+            or reasoning_similar >= REASONING_STAGNATION_STOP
+        ):
+            logger.warning(
+                "Stagnation STOP: action=%d reasoning=%d, terminating",
+                max_similar,
+                reasoning_similar,
+            )
             yield {"event": "done", "data": {"reason": "stagnation"}}
             return
-        elif max_similar >= STAGNATION_FORCE:
-            logger.warning("Stagnation FORCE: max_similar=%d, injecting hard warning", max_similar)
+        elif (
+            effective_stagnation >= STAGNATION_FORCE
+            or reasoning_similar >= REASONING_STAGNATION_WARN
+        ):
+            logger.warning(
+                "Stagnation FORCE: action=%d reasoning=%d, injecting hard warning",
+                max_similar,
+                reasoning_similar,
+            )
             full_messages.append(
                 {
                     "role": "user",
                     "content": "[System Warning: STAGNATION DETECTED] "
-                    "You have attempted very similar actions multiple times without meaningful progress. "
+                    "Your reasoning and approach have been repeating for several turns. "
                     "You MUST either: (1) try a completely different technique/tool, or "
                     "(2) stop and provide a summary of your findings so far. "
                     "Do NOT repeat the same approach again.",
                 }
             )
-        elif max_similar >= STAGNATION_WARN:
+        elif effective_stagnation >= STAGNATION_WARN:
             full_messages.append(
                 {
                     "role": "user",

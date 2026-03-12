@@ -17,6 +17,8 @@ from app.services.agent_service import (
     _normalize_shell_fingerprint,
     _is_similar,
     count_similar_recent,
+    _extract_reasoning,
+    _reasoning_stagnation,
     _compress_output,
     _strip_html,
     compress_result,
@@ -840,6 +842,69 @@ def test_count_similar_recent_no_matches():
     ]
     current = "shell:curl:/api"
     assert count_similar_recent(history, current) == 0
+
+
+# ---------------------------------------------------------------------------
+# Reasoning-level stagnation tests
+# ---------------------------------------------------------------------------
+
+
+def test_extract_reasoning_strips_actions():
+    text = (
+        '让我尝试文件上传\n\n<action type="shell">\n'
+        "<command>curl http://target/upload</command>\n</action>"
+    )
+    result = _extract_reasoning(text)
+    assert "让我尝试文件上传" in result
+    assert "<action" not in result
+    assert "curl" not in result
+
+
+def test_extract_reasoning_truncates():
+    text = "A" * 500
+    result = _extract_reasoning(text)
+    assert len(result) == 200
+
+
+def test_reasoning_stagnation_consecutive():
+    """Consecutive similar reasoning is detected."""
+    history = [
+        "在 juice shop 中，视频字幕 xss 挑战通常是通过 file upload 功能实现的",
+        "在 juice shop 中，视频字幕 xss 挑战通常是通过 file upload 功能实现的，让我尝试不同端点",
+        "在 juice shop 中，视频字幕 xss 挑战通常是通过 file upload 功能实现的，让我换个方法",
+    ]
+    current = "在 juice shop 中，视频字幕 xss 挑战通常是通过 file upload 功能实现的，让我再试试"
+    count = _reasoning_stagnation(history, current)
+    assert count == 3
+
+
+def test_reasoning_stagnation_breaks_on_different():
+    """Non-consecutive reasoning resets the count."""
+    history = [
+        "在 juice shop 中，视频字幕 xss 挑战通常是通过 file upload 功能实现的，让我尝试上传",
+        "完全换一个思路，试试 sql 注入来获取数据库信息",  # different — breaks chain
+        "在 juice shop 中，视频字幕 xss 挑战通常是通过 file upload 功能实现的，让我换个端点",
+    ]
+    current = "在 juice shop 中，视频字幕 xss 挑战通常是通过 file upload 功能实现的，让我再试试"
+    count = _reasoning_stagnation(history, current)
+    # Only 1 (last entry), because the middle entry breaks the chain
+    assert count == 1
+
+
+def test_reasoning_stagnation_empty_history():
+    assert _reasoning_stagnation([], "anything") == 0
+
+
+def test_reasoning_stagnation_different_strategies():
+    """Genuinely different strategies should not trigger."""
+    history = [
+        "首先进行端口扫描，了解目标开放的服务",
+        "发现了 web 服务，进行目录枚举",
+        "找到了 ftp 目录，检查敏感文件",
+    ]
+    current = "尝试 sql 注入攻击登录页面"
+    count = _reasoning_stagnation(history, current)
+    assert count == 0
 
 
 # ---------------------------------------------------------------------------
