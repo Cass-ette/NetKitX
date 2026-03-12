@@ -324,8 +324,31 @@ export function AIChatCore({ variant = "full" }: AIChatCoreProps) {
                 </Card>
               )}
 
-              {/* Action card */}
-              {msg.action && msg.actionStatus && (
+              {/* Action card(s) — multi-action parallel or single */}
+              {msg.actions && msg.actions.length > 1 && msg.actionStatus ? (
+                <div className="space-y-2">
+                  <Badge variant="outline" className="text-xs">
+                    {msg.actions.length} {t("parallelActions")}
+                    {msg.pendingResults != null && msg.pendingResults > 0 && (
+                      <span className="ml-1 text-muted-foreground">
+                        ({msg.actions.length - msg.pendingResults}/{msg.actions.length})
+                      </span>
+                    )}
+                  </Badge>
+                  {msg.actions.map((act, idx) => (
+                    <AgentActionCard
+                      key={idx}
+                      action={act}
+                      status={
+                        msg.actionResults && msg.actionResults[idx]
+                          ? "done"
+                          : msg.actionStatus ?? "executing"
+                      }
+                      result={msg.actionResults?.[idx]}
+                    />
+                  ))}
+                </div>
+              ) : msg.action && msg.actionStatus ? (
                 <AgentActionCard
                   action={msg.action}
                   status={msg.actionStatus}
@@ -336,7 +359,7 @@ export function AIChatCore({ variant = "full" }: AIChatCoreProps) {
                       : undefined
                   }
                 />
-              )}
+              ) : null}
             </div>
 
             {msg.role === "user" && (

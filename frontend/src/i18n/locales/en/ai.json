@@ -45,5 +45,6 @@
   "agentStagnation": "Agent stopped because it kept repeating similar approaches without making progress. Please try a different request or break it down into smaller steps.",
   "openPanel": "Open AI Panel",
   "closePanel": "Close AI Panel",
-  "newChat": "New Chat"
+  "newChat": "New Chat",
+  "parallelActions": "parallel actions"
 }

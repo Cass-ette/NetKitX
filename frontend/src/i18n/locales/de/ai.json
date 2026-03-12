@@ -45,5 +45,6 @@
   "agentStagnation": "Der Agent wurde gestoppt, da er ähnliche Ansätze wiederholte, ohne Fortschritte zu erzielen. Versuchen Sie eine andere Anfrage oder teilen Sie die Aufgabe in kleinere Schritte auf.",
   "openPanel": "KI-Panel öffnen",
   "closePanel": "KI-Panel schließen",
-  "newChat": "Neuer Chat"
+  "newChat": "Neuer Chat",
+  "parallelActions": "parallele Aktionen"
 }

@@ -45,5 +45,6 @@
   "agentStagnation": "Agent 因重复采用相似方法而未取得进展而停止。请尝试不同的请求或将任务分解为较小的步骤。",
   "openPanel": "打开 AI 面板",
   "closePanel": "关闭 AI 面板",
-  "newChat": "新对话"
+  "newChat": "新对话",
+  "parallelActions": "个并行动作"
 }

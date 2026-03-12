@@ -186,6 +186,8 @@ export function useAIChat() {
       const decoder = new TextDecoder();
       let buffer = "";
       let assistantContent = "";
+      let expectedResults = 1;
+      let receivedResults = 0;
 
       setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
@@ -226,11 +228,26 @@ export function useAIChat() {
             setCurrentTurn(data.turn as number);
           } else if (event === "action") {
             const action = data.action as AgentAction;
+            const allActions = data.actions as AgentAction[] | undefined;
+            const isMulti = allActions && allActions.length > 1;
             const status = agentMode === "semi_auto" ? "proposed" : "executing";
+            expectedResults = isMulti ? allActions.length : 1;
+            receivedResults = 0;
             setMessages((prev) => {
               const updated = [...prev];
               const last = updated.length - 1;
-              updated[last] = { ...updated[last], action, actionStatus: status };
+              if (isMulti) {
+                updated[last] = {
+                  ...updated[last],
+                  action,
+                  actions: allActions,
+                  actionResults: [],
+                  pendingResults: allActions.length,
+                  actionStatus: status,
+                };
+              } else {
+                updated[last] = { ...updated[last], action, actionStatus: status };
+              }
               return updated;
             });
           } else if (event === "action_status") {
@@ -242,16 +259,63 @@ export function useAIChat() {
             });
           } else if (event === "action_result") {
             const result = data.result as AgentActionResult;
-            assistantContent = "";
-            setMessages((prev) => {
-              const updated = [...prev];
-              const last = updated.length - 1;
-              updated[last] = { ...updated[last], actionResult: result, actionStatus: "done" };
-              return [...updated, { role: "assistant", content: "" }];
-            });
+            receivedResults++;
+            const allDone = receivedResults >= expectedResults;
+
+            if (expectedResults > 1) {
+              // Multi-action: accumulate results
+              setMessages((prev) => {
+                const updated = [...prev];
+                const last = updated.length - 1;
+                const existing = updated[last].actionResults || [];
+                const pending = (updated[last].pendingResults ?? 1) - 1;
+                updated[last] = {
+                  ...updated[last],
+                  actionResults: [...existing, result],
+                  pendingResults: pending,
+                  actionStatus: allDone ? "done" : "executing",
+                };
+                if (allDone) {
+                  assistantContent = "";
+                  return [...updated, { role: "assistant", content: "" }];
+                }
+                return updated;
+              });
+            } else {
+              // Single action: original behavior
+              assistantContent = "";
+              setMessages((prev) => {
+                const updated = [...prev];
+                const last = updated.length - 1;
+                updated[last] = { ...updated[last], actionResult: result, actionStatus: "done" };
+                return [...updated, { role: "assistant", content: "" }];
+              });
+            }
           } else if (event === "action_error") {
             const errorType = data.error_type as string;
-            if (errorType === "malformed") {
+            receivedResults++;
+            if (expectedResults > 1) {
+              // Multi-action error: accumulate
+              const errResult: AgentActionResult = { error: (data.error as string) || "Unknown error" };
+              const allDone = receivedResults >= expectedResults;
+              setMessages((prev) => {
+                const updated = [...prev];
+                const last = updated.length - 1;
+                const existing = updated[last].actionResults || [];
+                const pending = (updated[last].pendingResults ?? 1) - 1;
+                updated[last] = {
+                  ...updated[last],
+                  actionResults: [...existing, errResult],
+                  pendingResults: pending,
+                  actionStatus: allDone ? "done" : "executing",
+                };
+                if (allDone) {
+                  assistantContent = "";
+                  return [...updated, { role: "assistant", content: "" }];
+                }
+                return updated;
+              });
+            } else if (errorType === "malformed") {
               assistantContent = "";
               setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
             }

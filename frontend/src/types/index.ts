@@ -77,6 +77,11 @@ export interface ChatMessage {
   action?: AgentAction;
   actionResult?: AgentActionResult;
   actionStatus?: "proposed" | "executing" | "done" | "skipped";
+  /** Multiple parallel actions (full_auto / terminal multi-action) */
+  actions?: AgentAction[];
+  actionResults?: AgentActionResult[];
+  /** How many results are still pending (for progress display) */
+  pendingResults?: number;
 }
 
 export type AgentMode = "chat" | "semi_auto" | "full_auto" | "terminal";

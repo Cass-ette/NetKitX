@@ -45,5 +45,6 @@
   "agentStagnation": "에이전트가 유사한 접근 방식을 반복하면서도 진전이 없어 중지되었습니다. 다른 요청을 시도하거나 작업을 더 작은 단계로 나누어 보세요.",
   "openPanel": "AI 패널 열기",
   "closePanel": "AI 패널 닫기",
-  "newChat": "새 채팅"
+  "newChat": "새 채팅",
+  "parallelActions": "병렬 작업"
 }
