@@ -11,12 +11,14 @@
 - **实时任务执行** — WebSocket 推送进度和结果，支持并发任务
 - **AI 自主执行** — 集成 Claude/DeepSeek/GLM，支持半自动/全自动/终端三种执行模式
 - **防御/进攻双模式** — AI 可切换防御建议或精确攻击 payload
-- **攻防知识库** — 自动提取会话知识，生成学习报告，支持全文搜索
+- **攻防知识库** — 自动提取会话知识，生成学习报告，RAG 向量检索增强
+- **工作流可视化** — Agent 会话自动转换为 DAG 工作流，逐步回放 + AI 逐步反思分析
 - **沙箱终端** — 每用户 Docker 容器隔离，黑名单命令过滤
 - **报告导出** — 任务结果一键导出为 PDF 或 HTML
 - **内嵌终端** — xterm.js 实时展示执行日志，支持历史回溯
 - **网络拓扑可视化** — 扫描结果自动生成交互式网络关系图（React Flow + dagre）
 - **插件市场** — 发布、搜索、安装插件，内置依赖解析（PubGrub）和安全扫描
+- **插件会话模式** — 持久 WebSocket 双向通信，支持交互式终端等高级场景
 - **多种认证方式** — 账号密码、GitHub OAuth、Passkey (WebAuthn) 免密登录
 - **高性能引擎** — Go 编译的独立二进制，适合大规模扫描
 - **国际化** — 8 种语言（中文简繁、英语、日语、韩语、德语、法语、俄语）
@@ -117,7 +119,16 @@ npm run dev
 - **会话持久化** — 所有 Agent 对话自动保存，支持回放
 - **知识提取** — AI 从会话中提取结构化攻防知识（技术、漏洞、工具、难度等）
 - **学习报告** — AI 生成 Markdown 格式的学习报告
+- **RAG 向量检索** — pgvector 存储 embedding，Agent 启动时自动注入历史经验
 - **全文搜索** — PostgreSQL tsvector + GIN 索引，快速检索历史知识
+
+### 工作流可视化
+
+- **自动生成** — Agent 会话自动转换为 DAG 工作流（start → actions → end）
+- **逐步回放** — 节点依次执行，实时展示进度、结果摘要
+- **AI 逐步反思** — 每步执行后 AI 分析发现/意义/下一步（可选）
+- **节点详情面板** — 点击节点查看参数、原因、完整结果、AI 反思（Markdown）
+- **可视化状态** — running 脉冲动画 + spinner，done 绿色，failed 红色
 
 ### 插件市场
 
@@ -224,8 +235,8 @@ NetKitX/
 │   └── tests/            # 单元测试
 ├── frontend/             # Next.js 16 前端
 │   ├── src/
-│   │   ├── app/          # 页面路由（ai-chat, sessions, knowledge, marketplace...）
-│   │   ├── components/   # UI 组件（ai, terminal, topology, layout...）
+│   │   ├── app/          # 页面路由（ai-chat, sessions, knowledge, marketplace, workflows...）
+│   │   ├── components/   # UI 组件（ai, terminal, topology, workflow, layout...）
 │   │   ├── hooks/        # 自定义 React hooks
 │   │   ├── lib/          # 工具函数和状态管理
 │   │   ├── i18n/         # 国际化（8 种语言 × 多个命名空间）
@@ -289,6 +300,10 @@ NetKitX/
 | `/api/v1/marketplace/install` | POST | 安装插件 |
 | `/api/v1/marketplace/updates` | GET | 检查更新 |
 | `/api/v1/marketplace/update-all` | POST | 批量更新 |
+| `/api/v1/workflows` | GET | 列出工作流 |
+| `/api/v1/workflows/{id}` | GET | 获取工作流详情 |
+| `/api/v1/workflows/from-session/{id}` | POST | 从会话生成工作流 |
+| `/api/v1/workflows/{id}/run` | POST | 回放工作流（SSE + AI 反思） |
 | `/api/v1/ws/tasks/{id}` | WS | 实时任务更新 |
 
 ## 开发
@@ -306,7 +321,7 @@ ruff format .
 ruff check --fix .
 
 # 运行测试
-pytest tests/test_registry.py tests/test_version.py tests/test_reports.py tests/test_topology.py tests/test_agent.py tests/test_knowledge.py -v
+pytest tests/test_registry.py tests/test_version.py tests/test_reports.py tests/test_topology.py tests/test_agent.py tests/test_knowledge.py tests/test_workflows.py -v
 ```
 
 ### 前端
