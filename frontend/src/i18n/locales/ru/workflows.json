@@ -21,5 +21,8 @@
   "noReflection": "Настройте ИИ для просмотра анализа",
   "expandResult": "Показать подробности",
   "skipped": "Пропущено",
-  "parallelNodes": "{{count}} узлов параллельно"
+  "parallelNodes": "{{count}} узлов параллельно",
+  "simulate": "Симуляция",
+  "simulating": "Симуляция...",
+  "simulated": "Смоделировано"
 }

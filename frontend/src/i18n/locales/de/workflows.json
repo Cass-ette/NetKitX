@@ -21,5 +21,8 @@
   "noReflection": "KI aktivieren, um Analysen zu sehen",
   "expandResult": "Details anzeigen",
   "skipped": "Übersprungen",
-  "parallelNodes": "{{count}} Knoten parallel"
+  "parallelNodes": "{{count}} Knoten parallel",
+  "simulate": "Simulieren",
+  "simulating": "Simuliere...",
+  "simulated": "Simuliert"
 }

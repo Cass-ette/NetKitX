@@ -132,6 +132,7 @@ async def patch_workflow(
 async def run_workflow(
     workflow_id: int,
     reflect: bool = Query(False),
+    simulate: bool = Query(False),
     lang: str = Query("en"),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
@@ -146,6 +147,7 @@ async def run_workflow(
     wf_id = workflow.id
     wf_name = workflow.name
     user_id = user.id
+    is_simulate = simulate
 
     # Build execution plan (DAG layers)
     try:
@@ -229,6 +231,17 @@ async def run_workflow(
                     n_type = n.get("type", "")
                     n_data = n.get("data", {})
                     try:
+                        if is_simulate:
+                            result = {
+                                "simulated": True,
+                                "result_summary": n_data.get("result_summary", ""),
+                                "params": n_data.get("params"),
+                                "command": n_data.get("command"),
+                                "plugin": n_data.get("plugin"),
+                            }
+                            await queue.put(("result", nid, n, result))
+                            return
+
                         if n_type == "action-plugin":
                             action = {
                                 "type": "plugin",

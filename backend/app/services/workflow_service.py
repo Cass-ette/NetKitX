@@ -138,6 +138,17 @@ def build_execution_plan(
     return levels, parents
 
 
+def _wf_action_fingerprint(action: dict) -> str:
+    """Fingerprint an action for deduplication (local to workflow extraction)."""
+    atype = action.get("type", "")
+    if atype == "shell":
+        return f"shell:{action.get('command', '')}"
+    elif atype == "plugin":
+        params = json.dumps(action.get("params") or {}, sort_keys=True)
+        return f"plugin:{action.get('plugin', '')}:{params}"
+    return ""
+
+
 def extract_workflow_from_turns(
     turns: list[dict[str, Any]],
     session_title: str,
@@ -164,6 +175,7 @@ def extract_workflow_from_turns(
     )
 
     action_index = 0
+    seen_fingerprints: set[str] = set()
     i = 0
     while i < len(turns):
         turn = turns[i]
@@ -182,6 +194,13 @@ def extract_workflow_from_turns(
 
             turn_node_ids = []
             for idx, action in enumerate(action_list):
+                # Deduplicate by fingerprint
+                fp = _wf_action_fingerprint(action)
+                if fp and fp in seen_fingerprints:
+                    continue
+                if fp:
+                    seen_fingerprints.add(fp)
+
                 action_type = action.get("type", "plugin")
                 action_index += 1
                 node_id = f"action-{action_index}"
@@ -249,9 +268,10 @@ def extract_workflow_from_turns(
                 groups.append(group)
 
         # For multi-action, we need to know which nodes were produced together.
-        # Re-parse from turns to get grouping info
+        # Re-parse from turns to get grouping info (apply same dedup logic)
         group_list: list[list[str]] = []
         idx = 0
+        group_seen: set[str] = set()
         ai = 0
         while ai < len(turns):
             turn = turns[ai]
@@ -259,11 +279,17 @@ def extract_workflow_from_turns(
                 raw_action = turn["action"]
                 action_list = raw_action if isinstance(raw_action, list) else [raw_action]
                 group = []
-                for _ in action_list:
+                for act in action_list:
+                    fp = _wf_action_fingerprint(act)
+                    if fp and fp in group_seen:
+                        continue
+                    if fp:
+                        group_seen.add(fp)
                     if idx < len(action_nodes):
                         group.append(action_nodes[idx]["id"])
                         idx += 1
-                group_list.append(group)
+                if group:
+                    group_list.append(group)
                 # Skip result turns
                 ai += 1
                 while ai < len(turns) and turns[ai].get("role") == "action_result":

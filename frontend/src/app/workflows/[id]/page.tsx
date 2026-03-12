@@ -9,7 +9,7 @@ import { useLocaleStore } from "@/i18n/store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Play, Loader2 } from "lucide-react";
+import { ArrowLeft, Play, Loader2, Eye } from "lucide-react";
 import { WorkflowGraph } from "@/components/workflow/workflow-graph";
 import { NodeDetailPanel } from "@/components/workflow/node-detail-panel";
 import type { Workflow } from "@/types";
@@ -49,9 +49,12 @@ export default function WorkflowDetailPage() {
     });
   }, [token, workflowId]);
 
-  const handleRun = useCallback(async () => {
+  const [isSimulating, setIsSimulating] = useState(false);
+
+  const handleRun = useCallback(async (simulate = false) => {
     if (!token || !workflowId || isRunning) return;
     setIsRunning(true);
+    setIsSimulating(simulate);
     setNodeStatuses({});
     setNodeResults({});
     setNodeReflections({});
@@ -65,7 +68,7 @@ export default function WorkflowDetailPage() {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
       const resp = await fetch(
-        `${apiUrl}/api/v1/workflows/${workflowId}/run?reflect=true&lang=${locale}`,
+        `${apiUrl}/api/v1/workflows/${workflowId}/run?reflect=true&lang=${locale}&simulate=${simulate}`,
         {
           method: "POST",
           headers: {
@@ -106,7 +109,8 @@ export default function WorkflowDetailPage() {
               setReflectionLoading((prev) => ({ ...prev, [nodeId]: true }));
             } else if (event === "node_result") {
               const nodeId = payload.node_id as string;
-              setNodeStatuses((prev) => ({ ...prev, [nodeId]: "done" }));
+              const isNodeSimulated = !!(payload.result as Record<string, unknown>)?.simulated;
+              setNodeStatuses((prev) => ({ ...prev, [nodeId]: isNodeSimulated ? "simulated" : "done" }));
               setNodeResults((prev) => ({ ...prev, [nodeId]: payload.result }));
               if (payload.result_summary) {
                 setNodeSummaries((prev) => ({ ...prev, [nodeId]: payload.result_summary }));
@@ -138,6 +142,7 @@ export default function WorkflowDetailPage() {
       }
     } finally {
       setIsRunning(false);
+      setIsSimulating(false);
       abortRef.current = null;
     }
   }, [token, workflowId, isRunning, locale]);
@@ -195,11 +200,29 @@ export default function WorkflowDetailPage() {
           </div>
         </div>
         <Button
-          onClick={handleRun}
+          variant="outline"
+          onClick={() => handleRun(true)}
           disabled={isRunning}
           size="sm"
         >
-          {isRunning ? (
+          {isRunning && isSimulating ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              {t("simulating")}
+            </>
+          ) : (
+            <>
+              <Eye className="h-4 w-4 mr-2" />
+              {t("simulate")}
+            </>
+          )}
+        </Button>
+        <Button
+          onClick={() => handleRun(false)}
+          disabled={isRunning}
+          size="sm"
+        >
+          {isRunning && !isSimulating ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               {t("running")}

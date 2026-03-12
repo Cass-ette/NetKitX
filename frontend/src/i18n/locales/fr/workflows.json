@@ -21,5 +21,8 @@
   "noReflection": "Activez l'IA pour voir les analyses",
   "expandResult": "Afficher les détails",
   "skipped": "Ignoré",
-  "parallelNodes": "{{count}} nœuds en parallèle"
+  "parallelNodes": "{{count}} nœuds en parallèle",
+  "simulate": "Simuler",
+  "simulating": "Simulation...",
+  "simulated": "Simulé"
 }

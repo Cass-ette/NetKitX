@@ -573,3 +573,113 @@ class TestExtractWorkflowMultiAction:
         # Both action nodes should have edges to end
         end_edges = [e for e in edges if e["target"] == "end"]
         assert len(end_edges) == 2
+
+
+# ---------------------------------------------------------------------------
+# Deduplication
+# ---------------------------------------------------------------------------
+
+
+class TestExtractWorkflowDedup:
+    def test_extract_workflow_dedup(self):
+        """Duplicate actions across turns should be deduplicated."""
+        turns = [
+            # Turn 1: actions A and B
+            {
+                "role": "assistant",
+                "content": "Running A and B",
+                "action": [
+                    {"type": "shell", "command": "curl http://target/?id=1' UNION SELECT 1--"},
+                    {"type": "shell", "command": "curl http://target/?id=1' UNION SELECT 1,2--"},
+                ],
+                "action_result": None,
+                "action_status": "done",
+            },
+            {
+                "role": "action_result",
+                "content": "",
+                "action": None,
+                "action_result": {"stdout": "ok"},
+                "action_status": None,
+            },
+            {
+                "role": "action_result",
+                "content": "",
+                "action": None,
+                "action_result": {"stdout": "ok"},
+                "action_status": None,
+            },
+            # Turn 2: retry sends A, B (duplicate), and new C
+            {
+                "role": "assistant",
+                "content": "Retrying with extra",
+                "action": [
+                    {"type": "shell", "command": "curl http://target/?id=1' UNION SELECT 1--"},
+                    {"type": "shell", "command": "curl http://target/?id=1' UNION SELECT 1,2--"},
+                    {"type": "shell", "command": "curl http://target/?id=1' UNION SELECT 1,2,3--"},
+                ],
+                "action_result": None,
+                "action_status": "done",
+            },
+            {
+                "role": "action_result",
+                "content": "",
+                "action": None,
+                "action_result": {"stdout": "ok"},
+                "action_status": None,
+            },
+            {
+                "role": "action_result",
+                "content": "",
+                "action": None,
+                "action_result": {"stdout": "ok"},
+                "action_status": None,
+            },
+            {
+                "role": "action_result",
+                "content": "",
+                "action": None,
+                "action_result": {"stdout": "ok"},
+                "action_status": None,
+            },
+        ]
+        nodes, edges = extract_workflow_from_turns(turns, "Dedup Test")
+        action_nodes = [n for n in nodes if n["type"] not in ("start", "end")]
+        # Should be 3 unique actions, not 5
+        assert len(action_nodes) == 3
+
+    def test_dedup_preserves_different_params(self):
+        """Same plugin with different params should NOT be deduped."""
+        turns = [
+            {
+                "role": "assistant",
+                "content": "",
+                "action": {"type": "plugin", "plugin": "port-scan", "params": {"port": "80"}},
+                "action_result": None,
+                "action_status": "done",
+            },
+            {
+                "role": "action_result",
+                "content": "",
+                "action": None,
+                "action_result": {"items": []},
+                "action_status": None,
+            },
+            {
+                "role": "assistant",
+                "content": "",
+                "action": {"type": "plugin", "plugin": "port-scan", "params": {"port": "443"}},
+                "action_result": None,
+                "action_status": "done",
+            },
+            {
+                "role": "action_result",
+                "content": "",
+                "action": None,
+                "action_result": {"items": []},
+                "action_status": None,
+            },
+        ]
+        nodes, edges = extract_workflow_from_turns(turns, "Diff Params")
+        action_nodes = [n for n in nodes if n["type"] not in ("start", "end")]
+        assert len(action_nodes) == 2

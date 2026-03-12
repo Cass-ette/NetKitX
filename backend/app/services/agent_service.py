@@ -783,14 +783,22 @@ async def run_agent_loop(
                     }
                 )
             else:
-                errors = [
-                    r.get("error", "") for r in results if isinstance(r, dict) and r.get("error")
-                ]
+                feedback_parts = []
+                for action, result in zip(actions, results):
+                    if isinstance(result, Exception):
+                        result = {"error": str(result)}
+                    label = action.get("plugin") or (action.get("command") or "?")[:60]
+                    if isinstance(result, dict) and result.get("error"):
+                        feedback_parts.append(f"  FAILED  {label}: {result['error']}")
+                    else:
+                        feedback_parts.append(f"  OK      {label}")
+                detail = "\n".join(feedback_parts)
                 full_messages.append(
                     {
                         "role": "user",
-                        "content": f"[Action Failed: {'; '.join(errors)}] "
-                        "Please analyze the error and try a different approach.",
+                        "content": f"[Parallel Action Results]\n{detail}\n\n"
+                        "Only retry the FAILED actions. "
+                        "Do NOT re-send actions that succeeded.",
                     }
                 )
             continue

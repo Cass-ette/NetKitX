@@ -21,5 +21,8 @@
   "noReflection": "設定 AI 後可查看反思",
   "expandResult": "展開詳情",
   "skipped": "已跳過",
-  "parallelNodes": "{{count}} 個節點並行執行"
+  "parallelNodes": "{{count}} 個節點並行執行",
+  "simulate": "模擬",
+  "simulating": "模擬中...",
+  "simulated": "已模擬"
 }

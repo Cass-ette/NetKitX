@@ -865,3 +865,64 @@ def test_format_action_result_compresses():
     formatted = format_action_result(action, result)
     assert "<html>" not in formatted
     assert "flag{test123}" in formatted
+
+
+# ---------------------------------------------------------------------------
+# Partial failure feedback tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_partial_failure_feedback():
+    """When 3 actions are sent and the 2nd fails, AI should receive
+    per-action OK/FAILED feedback with 'Only retry' instruction."""
+    call_count = 0
+
+    async def mock_stream_fn(api_key, model, messages):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            yield (
+                '<action type="shell"><command>curl -s http://target/?id=1</command>'
+                "<reason>Test 1</reason></action>\n"
+                '<action type="shell"><command></command>'
+                "<reason>Bad</reason></action>\n"
+                '<action type="shell"><command>curl -s http://target/?id=3</command>'
+                "<reason>Test 3</reason></action>"
+            )
+        else:
+            yield "Analysis complete."
+
+    async def mock_execute(action, agent_mode, user_id=None, is_admin=False, user_token=None):
+        cmd = action.get("command", "")
+        if not cmd.strip():
+            return {"error": "Command blocked: Empty command"}
+        return {"stdout": "ok", "exit_code": 0}
+
+    with (
+        patch("app.services.agent_service.stream_claude", mock_stream_fn),
+        patch("app.services.agent_service._execute_action", mock_execute),
+    ):
+        events = await _collect_events(
+            run_agent_loop(
+                provider="claude",
+                api_key="test",
+                model="test",
+                messages=[{"role": "user", "content": "test"}],
+                agent_mode="terminal",
+                security_mode="offense",
+                lang="en",
+                max_turns=5,
+            )
+        )
+
+    # Check that we got action_result events for the OK actions
+    result_events = [e for e in events if e["event"] == "action_result"]
+    assert len(result_events) >= 1
+
+    # Check that we got an action_error for the failed one
+    error_events = [e for e in events if e["event"] == "action_error"]
+    assert len(error_events) >= 1
+
+    # The loop should complete (AI was given feedback and responded)
+    assert events[-1]["event"] == "done"

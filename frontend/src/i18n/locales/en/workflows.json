@@ -21,5 +21,8 @@
   "noReflection": "Enable AI to see reflections",
   "expandResult": "Show details",
   "skipped": "Skipped",
-  "parallelNodes": "{{count}} nodes in parallel"
+  "parallelNodes": "{{count}} nodes in parallel",
+  "simulate": "Simulate",
+  "simulating": "Simulating...",
+  "simulated": "Simulated"
 }

@@ -21,5 +21,8 @@
   "noReflection": "AIを設定すると分析が表示されます",
   "expandResult": "詳細を表示",
   "skipped": "スキップ",
-  "parallelNodes": "{{count}} ノード並列実行"
+  "parallelNodes": "{{count}} ノード並列実行",
+  "simulate": "シミュレーション",
+  "simulating": "シミュレーション中...",
+  "simulated": "シミュレーション済み"
 }
