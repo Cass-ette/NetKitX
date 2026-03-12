@@ -383,7 +383,9 @@ def test_has_action_attempt_complete_action():
 
 
 def test_classify_error_command_blocked():
-    assert classify_error("Command blocked: dangerous operation") == "fatal"
+    # Command blocked is retryable — AI can try a different command
+    assert classify_error("Command blocked: dangerous operation") == "retryable"
+    assert classify_error("Command blocked: Empty command") == "retryable"
 
 
 def test_classify_error_unknown_action_type():
@@ -494,13 +496,13 @@ async def test_malformed_action_does_not_terminate_loop():
 
 @pytest.mark.asyncio
 async def test_fatal_error_terminates_loop():
-    """Fatal error (e.g. command blocked) should terminate the loop."""
+    """Fatal error (e.g. unknown action type) should terminate the loop."""
 
     async def mock_stream_fn(api_key, model, messages):
-        yield '<action type="shell"><command>rm -rf /</command><reason>test</reason></action>'
+        yield '<action type="unknown"><command>test</command><reason>test</reason></action>'
 
     async def mock_execute(action, agent_mode, user_id=None, is_admin=False, user_token=None):
-        return {"error": "Command blocked: dangerous operation", "exit_code": -1}
+        return {"error": "Unknown action type: unknown", "exit_code": -1}
 
     with (
         patch("app.services.agent_service.stream_claude", mock_stream_fn),
@@ -524,8 +526,50 @@ async def test_fatal_error_terminates_loop():
     assert events[-1]["event"] == "done"
     assert events[-1]["data"]["reason"] == "error"
 
+
+@pytest.mark.asyncio
+async def test_command_blocked_is_retryable():
+    """Command blocked errors should be retryable, not fatal."""
+
+    call_count = 0
+
+    async def mock_stream_fn(api_key, model, messages):
+        nonlocal call_count
+        call_count += 1
+        if call_count <= 2:
+            yield '<action type="shell"><command>rm -rf /</command><reason>test</reason></action>'
+        else:
+            yield "Analysis complete."
+
+    async def mock_execute(action, agent_mode, user_id=None, is_admin=False, user_token=None):
+        return {"error": "Command blocked: dangerous operation", "exit_code": -1}
+
+    with (
+        patch("app.services.agent_service.stream_claude", mock_stream_fn),
+        patch("app.services.agent_service._execute_action", mock_execute),
+    ):
+        events = await _collect_events(
+            run_agent_loop(
+                provider="claude",
+                api_key="test",
+                model="test",
+                messages=[{"role": "user", "content": "test"}],
+                agent_mode="terminal",
+                security_mode="offense",
+                lang="en",
+                max_turns=5,
+            )
+        )
+
+    event_types = [e["event"] for e in events]
+    assert "action_error" in event_types
+    # Should NOT have terminated immediately — AI gets to retry
+    assert events[-1]["event"] == "done"
+    assert events[-1]["data"]["reason"] == "complete"
+    assert call_count == 3
+
     error_evt = next(e for e in events if e["event"] == "action_error")
-    assert error_evt["data"]["error_type"] == "fatal"
+    assert error_evt["data"]["error_type"] == "retryable"
 
 
 @pytest.mark.asyncio

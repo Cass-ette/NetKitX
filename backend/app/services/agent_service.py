@@ -450,7 +450,6 @@ def format_action_result(action: dict[str, Any], result: dict[str, Any]) -> str:
 MAX_CONSECUTIVE_ERRORS = 3
 
 _FATAL_ERROR_PATTERNS = [
-    "Command blocked:",
     "Unknown action type:",
     "Shell commands only allowed",
 ]
