@@ -11,8 +11,8 @@ class SessionTurnResponse(BaseModel):
     turn_number: int
     role: str
     content: str
-    action: dict | None = None
-    action_result: dict | None = None
+    action: dict | list | None = None
+    action_result: dict | list | None = None
     action_status: str | None = None
     created_at: datetime
 

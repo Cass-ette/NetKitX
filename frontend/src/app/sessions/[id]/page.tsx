@@ -258,11 +258,24 @@ function TurnCard({ turn }: { turn: SessionTurn }) {
           </Card>
         )}
         {turn.action && (
-          <AgentActionCard
-            action={turn.action as AgentAction}
-            status={(turn.action_status as "proposed" | "executing" | "done" | "skipped") || "done"}
-            result={turn.action_result as AgentActionResult | undefined}
-          />
+          Array.isArray(turn.action) ? (
+            <div className="space-y-2">
+              {(turn.action as AgentAction[]).map((act, idx) => (
+                <AgentActionCard
+                  key={idx}
+                  action={act}
+                  status={(turn.action_status as "proposed" | "executing" | "done" | "skipped") || "done"}
+                  result={Array.isArray(turn.action_result) ? (turn.action_result as AgentActionResult[])[idx] : undefined}
+                />
+              ))}
+            </div>
+          ) : (
+            <AgentActionCard
+              action={turn.action as AgentAction}
+              status={(turn.action_status as "proposed" | "executing" | "done" | "skipped") || "done"}
+              result={turn.action_result as AgentActionResult | undefined}
+            />
+          )
         )}
       </div>
     </div>
