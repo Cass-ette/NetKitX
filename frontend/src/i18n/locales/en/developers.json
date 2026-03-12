@@ -35,6 +35,8 @@
   "pluginYamlFieldOutputDesc": "Output format configuration (see Output Format)",
   "pluginYamlFieldDependencies": "dependencies",
   "pluginYamlFieldDependenciesDesc": "Other plugins this plugin depends on",
+  "pluginYamlFieldMode": "mode",
+  "pluginYamlFieldModeDesc": "Plugin mode: oneshot (default) or session (persistent WebSocket connection)",
   "pluginYamlFieldTags": "tags",
   "pluginYamlFieldTagsDesc": "Searchable tags for marketplace discovery",
   "pluginYamlExample": "Full Example",
@@ -95,5 +97,17 @@
   "publishStep3Title": "3. Manage versions",
   "publishStep3Desc": "You can yank (unpublish) a version if needed:",
   "publishNote": "After publishing, your plugin will appear in the Marketplace. Users can install it with one click.",
-  "publishUploadNote": "You can also publish directly from the Marketplace page using the upload button."
+  "publishUploadNote": "You can also publish directly from the Marketplace page using the upload button.",
+  "sessionPlugin": "Session Plugin (Engine 2.0)",
+  "sessionPluginDesc": "Session plugins maintain persistent state via WebSocket. Unlike oneshot plugins, they support multi-turn interactive communication (e.g., interactive terminals, stateful tools).",
+  "sessionOnStart": "on_session_start(params) → dict",
+  "sessionOnStartDesc": "Called once when a session is created. Initialize and return the session state dict. The state is stored in Redis and persists across messages.",
+  "sessionOnMessage": "on_message(session_id, message, state) → AsyncIterator[PluginEvent]",
+  "sessionOnMessageDesc": "Called on each incoming WebSocket message. Receives the current state and yields response events. Modify state in-place to persist changes.",
+  "sessionOnEnd": "on_session_end(session_id, state)",
+  "sessionOnEndDesc": "Called when the session is closed. Use for cleanup (close connections, temp files, etc.).",
+  "sessionYaml": "plugin.yaml for Session Mode",
+  "sessionPluginExample": "Example",
+  "sessionNote": "Session state is stored in Redis with a 1-hour TTL. The frontend communicates via WebSocket at /api/v1/ws/plugin-sessions/{session_id}.",
+  "sessionNoteCompat": "Session plugins are fully backward-compatible — the execute() method still works as a oneshot fallback."
 }

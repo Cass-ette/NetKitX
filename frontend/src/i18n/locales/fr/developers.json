@@ -35,6 +35,8 @@
   "pluginYamlFieldOutputDesc": "Configuration du format de sortie (voir Format de sortie)",
   "pluginYamlFieldDependencies": "dependencies",
   "pluginYamlFieldDependenciesDesc": "Autres plugins dont ce plugin depend",
+  "pluginYamlFieldMode": "mode",
+  "pluginYamlFieldModeDesc": "Mode du plugin : oneshot (par defaut) ou session (connexion WebSocket persistante)",
   "pluginYamlFieldTags": "tags",
   "pluginYamlFieldTagsDesc": "Tags de recherche pour la decouverte sur le marketplace",
   "pluginYamlExample": "Exemple complet",
@@ -95,5 +97,17 @@
   "publishStep3Title": "3. Gerer les versions",
   "publishStep3Desc": "Vous pouvez retirer (depublier) une version si necessaire :",
   "publishNote": "Apres la publication, votre plugin apparaitra dans le Marketplace. Les utilisateurs pourront l'installer en un clic.",
-  "publishUploadNote": "Vous pouvez egalement publier directement depuis la page Marketplace en utilisant le bouton de telechargement."
+  "publishUploadNote": "Vous pouvez egalement publier directement depuis la page Marketplace en utilisant le bouton de telechargement.",
+  "sessionPlugin": "Plugin Session (Moteur 2.0)",
+  "sessionPluginDesc": "Les plugins session maintiennent un etat persistant via WebSocket. Contrairement aux plugins oneshot, ils prennent en charge la communication interactive multi-tours (terminaux interactifs, outils avec etat, etc.).",
+  "sessionOnStart": "on_session_start(params) → dict",
+  "sessionOnStartDesc": "Appele une fois lors de la creation d'une session. Initialise et retourne le dictionnaire d'etat de session. L'etat est stocke dans Redis et persiste entre les messages.",
+  "sessionOnMessage": "on_message(session_id, message, state) → AsyncIterator[PluginEvent]",
+  "sessionOnMessageDesc": "Appele a chaque message WebSocket entrant. Recoit l'etat actuel et produit des evenements de reponse. Modifiez state directement pour persister les changements.",
+  "sessionOnEnd": "on_session_end(session_id, state)",
+  "sessionOnEndDesc": "Appele lors de la fermeture de la session. Utilisez-le pour le nettoyage (fermer les connexions, fichiers temporaires, etc.).",
+  "sessionYaml": "plugin.yaml mode session",
+  "sessionPluginExample": "Exemple",
+  "sessionNote": "L'etat de session est stocke dans Redis avec un TTL de 1 heure. Le frontend communique via WebSocket a /api/v1/ws/plugin-sessions/{session_id}.",
+  "sessionNoteCompat": "Les plugins session sont entierement retrocompatibles — la methode execute() fonctionne toujours comme solution de repli oneshot."
 }

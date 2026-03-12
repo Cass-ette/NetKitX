@@ -35,6 +35,8 @@
   "pluginYamlFieldOutputDesc": "輸出格式設定（參見輸出格式）",
   "pluginYamlFieldDependencies": "dependencies",
   "pluginYamlFieldDependenciesDesc": "此外掛程式所依賴的其他外掛程式",
+  "pluginYamlFieldMode": "mode",
+  "pluginYamlFieldModeDesc": "外掛程式模式：oneshot（預設）或 session（持久 WebSocket 連線）",
   "pluginYamlFieldTags": "tags",
   "pluginYamlFieldTagsDesc": "用於市集搜尋發現的標籤",
   "pluginYamlExample": "完整範例",
@@ -95,5 +97,17 @@
   "publishStep3Title": "3. 管理版本",
   "publishStep3Desc": "如有需要，你可以撤回（取消發佈）某個版本：",
   "publishNote": "發佈後，你的外掛程式將出現在市集中。使用者可以一鍵安裝。",
-  "publishUploadNote": "你也可以直接從市集頁面使用上傳按鈕來發佈。"
+  "publishUploadNote": "你也可以直接從市集頁面使用上傳按鈕來發佈。",
+  "sessionPlugin": "會話外掛程式 (引擎 2.0)",
+  "sessionPluginDesc": "會話外掛程式透過 WebSocket 維護持久狀態。與一次性外掛程式不同，它支援多輪互動通訊（如互動終端機、有狀態工具）。",
+  "sessionOnStart": "on_session_start(params) → dict",
+  "sessionOnStartDesc": "會話建立時呼叫一次。初始化並回傳會話狀態字典。狀態儲存在 Redis 中，在訊息間持久化。",
+  "sessionOnMessage": "on_message(session_id, message, state) → AsyncIterator[PluginEvent]",
+  "sessionOnMessageDesc": "每收到一則 WebSocket 訊息時呼叫。接收目前狀態並 yield 回應事件。直接修改 state 即可持久化變更。",
+  "sessionOnEnd": "on_session_end(session_id, state)",
+  "sessionOnEndDesc": "會話關閉時呼叫。用於清理資源（關閉連線、暫存檔案等）。",
+  "sessionYaml": "會話模式 plugin.yaml",
+  "sessionPluginExample": "範例",
+  "sessionNote": "會話狀態儲存在 Redis 中，TTL 為 1 小時。前端透過 WebSocket /api/v1/ws/plugin-sessions/{session_id} 通訊。",
+  "sessionNoteCompat": "會話外掛程式完全向後相容 — execute() 方法仍可作為一次性回退使用。"
 }

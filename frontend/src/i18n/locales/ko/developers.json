@@ -35,6 +35,8 @@
   "pluginYamlFieldOutputDesc": "출력 형식 설정 (출력 형식 참조)",
   "pluginYamlFieldDependencies": "dependencies",
   "pluginYamlFieldDependenciesDesc": "이 플러그인이 의존하는 다른 플러그인",
+  "pluginYamlFieldMode": "mode",
+  "pluginYamlFieldModeDesc": "플러그인 모드: oneshot (기본값) 또는 session (영구 WebSocket 연결)",
   "pluginYamlFieldTags": "tags",
   "pluginYamlFieldTagsDesc": "마켓플레이스 검색을 위한 태그",
   "pluginYamlExample": "전체 예제",
@@ -95,5 +97,17 @@
   "publishStep3Title": "3. 버전 관리",
   "publishStep3Desc": "필요한 경우 버전을 yank (게시 취소)할 수 있습니다:",
   "publishNote": "게시 후 플러그인이 마켓플레이스에 표시됩니다. 사용자가 원클릭으로 설치할 수 있습니다.",
-  "publishUploadNote": "마켓플레이스 페이지에서 업로드 버튼을 사용하여 직접 게시할 수도 있습니다."
+  "publishUploadNote": "마켓플레이스 페이지에서 업로드 버튼을 사용하여 직접 게시할 수도 있습니다.",
+  "sessionPlugin": "세션 플러그인 (엔진 2.0)",
+  "sessionPluginDesc": "세션 플러그인은 WebSocket을 통해 영구 상태를 유지합니다. 원샷 플러그인과 달리 멀티턴 대화형 통신(대화형 터미널, 상태 유지 도구 등)을 지원합니다.",
+  "sessionOnStart": "on_session_start(params) → dict",
+  "sessionOnStartDesc": "세션 생성 시 한 번 호출됩니다. 세션 상태 딕셔너리를 초기화하고 반환합니다. 상태는 Redis에 저장되며 메시지 간에 유지됩니다.",
+  "sessionOnMessage": "on_message(session_id, message, state) → AsyncIterator[PluginEvent]",
+  "sessionOnMessageDesc": "WebSocket 메시지를 수신할 때마다 호출됩니다. 현재 상태를 받아 응답 이벤트를 yield합니다. state를 직접 수정하면 변경 사항이 유지됩니다.",
+  "sessionOnEnd": "on_session_end(session_id, state)",
+  "sessionOnEndDesc": "세션 종료 시 호출됩니다. 리소스 정리(연결 닫기, 임시 파일 등)에 사용하세요.",
+  "sessionYaml": "세션 모드 plugin.yaml",
+  "sessionPluginExample": "예제",
+  "sessionNote": "세션 상태는 Redis에 저장되며 TTL은 1시간입니다. 프론트엔드는 WebSocket /api/v1/ws/plugin-sessions/{session_id}로 통신합니다.",
+  "sessionNoteCompat": "세션 플러그인은 완전한 하위 호환성을 유지합니다 — execute() 메서드는 원샷 대체로 계속 작동합니다."
 }

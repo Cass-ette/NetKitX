@@ -35,6 +35,8 @@
   "pluginYamlFieldOutputDesc": "Конфигурация формата вывода (см. Формат вывода)",
   "pluginYamlFieldDependencies": "dependencies",
   "pluginYamlFieldDependenciesDesc": "Другие плагины, от которых зависит данный плагин",
+  "pluginYamlFieldMode": "mode",
+  "pluginYamlFieldModeDesc": "Режим плагина: oneshot (по умолчанию) или session (постоянное WebSocket-соединение)",
   "pluginYamlFieldTags": "tags",
   "pluginYamlFieldTagsDesc": "Теги для поиска и обнаружения в маркетплейсе",
   "pluginYamlExample": "Полный пример",
@@ -95,5 +97,17 @@
   "publishStep3Title": "3. Управляйте версиями",
   "publishStep3Desc": "При необходимости вы можете отозвать (снять с публикации) версию:",
   "publishNote": "После публикации ваш плагин появится в маркетплейсе. Пользователи смогут установить его в один клик.",
-  "publishUploadNote": "Вы также можете опубликовать плагин напрямую со страницы маркетплейса, используя кнопку загрузки."
+  "publishUploadNote": "Вы также можете опубликовать плагин напрямую со страницы маркетплейса, используя кнопку загрузки.",
+  "sessionPlugin": "Сессионный плагин (Движок 2.0)",
+  "sessionPluginDesc": "Сессионные плагины поддерживают постоянное состояние через WebSocket. В отличие от однократных плагинов, они поддерживают многоходовую интерактивную коммуникацию (интерактивные терминалы, инструменты с состоянием и т.д.).",
+  "sessionOnStart": "on_session_start(params) → dict",
+  "sessionOnStartDesc": "Вызывается один раз при создании сессии. Инициализирует и возвращает словарь состояния сессии. Состояние хранится в Redis и сохраняется между сообщениями.",
+  "sessionOnMessage": "on_message(session_id, message, state) → AsyncIterator[PluginEvent]",
+  "sessionOnMessageDesc": "Вызывается при каждом входящем WebSocket-сообщении. Получает текущее состояние и возвращает события ответа. Изменяйте state напрямую для сохранения изменений.",
+  "sessionOnEnd": "on_session_end(session_id, state)",
+  "sessionOnEndDesc": "Вызывается при закрытии сессии. Используйте для очистки ресурсов (закрытие соединений, временные файлы и т.д.).",
+  "sessionYaml": "plugin.yaml для режима сессии",
+  "sessionPluginExample": "Пример",
+  "sessionNote": "Состояние сессии хранится в Redis с TTL 1 час. Фронтенд взаимодействует через WebSocket /api/v1/ws/plugin-sessions/{session_id}.",
+  "sessionNoteCompat": "Сессионные плагины полностью обратно совместимы — метод execute() по-прежнему работает как однократный резервный вариант."
 }

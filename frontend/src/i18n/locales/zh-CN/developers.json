@@ -35,6 +35,8 @@
   "pluginYamlFieldOutputDesc": "输出格式配置（参见输出格式）",
   "pluginYamlFieldDependencies": "dependencies",
   "pluginYamlFieldDependenciesDesc": "此插件依赖的其他插件",
+  "pluginYamlFieldMode": "mode",
+  "pluginYamlFieldModeDesc": "插件模式：oneshot（默认）或 session（持久 WebSocket 连接）",
   "pluginYamlFieldTags": "tags",
   "pluginYamlFieldTagsDesc": "用于市场发现的可搜索标签",
   "pluginYamlExample": "完整示例",
@@ -95,5 +97,17 @@
   "publishStep3Title": "3. 管理版本",
   "publishStep3Desc": "如有需要，你可以撤回（取消发布）某个版本：",
   "publishNote": "发布后，你的插件将出现在市场中。用户可以一键安装。",
-  "publishUploadNote": "你也可以直接在市场页面通过上传按钮发布插件。"
+  "publishUploadNote": "你也可以直接在市场页面通过上传按钮发布插件。",
+  "sessionPlugin": "会话插件 (引擎 2.0)",
+  "sessionPluginDesc": "会话插件通过 WebSocket 维护持久状态。与一次性插件不同，它支持多轮交互通信（如交互终端、有状态工具）。",
+  "sessionOnStart": "on_session_start(params) → dict",
+  "sessionOnStartDesc": "会话创建时调用一次。初始化并返回会话状态字典。状态存储在 Redis 中，在消息间持久化。",
+  "sessionOnMessage": "on_message(session_id, message, state) → AsyncIterator[PluginEvent]",
+  "sessionOnMessageDesc": "每收到一条 WebSocket 消息时调用。接收当前状态并 yield 响应事件。直接修改 state 即可持久化变更。",
+  "sessionOnEnd": "on_session_end(session_id, state)",
+  "sessionOnEndDesc": "会话关闭时调用。用于清理资源（关闭连接、临时文件等）。",
+  "sessionYaml": "会话模式 plugin.yaml",
+  "sessionPluginExample": "示例",
+  "sessionNote": "会话状态存储在 Redis 中，TTL 为 1 小时。前端通过 WebSocket /api/v1/ws/plugin-sessions/{session_id} 通信。",
+  "sessionNoteCompat": "会话插件完全向后兼容 — execute() 方法仍可作为一次性回退使用。"
 }

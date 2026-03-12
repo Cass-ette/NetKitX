@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Rocket, FileCode, Settings2, Code2, Monitor, Package, ArrowUp } from "lucide-react";
+import { BookOpen, Rocket, FileCode, Settings2, Code2, Monitor, Package, ArrowUp, MessageSquare } from "lucide-react";
 import { useTranslations } from "@/i18n/use-translations";
 
 const sections = [
@@ -10,6 +10,7 @@ const sections = [
   { id: "plugin-yaml", icon: FileCode },
   { id: "param-types", icon: Settings2 },
   { id: "plugin-api", icon: Code2 },
+  { id: "session-plugin", icon: MessageSquare },
   { id: "output-format", icon: Monitor },
   { id: "go-plugin", icon: Package },
   { id: "publish-flow", icon: ArrowUp },
@@ -22,6 +23,7 @@ const sectionTitleKeys: Record<SectionId, string> = {
   "plugin-yaml": "pluginYaml",
   "param-types": "paramTypes",
   "plugin-api": "pluginApi",
+  "session-plugin": "sessionPlugin",
   "output-format": "outputFormat",
   "go-plugin": "goPlugin",
   "publish-flow": "publishFlow",
@@ -184,6 +186,7 @@ class Plugin(PluginBase):
                 <FieldRow name={t("pluginYamlFieldEntrypoint")} desc={t("pluginYamlFieldEntrypointDesc")} />
                 <FieldRow name={t("pluginYamlFieldParams")} desc={t("pluginYamlFieldParamsDesc")} />
                 <FieldRow name={t("pluginYamlFieldOutput")} desc={t("pluginYamlFieldOutputDesc")} />
+                <FieldRow name={t("pluginYamlFieldMode")} desc={t("pluginYamlFieldModeDesc")} />
                 <FieldRow name={t("pluginYamlFieldDependencies")} desc={t("pluginYamlFieldDependenciesDesc")} />
                 <FieldRow name={t("pluginYamlFieldTags")} desc={t("pluginYamlFieldTagsDesc")} />
               </div>
@@ -351,6 +354,66 @@ class Plugin(PluginBase):
     async def cleanup(self):
         # Close connections, temp files, etc.
         pass`}</CodeBlock>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Session Plugin */}
+          <Card id="session-plugin" className="scroll-mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" />
+                {t("sessionPlugin")}
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">{t("sessionPluginDesc")}</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="border rounded-lg p-4">
+                  <code className="text-sm font-semibold">{t("sessionOnStart")}</code>
+                  <p className="text-sm text-muted-foreground mt-1">{t("sessionOnStartDesc")}</p>
+                </div>
+                <div className="border rounded-lg p-4">
+                  <code className="text-sm font-semibold">{t("sessionOnMessage")}</code>
+                  <p className="text-sm text-muted-foreground mt-1">{t("sessionOnMessageDesc")}</p>
+                </div>
+                <div className="border rounded-lg p-4">
+                  <code className="text-sm font-semibold">{t("sessionOnEnd")}</code>
+                  <p className="text-sm text-muted-foreground mt-1">{t("sessionOnEndDesc")}</p>
+                </div>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2">{t("sessionYaml")}</h3>
+                <CodeBlock>{`name: my-interactive-tool
+version: 1.0.0
+mode: session
+engine: python
+# ...`}</CodeBlock>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2">{t("sessionPluginExample")}</h3>
+                <CodeBlock>{`from collections.abc import AsyncIterator
+from netkitx_sdk.base import SessionPlugin, PluginEvent
+
+class Plugin(SessionPlugin):
+    mode = "session"
+
+    async def on_session_start(self, params: dict) -> dict:
+        """Initialize session state, return initial state dict."""
+        return {"history": [], "cwd": "/"}
+
+    async def on_message(self, session_id: str, message: str, state: dict) -> AsyncIterator[PluginEvent]:
+        """Handle each message in the session."""
+        state["history"].append(message)
+        yield PluginEvent(type="result", data={"output": f"Received: {message}"})
+
+    async def on_session_end(self, session_id: str, state: dict):
+        """Cleanup when session closes."""
+        pass`}</CodeBlock>
+              </div>
+              <div className="bg-muted/50 border rounded-lg p-4 space-y-2">
+                <p className="text-sm">{t("sessionNote")}</p>
+                <p className="text-sm text-muted-foreground">{t("sessionNoteCompat")}</p>
               </div>
             </CardContent>
           </Card>

@@ -35,6 +35,8 @@
   "pluginYamlFieldOutputDesc": "Konfiguration des Ausgabeformats (siehe Ausgabeformat)",
   "pluginYamlFieldDependencies": "dependencies",
   "pluginYamlFieldDependenciesDesc": "Andere Plugins, von denen dieses Plugin abhängt",
+  "pluginYamlFieldMode": "mode",
+  "pluginYamlFieldModeDesc": "Plugin-Modus: oneshot (Standard) oder session (dauerhafte WebSocket-Verbindung)",
   "pluginYamlFieldTags": "tags",
   "pluginYamlFieldTagsDesc": "Durchsuchbare Tags zur Auffindbarkeit im Marketplace",
   "pluginYamlExample": "Vollständiges Beispiel",
@@ -95,5 +97,17 @@
   "publishStep3Title": "3. Versionen verwalten",
   "publishStep3Desc": "Sie können eine Version bei Bedarf zurückziehen (yank):",
   "publishNote": "Nach der Veröffentlichung erscheint Ihr Plugin im Marketplace. Benutzer können es mit einem Klick installieren.",
-  "publishUploadNote": "Sie können auch direkt über die Upload-Schaltfläche auf der Marketplace-Seite veröffentlichen."
+  "publishUploadNote": "Sie können auch direkt über die Upload-Schaltfläche auf der Marketplace-Seite veröffentlichen.",
+  "sessionPlugin": "Session-Plugin (Engine 2.0)",
+  "sessionPluginDesc": "Session-Plugins halten einen persistenten Zustand über WebSocket aufrecht. Im Gegensatz zu Oneshot-Plugins unterstützen sie mehrstufige interaktive Kommunikation (z.B. interaktive Terminals, zustandsbehaftete Tools).",
+  "sessionOnStart": "on_session_start(params) → dict",
+  "sessionOnStartDesc": "Wird einmalig bei der Erstellung einer Session aufgerufen. Initialisiert und gibt das Session-Status-Dict zurück. Der Status wird in Redis gespeichert und bleibt zwischen Nachrichten erhalten.",
+  "sessionOnMessage": "on_message(session_id, message, state) → AsyncIterator[PluginEvent]",
+  "sessionOnMessageDesc": "Wird bei jeder eingehenden WebSocket-Nachricht aufgerufen. Empfängt den aktuellen Status und liefert Antwortereignisse. Ändern Sie state direkt, um Änderungen zu persistieren.",
+  "sessionOnEnd": "on_session_end(session_id, state)",
+  "sessionOnEndDesc": "Wird beim Schließen der Session aufgerufen. Verwenden Sie dies zur Bereinigung (Verbindungen schließen, temporäre Dateien usw.).",
+  "sessionYaml": "Session-Modus plugin.yaml",
+  "sessionPluginExample": "Beispiel",
+  "sessionNote": "Der Session-Status wird in Redis mit einer TTL von 1 Stunde gespeichert. Das Frontend kommuniziert über WebSocket unter /api/v1/ws/plugin-sessions/{session_id}.",
+  "sessionNoteCompat": "Session-Plugins sind vollständig abwärtskompatibel — die execute()-Methode funktioniert weiterhin als Oneshot-Fallback."
 }

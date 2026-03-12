@@ -35,6 +35,8 @@
   "pluginYamlFieldOutputDesc": "出力形式の設定（出力形式を参照）",
   "pluginYamlFieldDependencies": "dependencies",
   "pluginYamlFieldDependenciesDesc": "このプラグインが依存する他のプラグイン",
+  "pluginYamlFieldMode": "mode",
+  "pluginYamlFieldModeDesc": "プラグインモード：oneshot（デフォルト）または session（持続的 WebSocket 接続）",
   "pluginYamlFieldTags": "tags",
   "pluginYamlFieldTagsDesc": "マーケットプレイスでの検索用タグ",
   "pluginYamlExample": "完全な例",
@@ -95,5 +97,17 @@
   "publishStep3Title": "3. バージョンを管理",
   "publishStep3Desc": "必要に応じてバージョンを yank（非公開化）できます：",
   "publishNote": "公開後、プラグインはマーケットプレイスに表示されます。ユーザーはワンクリックでインストールできます。",
-  "publishUploadNote": "マーケットプレイスページのアップロードボタンから直接公開することもできます。"
+  "publishUploadNote": "マーケットプレイスページのアップロードボタンから直接公開することもできます。",
+  "sessionPlugin": "セッションプラグイン (エンジン 2.0)",
+  "sessionPluginDesc": "セッションプラグインは WebSocket で持続的な状態を維持します。ワンショットプラグインとは異なり、マルチターンの対話的通信（インタラクティブターミナル、ステートフルツールなど）をサポートします。",
+  "sessionOnStart": "on_session_start(params) → dict",
+  "sessionOnStartDesc": "セッション作成時に一度呼び出されます。セッション状態辞書を初期化して返します。状態は Redis に保存され、メッセージ間で永続化されます。",
+  "sessionOnMessage": "on_message(session_id, message, state) → AsyncIterator[PluginEvent]",
+  "sessionOnMessageDesc": "WebSocket メッセージを受信するたびに呼び出されます。現在の状態を受け取り、レスポンスイベントを yield します。state を直接変更すると変更が永続化されます。",
+  "sessionOnEnd": "on_session_end(session_id, state)",
+  "sessionOnEndDesc": "セッション終了時に呼び出されます。リソースのクリーンアップ（接続のクローズ、一時ファイルなど）に使用します。",
+  "sessionYaml": "セッションモード plugin.yaml",
+  "sessionPluginExample": "例",
+  "sessionNote": "セッション状態は Redis に保存され、TTL は 1 時間です。フロントエンドは WebSocket /api/v1/ws/plugin-sessions/{session_id} で通信します。",
+  "sessionNoteCompat": "セッションプラグインは完全な後方互換性を持ちます — execute() メソッドはワンショットのフォールバックとして引き続き動作します。"
 }
