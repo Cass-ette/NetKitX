@@ -473,22 +473,76 @@ STAGNATION_FORCE = 8  # inject hard warning
 STAGNATION_STOP = 12  # terminate
 
 
+def _normalize_shell_fingerprint(command: str) -> str:
+    """Reduce a shell command to its semantically meaningful parts.
+
+    For curl/wget commands the shared URL base (scheme + host + port) is
+    stripped so that requests to *different* paths are not falsely flagged
+    as repetition.  POST data, HTTP method and key headers are kept.
+    """
+    cmd = command.strip()
+
+    # --- curl ---
+    if re.match(r"curl\b", cmd):
+        parts: list[str] = []
+        # URL path (strip scheme + host)
+        url_m = re.search(r"https?://[^/\s\"']+(/[^\s\"']*)", cmd)
+        parts.append(url_m.group(1) if url_m else "/")
+        # HTTP method
+        method_m = re.search(r"-X\s+(\w+)", cmd)
+        if method_m:
+            parts.append(method_m.group(1))
+        # POST data (first 120 chars)
+        data_m = re.search(r"(?:--data|-d)\s+[\"']?(.{0,120})", cmd)
+        if data_m:
+            parts.append(data_m.group(1))
+        # Important headers (Cookie, Content-Type, Authorization, User-Agent injection)
+        for hdr in re.findall(r"-H\s+[\"']([^\"']{0,80})", cmd):
+            parts.append(hdr)
+        return "curl:" + "|".join(parts)
+
+    # --- wget ---
+    if re.match(r"wget\b", cmd):
+        url_m = re.search(r"https?://[^/\s\"']+(/[^\s\"']*)", cmd)
+        return "wget:" + (url_m.group(1) if url_m else "/")
+
+    # --- sqlmap ---
+    if re.match(r"sqlmap\b", cmd):
+        url_m = re.search(r'-u\s+["\']?https?://[^/\s"\']+(/[^\s"\']*)', cmd)
+        path = url_m.group(1) if url_m else ""
+        level_m = re.search(r"--level[= ](\d+)", cmd)
+        tech_m = re.search(r"--technique[= ](\S+)", cmd)
+        return f"sqlmap:{path}|{level_m and level_m.group(1)}|{tech_m and tech_m.group(1)}"
+
+    # --- everything else: return as-is ---
+    return cmd
+
+
 def _action_fingerprint(action: dict[str, Any]) -> str:
     """Extract a comparable fingerprint from an action dict."""
     atype = action.get("type", "")
     if atype == "shell":
-        return f"shell:{action.get('command', '')}"
+        return f"shell:{_normalize_shell_fingerprint(action.get('command', ''))}"
     elif atype == "plugin":
         params_str = json.dumps(action.get("params", {}), sort_keys=True)
         return f"plugin:{action.get('plugin', '')}:{params_str}"
     return ""
 
 
+_FP_TYPE_PREFIX = re.compile(r"^(?:shell|plugin):")
+
+
 def _is_similar(a: str, b: str) -> bool:
-    """Check if two fingerprints are similar enough to count as repetition."""
+    """Check if two fingerprints are similar enough to count as repetition.
+
+    Strips the ``shell:`` / ``plugin:`` type prefix before comparing so the
+    similarity ratio reflects the *meaningful* payload, not the shared prefix.
+    """
     if not a or not b:
         return False
-    return SequenceMatcher(None, a, b).ratio() >= STAGNATION_SIMILARITY
+    a_core = _FP_TYPE_PREFIX.sub("", a)
+    b_core = _FP_TYPE_PREFIX.sub("", b)
+    return SequenceMatcher(None, a_core, b_core).ratio() >= STAGNATION_SIMILARITY
 
 
 def count_similar_recent(history: list[str], current: str) -> int:

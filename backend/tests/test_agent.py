@@ -14,6 +14,7 @@ from app.services.agent_service import (
     run_agent_loop,
     _preprocess_shell_command,
     _action_fingerprint,
+    _normalize_shell_fingerprint,
     _is_similar,
     count_similar_recent,
     _compress_output,
@@ -697,8 +698,9 @@ async def test_successful_action_resets_error_counter():
 
 
 def test_action_fingerprint_shell():
-    fp = _action_fingerprint({"type": "shell", "command": "curl http://example.com"})
-    assert fp == "shell:curl http://example.com"
+    fp = _action_fingerprint({"type": "shell", "command": "curl http://example.com/"})
+    assert fp.startswith("shell:curl:")
+    assert "/" in fp
 
 
 def test_action_fingerprint_plugin():
@@ -709,32 +711,124 @@ def test_action_fingerprint_plugin():
     assert "192.168.1.1" in fp
 
 
+def test_action_fingerprint_non_curl_shell():
+    """Non-curl commands keep full command as fingerprint."""
+    fp = _action_fingerprint({"type": "shell", "command": "nmap -sV 192.168.1.1"})
+    assert fp == "shell:nmap -sV 192.168.1.1"
+
+
+# ---------------------------------------------------------------------------
+# Fingerprint normalization tests
+# ---------------------------------------------------------------------------
+
+
+def test_normalize_curl_strips_host():
+    """curl commands to different paths on same host produce different fingerprints."""
+    fp1 = _normalize_shell_fingerprint('curl -s "http://target:4001/api"')
+    fp2 = _normalize_shell_fingerprint('curl -s "http://target:4001/rest"')
+    assert fp1 == "curl:/api"
+    assert fp2 == "curl:/rest"
+    assert _is_similar(f"shell:{fp1}", f"shell:{fp2}") is False
+
+
+def test_normalize_curl_same_path_similar():
+    """Same path with minor param variations are still similar (true stagnation)."""
+    fp1 = _normalize_shell_fingerprint('curl -s "http://target:4001/search?q=test1"')
+    fp2 = _normalize_shell_fingerprint('curl -s "http://target:4001/search?q=test2"')
+    assert _is_similar(f"shell:{fp1}", f"shell:{fp2}") is True
+
+
+def test_normalize_curl_preserves_method_and_data():
+    fp = _normalize_shell_fingerprint('curl -X POST http://target/login -d \'{"user":"admin"}\'')
+    assert "curl:" in fp
+    assert "/login" in fp
+    assert "POST" in fp
+    assert "admin" in fp
+
+
+def test_normalize_curl_preserves_headers():
+    fp = _normalize_shell_fingerprint(
+        'curl -s http://target/api -H "Authorization: Bearer token123"'
+    )
+    assert "Authorization" in fp
+
+
+def test_normalize_sqlmap():
+    fp = _normalize_shell_fingerprint(
+        'sqlmap -u "http://target/page?id=1" --level 3 --technique=BEU'
+    )
+    assert "sqlmap:" in fp
+    assert "/page?id=1" in fp
+    assert "3" in fp
+    assert "BEU" in fp
+
+
+def test_normalize_wget():
+    fp = _normalize_shell_fingerprint('wget "http://target:8080/files/secret.pdf"')
+    assert fp == "wget:/files/secret.pdf"
+
+
+def test_different_paths_not_stagnation():
+    """Reproducer for the Juice Shop false-positive: exploring different endpoints."""
+    actions = [
+        'curl -s "http://156.225.20.57:4001/"',
+        'curl -s "http://156.225.20.57:4001/api"',
+        'curl -s "http://156.225.20.57:4001/robots.txt"',
+        'curl -s "http://156.225.20.57:4001/ftp"',
+        'curl -s "http://156.225.20.57:4001/promotion"',
+        'curl -s "http://156.225.20.57:4001/rest/videos"',
+        'curl -s "http://156.225.20.57:4001/rest/user"',
+    ]
+    fingerprints = [f"shell:{_normalize_shell_fingerprint(a)}" for a in actions]
+    # No pair should be flagged as similar
+    for i, fp in enumerate(fingerprints):
+        similar = count_similar_recent(fingerprints[:i], fp)
+        assert similar == 0, f"False stagnation: {fp} matched {similar} in history"
+
+
+def test_same_endpoint_different_payloads_is_stagnation():
+    """Repeated SQLi payloads on the same endpoint IS stagnation."""
+    actions = [
+        'curl -s "http://target/search?q=\' OR 1=1--"',
+        "curl -s \"http://target/search?q=' OR '1'='1'--\"",
+        'curl -s "http://target/search?q=\' OR 1=1#"',
+    ]
+    fingerprints = [f"shell:{_normalize_shell_fingerprint(a)}" for a in actions]
+    # At least the 3rd one should see 2 similar predecessors
+    similar = count_similar_recent(fingerprints[:2], fingerprints[2])
+    assert similar >= 1
+
+
 def test_similar_commands_detected():
-    a = "shell:curl -X POST http://target.com/ -d 'payload1'"
-    b = "shell:curl -X POST http://target.com/ -d 'payload2'"
+    """POST to same endpoint with similar data -> similar."""
+    a = _action_fingerprint(
+        {"type": "shell", "command": "curl -X POST http://target.com/login -d 'user=a&pass=1'"}
+    )
+    b = _action_fingerprint(
+        {"type": "shell", "command": "curl -X POST http://target.com/login -d 'user=a&pass=2'"}
+    )
     assert _is_similar(a, b) is True
 
 
 def test_different_commands_not_similar():
-    a = "shell:curl http://example.com"
-    b = "shell:nmap -sV 192.168.1.1"
+    a = _action_fingerprint({"type": "shell", "command": "curl http://example.com/api"})
+    b = _action_fingerprint({"type": "shell", "command": "nmap -sV 192.168.1.1"})
     assert _is_similar(a, b) is False
 
 
 def test_count_similar_recent_empty_history():
-    assert count_similar_recent([], "shell:curl http://example.com") == 0
+    assert count_similar_recent([], "shell:curl:/api") == 0
 
 
 def test_count_similar_recent_counts_correctly():
     history = [
-        "shell:curl -X POST http://target.com/ -d 'data1'",
-        "shell:curl -X POST http://target.com/ -d 'data2'",
+        "shell:curl:/login|POST|data1",
+        "shell:curl:/login|POST|data2",
         "shell:nmap -sV 192.168.1.1",
-        "shell:curl -X POST http://target.com/ -d 'data3'",
+        "shell:curl:/login|POST|data3",
     ]
-    current = "shell:curl -X POST http://target.com/ -d 'data4'"
+    current = "shell:curl:/login|POST|data4"
     count = count_similar_recent(history, current)
-    # Should match the 3 curl commands but not nmap
     assert count == 3
 
 
@@ -744,7 +838,7 @@ def test_count_similar_recent_no_matches():
         "shell:nikto -h http://target.com",
         "plugin:sql-inject:{}",
     ]
-    current = "shell:curl http://example.com"
+    current = "shell:curl:/api"
     assert count_similar_recent(history, current) == 0
 
 
