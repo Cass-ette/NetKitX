@@ -8,6 +8,7 @@ from app.services.knowledge_service import (
     _events_to_turns,
     _parse_extraction_json,
     _sanitize_extraction,
+    _strip_null_bytes,
     build_session_digest,
 )
 
@@ -265,6 +266,35 @@ class TestDigestMultiAction:
 # =====================================================================
 # Phase 2: Knowledge extraction helpers
 # =====================================================================
+
+
+class TestStripNullBytes:
+    """_strip_null_bytes removes PostgreSQL-incompatible NULL bytes."""
+
+    def test_none_passthrough(self):
+        assert _strip_null_bytes(None) is None
+
+    def test_clean_string_unchanged(self):
+        assert _strip_null_bytes("hello world") == "hello world"
+
+    def test_null_byte_in_string(self):
+        assert _strip_null_bytes("before\x00after") == "beforeafter"
+
+    def test_null_byte_in_dict(self):
+        result = _strip_null_bytes({"stdout": "data\x00here", "code": 0})
+        assert result["stdout"] == "datahere"
+        assert result["code"] == 0
+
+    def test_unicode_escape_in_dict(self):
+        result = _strip_null_bytes({"html": "a\\u0000b"})
+        assert "\\u0000" not in str(result)
+
+    def test_null_byte_in_list(self):
+        result = _strip_null_bytes(["ok\x00bad", "clean"])
+        assert result == ["okbad", "clean"]
+
+    def test_int_passthrough(self):
+        assert _strip_null_bytes(42) == 42
 
 
 class TestCompressActionResult:

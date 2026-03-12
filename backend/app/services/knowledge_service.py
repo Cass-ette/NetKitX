@@ -350,6 +350,19 @@ def _events_to_turns(
 # ---------------------------------------------------------------------------
 
 
+def _strip_null_bytes(value: Any) -> Any:
+    """Strip NULL bytes that PostgreSQL TEXT/JSONB cannot store."""
+    if value is None:
+        return value
+    if isinstance(value, str):
+        return value.replace("\x00", "")
+    if isinstance(value, (dict, list)):
+        raw = json.dumps(value, ensure_ascii=False)
+        raw = raw.replace("\x00", "").replace("\\u0000", "")
+        return json.loads(raw)
+    return value
+
+
 async def finalize_session(
     session_id: int,
     collected: list[dict[str, Any]],
@@ -369,9 +382,9 @@ async def finalize_session(
                     session_id=session_id,
                     turn_number=td.get("turn_number", 0),
                     role=td["role"],
-                    content=td.get("content", ""),
-                    action=td.get("action"),
-                    action_result=td.get("action_result"),
+                    content=_strip_null_bytes(td.get("content", "")),
+                    action=_strip_null_bytes(td.get("action")),
+                    action_result=_strip_null_bytes(td.get("action_result")),
                     action_status=td.get("action_status"),
                 )
                 db.add(turn)
