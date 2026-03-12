@@ -741,6 +741,14 @@ async def run_agent_loop(
             action_history.append(fingerprint)
             if similar_count > max_similar:
                 max_similar = similar_count
+            if similar_count > 0:
+                logger.info(
+                    "Stagnation check: fingerprint=%s similar=%d/%d history_size=%d",
+                    fingerprint[:80],
+                    similar_count,
+                    STAGNATION_STOP,
+                    len(history_before_turn),
+                )
 
         if not all_ok and consecutive_errors > 0:
             full_messages.append({"role": "assistant", "content": full_text})
@@ -772,9 +780,11 @@ async def run_agent_loop(
         full_messages.append({"role": "user", "content": combined_result})
 
         if max_similar >= STAGNATION_STOP:
+            logger.warning("Stagnation STOP: max_similar=%d, terminating agent loop", max_similar)
             yield {"event": "done", "data": {"reason": "stagnation"}}
             return
         elif max_similar >= STAGNATION_FORCE:
+            logger.warning("Stagnation FORCE: max_similar=%d, injecting hard warning", max_similar)
             full_messages.append(
                 {
                     "role": "user",
