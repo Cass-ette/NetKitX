@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Rocket, FileCode, Settings2, Code2, Monitor, Package, ArrowUp, MessageSquare } from "lucide-react";
+import { BookOpen, Rocket, FileCode, Settings2, Code2, Monitor, Package, ArrowUp, MessageSquare, LayoutTemplate } from "lucide-react";
 import { useTranslations } from "@/i18n/use-translations";
 
 const sections = [
@@ -11,6 +11,7 @@ const sections = [
   { id: "param-types", icon: Settings2 },
   { id: "plugin-api", icon: Code2 },
   { id: "session-plugin", icon: MessageSquare },
+  { id: "custom-ui", icon: LayoutTemplate },
   { id: "output-format", icon: Monitor },
   { id: "go-plugin", icon: Package },
   { id: "publish-flow", icon: ArrowUp },
@@ -24,6 +25,7 @@ const sectionTitleKeys: Record<SectionId, string> = {
   "param-types": "paramTypes",
   "plugin-api": "pluginApi",
   "session-plugin": "sessionPlugin",
+  "custom-ui": "customUi",
   "output-format": "outputFormat",
   "go-plugin": "goPlugin",
   "publish-flow": "publishFlow",
@@ -414,6 +416,60 @@ class Plugin(SessionPlugin):
               <div className="bg-muted/50 border rounded-lg p-4 space-y-2">
                 <p className="text-sm">{t("sessionNote")}</p>
                 <p className="text-sm text-muted-foreground">{t("sessionNoteCompat")}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Custom UI */}
+          <Card id="custom-ui" className="scroll-mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <LayoutTemplate className="h-5 w-5" />
+                {t("customUi")}
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">{t("customUiDesc")}</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="border rounded-lg p-4">
+                  <code className="text-sm font-semibold">chart</code>
+                  <p className="text-sm text-muted-foreground mt-1">{t("customUiChart")}</p>
+                </div>
+                <div className="border rounded-lg p-4">
+                  <code className="text-sm font-semibold">topology</code>
+                  <p className="text-sm text-muted-foreground mt-1">{t("customUiTopology")}</p>
+                </div>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2">{t("customUiYaml")}</h3>
+                <CodeBlock>{`name: my-scanner
+version: 1.0.0
+engine: python
+ui_component: chart   # or: topology
+output:
+  type: table
+  columns:
+    - key: host
+      label: Host
+    - key: open_ports
+      label: Open Ports`}</CodeBlock>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2">{t("customUiChartConfig")}</h3>
+                <p className="text-sm text-muted-foreground mb-2">{t("customUiChartConfigDesc")}</p>
+                <CodeBlock>{`output:
+  type: table
+  ui_charts:
+    - type: bar
+      x: host
+      y: open_ports
+      label: Open Ports per Host
+    - type: pie
+      field: category
+      label: Category Distribution`}</CodeBlock>
+              </div>
+              <div className="bg-muted/50 border rounded-lg p-4">
+                <p className="text-sm">{t("customUiNote")}</p>
               </div>
             </CardContent>
           </Card>

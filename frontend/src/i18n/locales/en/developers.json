@@ -109,5 +109,13 @@
   "sessionYaml": "plugin.yaml for Session Mode",
   "sessionPluginExample": "Example",
   "sessionNote": "Session state is stored in Redis with a 1-hour TTL. The frontend communicates via WebSocket at /api/v1/ws/plugin-sessions/{session_id}.",
-  "sessionNoteCompat": "Session plugins are fully backward-compatible — the execute() method still works as a oneshot fallback."
+  "sessionNoteCompat": "Session plugins are fully backward-compatible — the execute() method still works as a oneshot fallback.",
+  "customUi": "Custom UI (Engine 2.0)",
+  "customUiDesc": "Declare ui_component in plugin.yaml to replace the default table output with a specialized visualization. The frontend automatically renders the registered component.",
+  "customUiChart": "Auto-detects numeric columns and renders bar/pie/line/area charts with a tab fallback to the default table. Optionally configure explicit chart definitions via ui_charts.",
+  "customUiTopology": "Fetches topology data from the backend and renders an interactive network graph (React Flow + dagre auto-layout). Used by scanner plugins to visualize host/port relationships.",
+  "customUiYaml": "How to declare",
+  "customUiChartConfig": "Chart configuration (optional)",
+  "customUiChartConfigDesc": "Without ui_charts, the chart view auto-detects numeric columns. Add ui_charts to output for explicit control:",
+  "customUiNote": "The frontend only renders a ui_component if it is registered in the UI registry. Currently available: chart, topology. Custom components can be added by registering them in frontend/src/components/plugin-ui/registry.tsx."
 }

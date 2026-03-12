@@ -109,5 +109,13 @@
   "sessionYaml": "plugin.yaml mode session",
   "sessionPluginExample": "Exemple",
   "sessionNote": "L'etat de session est stocke dans Redis avec un TTL de 1 heure. Le frontend communique via WebSocket a /api/v1/ws/plugin-sessions/{session_id}.",
-  "sessionNoteCompat": "Les plugins session sont entierement retrocompatibles — la methode execute() fonctionne toujours comme solution de repli oneshot."
+  "sessionNoteCompat": "Les plugins session sont entierement retrocompatibles — la methode execute() fonctionne toujours comme solution de repli oneshot.",
+  "customUi": "Interface personnalisee (Moteur 2.0)",
+  "customUiDesc": "Declarez ui_component dans plugin.yaml pour remplacer la sortie tableau par defaut par un composant de visualisation specialise. Le frontend rend automatiquement le composant enregistre.",
+  "customUiChart": "Detecte automatiquement les colonnes numeriques et rend des graphiques barres/camembert/lignes/aires avec repli onglet vers le tableau par defaut. Configurez ui_charts pour un controle explicite.",
+  "customUiTopology": "Recupere les donnees de topologie du backend et rend un graphe reseau interactif (React Flow + dagre auto-layout). Utilise par les plugins de scan pour visualiser les relations hote/port.",
+  "customUiYaml": "Comment declarer",
+  "customUiChartConfig": "Configuration des graphiques (optionnel)",
+  "customUiChartConfigDesc": "Sans ui_charts, la vue graphique detecte automatiquement les colonnes numeriques. Ajoutez ui_charts a output pour un controle explicite :",
+  "customUiNote": "Le frontend rend uniquement les ui_component enregistres dans le registre UI. Actuellement disponibles : chart, topology. De nouveaux composants peuvent etre ajoutes en les enregistrant dans frontend/src/components/plugin-ui/registry.tsx."
 }

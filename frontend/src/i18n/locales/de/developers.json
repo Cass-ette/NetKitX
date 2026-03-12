@@ -109,5 +109,13 @@
   "sessionYaml": "Session-Modus plugin.yaml",
   "sessionPluginExample": "Beispiel",
   "sessionNote": "Der Session-Status wird in Redis mit einer TTL von 1 Stunde gespeichert. Das Frontend kommuniziert über WebSocket unter /api/v1/ws/plugin-sessions/{session_id}.",
-  "sessionNoteCompat": "Session-Plugins sind vollständig abwärtskompatibel — die execute()-Methode funktioniert weiterhin als Oneshot-Fallback."
+  "sessionNoteCompat": "Session-Plugins sind vollständig abwärtskompatibel — die execute()-Methode funktioniert weiterhin als Oneshot-Fallback.",
+  "customUi": "Benutzerdefinierte UI (Engine 2.0)",
+  "customUiDesc": "Deklarieren Sie ui_component in plugin.yaml, um die Standard-Tabellenausgabe durch eine spezialisierte Visualisierungskomponente zu ersetzen. Das Frontend rendert die registrierte Komponente automatisch.",
+  "customUiChart": "Erkennt automatisch numerische Spalten und rendert Balken-/Kreis-/Linien-/Flächendiagramme mit Tab-Fallback auf die Standardtabelle. Optionale explizite Diagrammdefinitionen via ui_charts.",
+  "customUiTopology": "Ruft Topologiedaten vom Backend ab und rendert einen interaktiven Netzwerkgraphen (React Flow + dagre Auto-Layout). Wird von Scanner-Plugins zur Visualisierung von Host/Port-Beziehungen verwendet.",
+  "customUiYaml": "Deklaration",
+  "customUiChartConfig": "Diagrammkonfiguration (optional)",
+  "customUiChartConfigDesc": "Ohne ui_charts erkennt die Diagrammansicht numerische Spalten automatisch. Fügen Sie ui_charts zu output hinzu für explizite Steuerung:",
+  "customUiNote": "Das Frontend rendert nur ui_components, die im UI-Registry registriert sind. Aktuell verfügbar: chart, topology. Neue Komponenten können in frontend/src/components/plugin-ui/registry.tsx registriert werden."
 }

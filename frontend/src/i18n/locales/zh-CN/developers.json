@@ -109,5 +109,13 @@
   "sessionYaml": "会话模式 plugin.yaml",
   "sessionPluginExample": "示例",
   "sessionNote": "会话状态存储在 Redis 中，TTL 为 1 小时。前端通过 WebSocket /api/v1/ws/plugin-sessions/{session_id} 通信。",
-  "sessionNoteCompat": "会话插件完全向后兼容 — execute() 方法仍可作为一次性回退使用。"
+  "sessionNoteCompat": "会话插件完全向后兼容 — execute() 方法仍可作为一次性回退使用。",
+  "customUi": "自定义 UI（引擎 2.0）",
+  "customUiDesc": "在 plugin.yaml 中声明 ui_component，用专属可视化组件替换默认表格输出。前端会自动渲染已注册的组件。",
+  "customUiChart": "自动检测数值列并渲染柱状图/饼图/折线图/面积图，可通过 Tab 切换到默认表格。也可通过 ui_charts 配置显式图表定义。",
+  "customUiTopology": "从后端获取拓扑数据并渲染交互式网络关系图（React Flow + dagre 自动布局）。适合扫描插件可视化主机/端口关系。",
+  "customUiYaml": "如何声明",
+  "customUiChartConfig": "图表配置（可选）",
+  "customUiChartConfigDesc": "不配置 ui_charts 时，图表视图会自动检测数值列。在 output 中添加 ui_charts 可进行精确控制：",
+  "customUiNote": "前端只渲染在 UI 注册表中注册的 ui_component。当前可用：chart、topology。可在 frontend/src/components/plugin-ui/registry.tsx 中注册新的自定义组件。"
 }

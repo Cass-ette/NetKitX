@@ -109,5 +109,13 @@
   "sessionYaml": "セッションモード plugin.yaml",
   "sessionPluginExample": "例",
   "sessionNote": "セッション状態は Redis に保存され、TTL は 1 時間です。フロントエンドは WebSocket /api/v1/ws/plugin-sessions/{session_id} で通信します。",
-  "sessionNoteCompat": "セッションプラグインは完全な後方互換性を持ちます — execute() メソッドはワンショットのフォールバックとして引き続き動作します。"
+  "sessionNoteCompat": "セッションプラグインは完全な後方互換性を持ちます — execute() メソッドはワンショットのフォールバックとして引き続き動作します。",
+  "customUi": "カスタム UI（エンジン 2.0）",
+  "customUiDesc": "plugin.yaml に ui_component を宣言すると、デフォルトのテーブル出力を専用の可視化コンポーネントに置き換えられます。フロントエンドは登録済みコンポーネントを自動的にレンダリングします。",
+  "customUiChart": "数値列を自動検出し、棒グラフ/円グラフ/折れ線グラフ/エリアグラフをレンダリングします。タブでデフォルトテーブルに切り替え可能。ui_charts で明示的なグラフ定義も設定できます。",
+  "customUiTopology": "バックエンドからトポロジデータを取得し、インタラクティブなネットワークグラフをレンダリングします（React Flow + dagre 自動レイアウト）。スキャナープラグインのホスト/ポート関係の可視化に使用されます。",
+  "customUiYaml": "宣言方法",
+  "customUiChartConfig": "グラフ設定（オプション）",
+  "customUiChartConfigDesc": "ui_charts なしの場合、グラフビューは数値列を自動検出します。output に ui_charts を追加すると明示的に制御できます：",
+  "customUiNote": "フロントエンドは UI レジストリに登録されている ui_component のみをレンダリングします。現在利用可能：chart、topology。新しいカスタムコンポーネントは frontend/src/components/plugin-ui/registry.tsx に登録することで追加できます。"
 }

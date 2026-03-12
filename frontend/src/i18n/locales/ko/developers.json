@@ -109,5 +109,13 @@
   "sessionYaml": "세션 모드 plugin.yaml",
   "sessionPluginExample": "예제",
   "sessionNote": "세션 상태는 Redis에 저장되며 TTL은 1시간입니다. 프론트엔드는 WebSocket /api/v1/ws/plugin-sessions/{session_id}로 통신합니다.",
-  "sessionNoteCompat": "세션 플러그인은 완전한 하위 호환성을 유지합니다 — execute() 메서드는 원샷 대체로 계속 작동합니다."
+  "sessionNoteCompat": "세션 플러그인은 완전한 하위 호환성을 유지합니다 — execute() 메서드는 원샷 대체로 계속 작동합니다.",
+  "customUi": "커스텀 UI (엔진 2.0)",
+  "customUiDesc": "plugin.yaml에 ui_component를 선언하면 기본 테이블 출력을 전용 시각화 컴포넌트로 교체할 수 있습니다. 프론트엔드가 등록된 컴포넌트를 자동으로 렌더링합니다.",
+  "customUiChart": "숫자 열을 자동 감지하여 막대/파이/선/영역 차트를 렌더링합니다. 탭으로 기본 테이블로 전환 가능. ui_charts로 명시적 차트 정의도 설정할 수 있습니다.",
+  "customUiTopology": "백엔드에서 토폴로지 데이터를 가져와 대화형 네트워크 그래프를 렌더링합니다 (React Flow + dagre 자동 레이아웃). 스캐너 플러그인의 호스트/포트 관계 시각화에 사용됩니다.",
+  "customUiYaml": "선언 방법",
+  "customUiChartConfig": "차트 구성 (선택사항)",
+  "customUiChartConfigDesc": "ui_charts 없이는 차트 뷰가 숫자 열을 자동 감지합니다. output에 ui_charts를 추가하면 명시적으로 제어할 수 있습니다:",
+  "customUiNote": "프론트엔드는 UI 레지스트리에 등록된 ui_component만 렌더링합니다. 현재 사용 가능: chart, topology. 새 커스텀 컴포넌트는 frontend/src/components/plugin-ui/registry.tsx에 등록하여 추가할 수 있습니다."
 }
