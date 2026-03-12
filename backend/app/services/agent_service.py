@@ -446,10 +446,10 @@ def classify_error(error: str) -> str:
 # Stagnation detection (semantic loop breaker)
 # ---------------------------------------------------------------------------
 
-STAGNATION_SIMILARITY = 0.7  # two actions >70% similar = "same approach"
-STAGNATION_WARN = 3  # inject soft warning
-STAGNATION_FORCE = 5  # inject hard warning
-STAGNATION_STOP = 7  # terminate
+STAGNATION_SIMILARITY = 0.85  # two actions >85% similar = "same approach"
+STAGNATION_WARN = 5  # inject soft warning
+STAGNATION_FORCE = 8  # inject hard warning
+STAGNATION_STOP = 12  # terminate
 
 
 def _action_fingerprint(action: dict[str, Any]) -> str:
@@ -742,7 +742,7 @@ async def run_agent_loop(
             if similar_count > max_similar:
                 max_similar = similar_count
             if similar_count > 0:
-                logger.info(
+                logger.warning(
                     "Stagnation check: fingerprint=%s similar=%d/%d history_size=%d",
                     fingerprint[:80],
                     similar_count,
