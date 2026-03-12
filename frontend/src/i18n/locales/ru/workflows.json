@@ -19,5 +19,7 @@
   "reflection": "ИИ-анализ",
   "reflectionLoading": "Анализ...",
   "noReflection": "Настройте ИИ для просмотра анализа",
-  "expandResult": "Показать подробности"
+  "expandResult": "Показать подробности",
+  "skipped": "Пропущено",
+  "parallelNodes": "{{count}} узлов параллельно"
 }

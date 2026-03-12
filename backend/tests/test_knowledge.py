@@ -179,6 +179,90 @@ class TestEventsToTurnsActionError:
 
 
 # =====================================================================
+# Multi-action turns
+# =====================================================================
+
+
+class TestEventsToTurnsMultiAction:
+    """Multiple actions in a single turn."""
+
+    def test_multi_action_stored_as_list(self):
+        messages = [{"role": "user", "content": "Scan all ports"}]
+        action1 = {"type": "plugin", "plugin": "port-scan", "params": {"port": "80"}}
+        action2 = {"type": "plugin", "plugin": "port-scan", "params": {"port": "443"}}
+        result1 = {"items": [{"port": 80, "state": "open"}]}
+        result2 = {"items": [{"port": 443, "state": "open"}]}
+
+        collected = [
+            {"event": "turn", "data": {"turn": 1}},
+            {"event": "text", "data": {"content": "Scanning multiple ports..."}},
+            {"event": "action", "data": {"action": action1, "actions": [action1, action2]}},
+            {"event": "action_status", "data": {"status": "executing", "count": 2}},
+            {"event": "action_result", "data": {"result": result1, "action": action1}},
+            {"event": "action_result", "data": {"result": result2, "action": action2}},
+            {"event": "done", "data": {"reason": "complete"}},
+        ]
+        turns = _events_to_turns(messages, collected)
+
+        # user, assistant (with actions as list), result1, result2
+        assert len(turns) == 4
+        assistant_turn = turns[1]
+        assert assistant_turn["role"] == "assistant"
+        assert isinstance(assistant_turn["action"], list)
+        assert len(assistant_turn["action"]) == 2
+        assert assistant_turn["action"][0]["plugin"] == "port-scan"
+        assert assistant_turn["action"][1]["params"]["port"] == "443"
+
+    def test_single_action_remains_dict(self):
+        """Backward compat: single action event still stores as dict."""
+        messages = [{"role": "user", "content": "test"}]
+        action = {"type": "plugin", "plugin": "nmap"}
+        collected = [
+            {"event": "turn", "data": {"turn": 1}},
+            {"event": "text", "data": {"content": "Scanning..."}},
+            {"event": "action", "data": {"action": action}},
+            {"event": "action_result", "data": {"result": {"items": []}}},
+            {"event": "done", "data": {"reason": "complete"}},
+        ]
+        turns = _events_to_turns(messages, collected)
+        assistant_turn = turns[1]
+        assert isinstance(assistant_turn["action"], dict)
+        assert assistant_turn["action"]["plugin"] == "nmap"
+
+
+class TestDigestMultiAction:
+    """build_session_digest handles list actions."""
+
+    def _make_turn(self, **kwargs):
+        turn = MagicMock()
+        turn.role = kwargs.get("role", "assistant")
+        turn.content = kwargs.get("content", "")
+        turn.turn_number = kwargs.get("turn_number", 0)
+        turn.action = kwargs.get("action", None)
+        turn.action_result = kwargs.get("action_result", None)
+        return turn
+
+    def test_multi_action_digest(self):
+        turns = [
+            self._make_turn(
+                role="assistant",
+                content="Running parallel scans",
+                turn_number=1,
+                action=[
+                    {"type": "plugin", "plugin": "port-scan", "params": {"port": "80"}},
+                    {"type": "shell", "command": "curl http://target/"},
+                ],
+            ),
+        ]
+        digest = build_session_digest(turns)
+        assert "[Action] plugin: port-scan" in digest
+        assert "[Action] shell: curl" in digest
+        lines = digest.split("\n")
+        action_lines = [line for line in lines if line.startswith("[Action]")]
+        assert len(action_lines) == 2
+
+
+# =====================================================================
 # Phase 2: Knowledge extraction helpers
 # =====================================================================
 

@@ -19,5 +19,7 @@
   "reflection": "Analyse IA",
   "reflectionLoading": "Analyse en cours...",
   "noReflection": "Activez l'IA pour voir les analyses",
-  "expandResult": "Afficher les détails"
+  "expandResult": "Afficher les détails",
+  "skipped": "Ignoré",
+  "parallelNodes": "{{count}} nœuds en parallèle"
 }

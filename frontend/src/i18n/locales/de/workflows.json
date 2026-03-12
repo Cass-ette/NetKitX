@@ -19,5 +19,7 @@
   "reflection": "KI-Analyse",
   "reflectionLoading": "Analysiere...",
   "noReflection": "KI aktivieren, um Analysen zu sehen",
-  "expandResult": "Details anzeigen"
+  "expandResult": "Details anzeigen",
+  "skipped": "Übersprungen",
+  "parallelNodes": "{{count}} Knoten parallel"
 }

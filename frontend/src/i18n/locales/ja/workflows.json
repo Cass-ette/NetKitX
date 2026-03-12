@@ -19,5 +19,7 @@
   "reflection": "AI 分析",
   "reflectionLoading": "分析中...",
   "noReflection": "AIを設定すると分析が表示されます",
-  "expandResult": "詳細を表示"
+  "expandResult": "詳細を表示",
+  "skipped": "スキップ",
+  "parallelNodes": "{{count}} ノード並列実行"
 }

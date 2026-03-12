@@ -115,6 +115,9 @@ export default function WorkflowDetailPage() {
               const nodeId = payload.node_id as string;
               setNodeReflections((prev) => ({ ...prev, [nodeId]: payload.reflection }));
               setReflectionLoading((prev) => ({ ...prev, [nodeId]: false }));
+            } else if (event === "node_skip") {
+              const nodeId = payload.node_id as string;
+              setNodeStatuses((prev) => ({ ...prev, [nodeId]: "skipped" }));
             } else if (event === "node_error") {
               const nodeId = payload.node_id as string;
               setNodeStatuses((prev) => ({ ...prev, [nodeId]: "failed" }));

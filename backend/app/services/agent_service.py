@@ -85,7 +85,10 @@ Output action blocks to run plugins — they will be executed automatically.
 </action>
 
 IMPORTANT: You can ONLY use type="plugin". Shell commands are NOT allowed in this mode.
-Only propose ONE action per response. After execution, you'll see the result and can continue.
+When multiple independent actions can be performed simultaneously (e.g., scanning different ports,
+checking different endpoints), you MAY include multiple <action> blocks in a single response.
+Only do this when actions are truly independent — if one action's result affects another,
+execute them sequentially.
 When your analysis is complete or no further actions are needed, respond without an action block.
 """
 
@@ -115,7 +118,10 @@ To run a shell command:
   <reason>Why you want to run this</reason>
 </action>
 
-Only propose ONE action per response. After execution, you'll see the result and can continue.
+When multiple independent actions can be performed simultaneously (e.g., scanning different ports,
+checking different endpoints), you MAY include multiple <action> blocks in a single response.
+Only do this when actions are truly independent — if one action's result affects another,
+execute them sequentially.
 When your analysis is complete, respond without an action block.
 """
 
@@ -176,14 +182,8 @@ _TAG_RE = {
 }
 
 
-def parse_action(text: str) -> dict[str, Any] | None:
-    """Extract the first <action> block from AI text using regex (no strict XML parsing)."""
-    match = _ACTION_RE.search(text)
-    if not match:
-        return None
-
-    block = match.group(0)
-
+def _parse_single_block(block: str) -> dict[str, Any] | None:
+    """Parse a single <action>...</action> block into an action dict."""
     type_match = _TYPE_RE.search(block)
     if not type_match:
         return None
@@ -209,6 +209,22 @@ def parse_action(text: str) -> dict[str, Any] | None:
     result["reason"] = m.group(1).strip() if m else ""
 
     return result
+
+
+def parse_actions(text: str) -> list[dict[str, Any]]:
+    """Extract ALL <action> blocks from AI text. Returns list (may be empty)."""
+    results = []
+    for match in _ACTION_RE.finditer(text):
+        action = _parse_single_block(match.group(0))
+        if action:
+            results.append(action)
+    return results
+
+
+def parse_action(text: str) -> dict[str, Any] | None:
+    """Extract the first <action> block from AI text using regex (no strict XML parsing)."""
+    actions = parse_actions(text)
+    return actions[0] if actions else None
 
 
 def strip_action_tags(text: str) -> str:
@@ -575,10 +591,10 @@ async def run_agent_loop(
             yield {"event": "done", "data": {"reason": "error"}}
             return
 
-        # Parse action from response
-        action = parse_action(full_text)
+        # Parse actions from response
+        actions = parse_actions(full_text)
 
-        if not action:
+        if not actions:
             # Check if AI attempted an action but malformed the XML
             if has_action_attempt(full_text):
                 consecutive_errors += 1
@@ -616,32 +632,60 @@ async def run_agent_loop(
             yield {"event": "done", "data": {"reason": "complete"}}
             return
 
-        # Validate action type for mode
-        if agent_mode == "full_auto" and action.get("type") == "shell":
-            yield {
-                "event": "action_error",
-                "data": {
-                    "error": "Shell commands not allowed in full_auto mode",
-                    "error_type": "fatal",
-                    "retry_count": 0,
-                    "max_retries": MAX_CONSECUTIVE_ERRORS,
-                },
-            }
-            yield {"event": "done", "data": {"reason": "error"}}
-            return
-
-        yield {"event": "action", "data": {"action": action}}
-
-        # Mode A: pause and wait for user
+        # Mode A (semi_auto): only take the first action
         if agent_mode == "semi_auto":
+            action = actions[0]
+            # Validate action type
+            if agent_mode == "full_auto" and action.get("type") == "shell":
+                yield {
+                    "event": "action_error",
+                    "data": {
+                        "error": "Shell commands not allowed in full_auto mode",
+                        "error_type": "fatal",
+                        "retry_count": 0,
+                        "max_retries": MAX_CONSECUTIVE_ERRORS,
+                    },
+                }
+                yield {"event": "done", "data": {"reason": "error"}}
+                return
+            yield {"event": "action", "data": {"action": action}}
             yield {"event": "waiting", "data": {}}
             yield {"event": "done", "data": {"reason": "waiting"}}
             return
 
-        # Mode B/C: auto-execute
-        yield {"event": "action_status", "data": {"status": "executing", "action": action}}
+        # Mode B/C (full_auto / terminal): validate all actions
+        for a in actions:
+            if agent_mode == "full_auto" and a.get("type") == "shell":
+                yield {
+                    "event": "action_error",
+                    "data": {
+                        "error": "Shell commands not allowed in full_auto mode",
+                        "error_type": "fatal",
+                        "retry_count": 0,
+                        "max_retries": MAX_CONSECUTIVE_ERRORS,
+                    },
+                }
+                yield {"event": "done", "data": {"reason": "error"}}
+                return
+
+        # Emit action event(s)
+        if len(actions) == 1:
+            yield {"event": "action", "data": {"action": actions[0]}}
+        else:
+            yield {"event": "action", "data": {"action": actions[0], "actions": actions}}
+        yield {
+            "event": "action_status",
+            "data": {"status": "executing", "count": len(actions)},
+        }
+
+        # Concurrent execution of all actions
+        import asyncio
+
+        async def _run_one(a: dict[str, Any]) -> dict[str, Any]:
+            return await _execute_action(a, agent_mode, user_id, is_admin, user_token)
+
         try:
-            result = await _execute_action(action, agent_mode, user_id, is_admin, user_token)
+            results = await asyncio.gather(*[_run_one(a) for a in actions], return_exceptions=True)
         except Exception as e:
             logger.exception("Action execution error in agent loop")
             yield {
@@ -656,64 +700,78 @@ async def run_agent_loop(
             yield {"event": "done", "data": {"reason": "error"}}
             return
 
-        error_msg = result.get("error")
-        if error_msg:
-            error_type = classify_error(error_msg)
-            consecutive_errors += 1
+        # Process results
+        all_ok = True
+        result_texts = []
+        max_similar = 0
+        for action, result in zip(actions, results):
+            if isinstance(result, Exception):
+                result = {"error": str(result)}
 
-            yield {
-                "event": "action_error",
-                "data": {
-                    "error": error_msg,
-                    "error_type": error_type,
-                    "retry_count": consecutive_errors,
-                    "max_retries": MAX_CONSECUTIVE_ERRORS,
-                },
-            }
+            error_msg = result.get("error")
+            if error_msg:
+                all_ok = False
+                error_type = classify_error(error_msg)
+                consecutive_errors += 1
+                yield {
+                    "event": "action_error",
+                    "data": {
+                        "error": error_msg,
+                        "error_type": error_type,
+                        "retry_count": consecutive_errors,
+                        "max_retries": MAX_CONSECUTIVE_ERRORS,
+                        "action": action,
+                    },
+                }
+                if error_type == "fatal":
+                    yield {"event": "done", "data": {"reason": "error"}}
+                    return
+            else:
+                consecutive_errors = 0
+                yield {"event": "action_result", "data": {"result": result, "action": action}}
 
-            if error_type == "fatal":
-                yield {"event": "done", "data": {"reason": "error"}}
-                return
+            result_texts.append(format_action_result(action, result))
 
-            # Retryable: inject error feedback into conversation
+            # Stagnation detection per action
+            fingerprint = _action_fingerprint(action)
+            similar_count = count_similar_recent(action_history, fingerprint)
+            action_history.append(fingerprint)
+            if similar_count > max_similar:
+                max_similar = similar_count
+
+        if not all_ok and consecutive_errors > 0:
             full_messages.append({"role": "assistant", "content": full_text})
             if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
                 full_messages.append(
                     {
                         "role": "user",
-                        "content": f"[Action Failed: {error_msg}] "
+                        "content": "[Action Failed] "
                         "You have failed multiple consecutive times. "
                         "Please continue your analysis in plain text without action blocks.",
                     }
                 )
             else:
+                errors = [
+                    r.get("error", "") for r in results if isinstance(r, dict) and r.get("error")
+                ]
                 full_messages.append(
                     {
                         "role": "user",
-                        "content": f"[Action Failed: {error_msg}] "
+                        "content": f"[Action Failed: {'; '.join(errors)}] "
                         "Please analyze the error and try a different approach.",
                     }
                 )
             continue
 
-        # Success — reset error counter
-        consecutive_errors = 0
-        yield {"event": "action_result", "data": {"result": result, "action": action}}
-
-        # Stagnation detection
-        fingerprint = _action_fingerprint(action)
-        similar_count = count_similar_recent(action_history, fingerprint)
-        action_history.append(fingerprint)
-
-        # Inject into conversation
+        # Inject all results into conversation
         full_messages.append({"role": "assistant", "content": full_text})
-        result_text = format_action_result(action, result)
-        full_messages.append({"role": "user", "content": result_text})
+        combined_result = "\n\n---\n\n".join(result_texts)
+        full_messages.append({"role": "user", "content": combined_result})
 
-        if similar_count >= STAGNATION_STOP:
+        if max_similar >= STAGNATION_STOP:
             yield {"event": "done", "data": {"reason": "stagnation"}}
             return
-        elif similar_count >= STAGNATION_FORCE:
+        elif max_similar >= STAGNATION_FORCE:
             full_messages.append(
                 {
                     "role": "user",
@@ -724,7 +782,7 @@ async def run_agent_loop(
                     "Do NOT repeat the same approach again.",
                 }
             )
-        elif similar_count >= STAGNATION_WARN:
+        elif max_similar >= STAGNATION_WARN:
             full_messages.append(
                 {
                     "role": "user",

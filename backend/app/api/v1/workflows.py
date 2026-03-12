@@ -1,5 +1,6 @@
 """Workflow REST + SSE endpoints."""
 
+import asyncio
 import json
 import logging
 import time
@@ -15,10 +16,12 @@ from app.models.user import User
 from app.schemas.workflow import (
     WorkflowListItem,
     WorkflowListResponse,
+    WorkflowPatchBody,
     WorkflowResponse,
 )
 from app.services.workflow_service import (
     _summarize_result,
+    build_execution_plan,
     build_reflection_prompt,
     create_workflow_from_session,
     delete_workflow,
@@ -93,6 +96,38 @@ async def create_from_session(
     return WorkflowResponse.model_validate(workflow)
 
 
+@router.patch("/workflows/{workflow_id}", response_model=WorkflowResponse)
+async def patch_workflow(
+    workflow_id: int,
+    body: WorkflowPatchBody,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """Update workflow fields. Validates DAG if nodes/edges are provided."""
+    workflow = await get_workflow(db, workflow_id, user.id)
+    if not workflow:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+
+    if body.nodes is not None or body.edges is not None:
+        new_nodes = body.nodes if body.nodes is not None else workflow.nodes
+        new_edges = body.edges if body.edges is not None else workflow.edges
+        try:
+            build_execution_plan(new_nodes, new_edges)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        workflow.nodes = new_nodes
+        workflow.edges = new_edges
+
+    if body.name is not None:
+        workflow.name = body.name
+    if body.description is not None:
+        workflow.description = body.description
+
+    await db.commit()
+    await db.refresh(workflow)
+    return WorkflowResponse.model_validate(workflow)
+
+
 @router.post("/workflows/{workflow_id}/run")
 async def run_workflow(
     workflow_id: int,
@@ -101,17 +136,25 @@ async def run_workflow(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
-    """Execute workflow nodes sequentially, streaming SSE events."""
+    """Execute workflow nodes as a DAG, streaming SSE events."""
     workflow = await get_workflow(db, workflow_id, user.id)
     if not workflow:
         raise HTTPException(status_code=404, detail="Workflow not found")
 
     nodes = workflow.nodes if isinstance(workflow.nodes, list) else []
+    wf_edges = workflow.edges if isinstance(workflow.edges, list) else []
     wf_id = workflow.id
     wf_name = workflow.name
     user_id = user.id
 
-    # Count action nodes for step progress
+    # Build execution plan (DAG layers)
+    try:
+        levels, parents = build_execution_plan(nodes, wf_edges)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # Build node lookup
+    node_map = {n["id"]: n for n in nodes}
     action_nodes = [n for n in nodes if n.get("type", "") not in ("start", "end")]
     total_steps = len(action_nodes)
 
@@ -122,6 +165,7 @@ async def run_workflow(
         try:
             final_status = "completed"
             completed_steps: list[dict] = []
+            failed_nodes: set[str] = set()
             step_num = 0
             start_time = time.time()
 
@@ -148,49 +192,98 @@ async def run_workflow(
                 except Exception:
                     logger.exception("Failed to load AI settings for reflection")
 
-            for node in nodes:
-                node_type = node.get("type", "")
-                node_id = node.get("id", "")
+            def _has_failed_ancestor(nid: str) -> bool:
+                """Check if any ancestor of this node has failed."""
+                for parent_id in parents.get(nid, set()):
+                    if parent_id in failed_nodes:
+                        return True
+                    if _has_failed_ancestor(parent_id):
+                        return True
+                return False
 
-                # Skip start/end nodes
-                if node_type in ("start", "end"):
+            for level in levels:
+                # Filter out start/end and determine runnable vs skipped
+                runnable = []
+                for nid in level:
+                    node = node_map.get(nid)
+                    if not node:
+                        continue
+                    node_type = node.get("type", "")
+                    if node_type in ("start", "end"):
+                        continue
+                    if _has_failed_ancestor(nid):
+                        failed_nodes.add(nid)
+                        yield f"data: {json.dumps({'event': 'node_skip', 'node_id': nid, 'reason': 'ancestor_failed'})}\n\n"
+                        continue
+                    runnable.append(node)
+
+                if not runnable:
                     continue
 
-                step_num += 1
+                # Use asyncio.Queue for real-time SSE from parallel tasks
+                queue: asyncio.Queue = asyncio.Queue()
+                sentinel = object()
 
-                # Emit node_start with step progress
-                yield f"data: {json.dumps({'event': 'node_start', 'node_id': node_id, 'label': node.get('label', ''), 'step': step_num, 'total_steps': total_steps})}\n\n"
+                async def run_single_node(n: dict) -> None:
+                    nid = n["id"]
+                    n_type = n.get("type", "")
+                    n_data = n.get("data", {})
+                    try:
+                        if n_type == "action-plugin":
+                            action = {
+                                "type": "plugin",
+                                "plugin": n_data.get("plugin", ""),
+                                "params": n_data.get("params") or {},
+                            }
+                            result = await execute_plugin_action(action)
+                        elif n_type == "action-shell":
+                            command = n_data.get("command", "")
+                            from app.services.sandbox import (
+                                is_command_safe,
+                                execute_shell,
+                            )
 
-                data = node.get("data", {})
-                try:
-                    if node_type == "action-plugin":
-                        action = {
-                            "type": "plugin",
-                            "plugin": data.get("plugin", ""),
-                            "params": data.get("params") or {},
-                        }
-                        result = await execute_plugin_action(action)
-                    elif node_type == "action-shell":
-                        command = data.get("command", "")
-                        from app.services.sandbox import (
-                            is_command_safe,
-                            execute_shell,
-                        )
-
-                        safe, reason = is_command_safe(command)
-                        if not safe:
-                            result = {"error": f"Command blocked: {reason}"}
+                            safe, reason = is_command_safe(command)
+                            if not safe:
+                                result = {"error": f"Command blocked: {reason}"}
+                            else:
+                                result = await execute_shell(command)
                         else:
-                            result = await execute_shell(command)
-                    else:
-                        result = {"error": f"Unknown node type: {node_type}"}
+                            result = {"error": f"Unknown node type: {n_type}"}
 
-                    if result.get("error"):
-                        yield f"data: {json.dumps({'event': 'node_error', 'node_id': node_id, 'error': result['error']})}\n\n"
+                        if result.get("error"):
+                            await queue.put(("error", nid, n, result))
+                        else:
+                            await queue.put(("result", nid, n, result))
+                    except Exception as e:
+                        logger.exception("Workflow node %s failed", nid)
+                        await queue.put(("error", nid, n, {"error": str(e)}))
+                    finally:
+                        await queue.put(sentinel)
+
+                # Emit node_start for all runnable nodes in this level
+                for n in runnable:
+                    step_num += 1
+                    yield f"data: {json.dumps({'event': 'node_start', 'node_id': n['id'], 'label': n.get('label', ''), 'step': step_num, 'total_steps': total_steps})}\n\n"
+
+                # Launch parallel tasks
+                tasks = [asyncio.create_task(run_single_node(n)) for n in runnable]
+                remaining = len(tasks)
+
+                while remaining > 0:
+                    item = await queue.get()
+                    if item is sentinel:
+                        remaining -= 1
+                        continue
+
+                    kind, nid, n, result = item
+                    if kind == "error":
+                        yield f"data: {json.dumps({'event': 'node_error', 'node_id': nid, 'error': result.get('error', '')})}\n\n"
+                        failed_nodes.add(nid)
                         final_status = "failed"
                     else:
                         result_summary = _summarize_result(result)
-                        yield f"data: {json.dumps({'event': 'node_result', 'node_id': node_id, 'result': result, 'result_summary': result_summary})}\n\n"
+                        yield f"data: {json.dumps({'event': 'node_result', 'node_id': nid, 'result': result, 'result_summary': result_summary})}\n\n"
 
                         # AI reflection
                         if reflect and ai_config:
@@ -200,7 +293,7 @@ async def run_workflow(
                                 prompt = build_reflection_prompt(
                                     workflow_name=wf_name,
                                     completed_steps=completed_steps,
-                                    current_label=node.get("label", ""),
+                                    current_label=n.get("label", ""),
                                     current_result=result,
                                     step=step_num,
                                     total=total_steps,
@@ -219,22 +312,20 @@ async def run_workflow(
                                     ],
                                     base_url=ai_config.get("base_url"),
                                 )
-                                yield f"data: {json.dumps({'event': 'node_reflection', 'node_id': node_id, 'reflection': reflection})}\n\n"
+                                yield f"data: {json.dumps({'event': 'node_reflection', 'node_id': nid, 'reflection': reflection})}\n\n"
                             except Exception:
-                                logger.exception("Reflection failed for node %s", node_id)
+                                logger.exception("Reflection failed for node %s", nid)
 
                         completed_steps.append(
                             {
-                                "label": node.get("label", ""),
-                                "type": node_type.replace("action-", ""),
+                                "label": n.get("label", ""),
+                                "type": n.get("type", "").replace("action-", ""),
                                 "result_summary": _summarize_result(result),
                             }
                         )
 
-                except Exception as e:
-                    logger.exception("Workflow node %s failed", node_id)
-                    yield f"data: {json.dumps({'event': 'node_error', 'node_id': node_id, 'error': str(e)})}\n\n"
-                    final_status = "failed"
+                # Wait for all tasks to complete
+                await asyncio.gather(*tasks, return_exceptions=True)
 
             total_time_ms = int((time.time() - start_time) * 1000)
             yield f"data: {json.dumps({'event': 'workflow_done', 'status': final_status, 'total_time_ms': total_time_ms})}\n\n"

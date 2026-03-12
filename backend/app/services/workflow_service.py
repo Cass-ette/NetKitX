@@ -2,6 +2,7 @@
 
 import json
 import logging
+from graphlib import CycleError, TopologicalSorter
 from typing import Any
 
 from sqlalchemy import func, select
@@ -97,6 +98,46 @@ def build_reflection_prompt(
     return "\n".join(parts)
 
 
+def build_execution_plan(
+    nodes: list[dict], edges: list[dict]
+) -> tuple[list[list[str]], dict[str, set[str]]]:
+    """Build layered execution plan from DAG.
+
+    Returns:
+        (levels, parents) where levels is list of parallel node-id groups,
+        parents maps each node to its parent node ids.
+    """
+    node_ids = {n["id"] for n in nodes}
+    if not node_ids:
+        return [], {}
+
+    # Build adjacency: predecessors for each node
+    predecessors: dict[str, set[str]] = {nid: set() for nid in node_ids}
+    parents: dict[str, set[str]] = {nid: set() for nid in node_ids}
+    for e in edges:
+        src, tgt = e["source"], e["target"]
+        if src in node_ids and tgt in node_ids:
+            predecessors[tgt].add(src)
+            parents[tgt].add(src)
+
+    try:
+        ts = TopologicalSorter(predecessors)
+        ts.prepare()
+    except CycleError as exc:
+        raise ValueError(f"Workflow contains a cycle: {exc}") from exc
+
+    levels: list[list[str]] = []
+    while ts.is_active():
+        ready = list(ts.get_ready())
+        if not ready:
+            break
+        levels.append(sorted(ready))
+        for nid in ready:
+            ts.done(nid)
+
+    return levels, parents
+
+
 def extract_workflow_from_turns(
     turns: list[dict[str, Any]],
     session_title: str,
@@ -127,41 +168,57 @@ def extract_workflow_from_turns(
     while i < len(turns):
         turn = turns[i]
         if turn.get("role") == "assistant" and turn.get("action"):
-            action = turn["action"]
-            action_type = action.get("type", "plugin")
-            action_index += 1
-            node_id = f"action-{action_index}"
+            raw_action = turn["action"]
 
-            # Determine node type
-            if action_type == "shell":
-                node_type = "action-shell"
-                label = action.get("command", "shell")[:60]
-            else:
-                node_type = "action-plugin"
-                label = action.get("plugin", "unknown")
+            # Normalize to list for uniform processing
+            action_list = raw_action if isinstance(raw_action, list) else [raw_action]
 
-            node_data: dict[str, Any] = {
-                "plugin": action.get("plugin"),
-                "command": action.get("command"),
-                "params": action.get("params"),
-                "reason": action.get("reason"),
-                "result_summary": "",
-            }
+            # Collect result turns that follow
+            result_turns = []
+            j = i + 1
+            while j < len(turns) and turns[j].get("role") == "action_result":
+                result_turns.append(turns[j])
+                j += 1
 
-            # Look ahead for action_result
-            if i + 1 < len(turns) and turns[i + 1].get("role") == "action_result":
-                result = turns[i + 1].get("action_result")
-                node_data["result_summary"] = _summarize_result(result)
-                i += 1  # skip the result turn
+            turn_node_ids = []
+            for idx, action in enumerate(action_list):
+                action_type = action.get("type", "plugin")
+                action_index += 1
+                node_id = f"action-{action_index}"
+                turn_node_ids.append(node_id)
 
-            nodes.append(
-                {
-                    "id": node_id,
-                    "type": node_type,
-                    "label": label,
-                    "data": node_data,
+                if action_type == "shell":
+                    node_type = "action-shell"
+                    label = action.get("command", "shell")[:60]
+                else:
+                    node_type = "action-plugin"
+                    label = action.get("plugin", "unknown")
+
+                node_data: dict[str, Any] = {
+                    "plugin": action.get("plugin"),
+                    "command": action.get("command"),
+                    "params": action.get("params"),
+                    "reason": action.get("reason"),
+                    "result_summary": "",
                 }
-            )
+
+                # Match result turn by index if available
+                if idx < len(result_turns):
+                    result = result_turns[idx].get("action_result")
+                    node_data["result_summary"] = _summarize_result(result)
+
+                nodes.append(
+                    {
+                        "id": node_id,
+                        "type": node_type,
+                        "label": label,
+                        "data": node_data,
+                    }
+                )
+
+            # Skip consumed result turns
+            i = j if result_turns else i + 1
+            continue
         i += 1
 
     # End node
@@ -174,15 +231,73 @@ def extract_workflow_from_turns(
         }
     )
 
-    # Chain edges
-    for idx in range(len(nodes) - 1):
-        edges.append(
-            {
-                "id": f"e-{nodes[idx]['id']}-{nodes[idx + 1]['id']}",
-                "source": nodes[idx]["id"],
-                "target": nodes[idx + 1]["id"],
-            }
-        )
+    # Build edges: group action nodes by their turn to create fan-out/fan-in
+    action_nodes = [n for n in nodes if n["type"] not in ("start", "end")]
+    if not action_nodes:
+        edges.append({"id": "e-start-end", "source": "start", "target": "end"})
+    else:
+        # Group consecutive action nodes that came from multi-action turns
+        # Since action_index is sequential and multi-action turns produce consecutive ids,
+        # we rebuild groups by walking the node list
+        groups: list[list[str]] = []
+        seen: set[str] = set()
+        for n in action_nodes:
+            if n["id"] not in seen:
+                # Find consecutive nodes (fan-out siblings share same turn)
+                group = [n["id"]]
+                seen.add(n["id"])
+                groups.append(group)
+
+        # For multi-action, we need to know which nodes were produced together.
+        # Re-parse from turns to get grouping info
+        group_list: list[list[str]] = []
+        idx = 0
+        ai = 0
+        while ai < len(turns):
+            turn = turns[ai]
+            if turn.get("role") == "assistant" and turn.get("action"):
+                raw_action = turn["action"]
+                action_list = raw_action if isinstance(raw_action, list) else [raw_action]
+                group = []
+                for _ in action_list:
+                    if idx < len(action_nodes):
+                        group.append(action_nodes[idx]["id"])
+                        idx += 1
+                group_list.append(group)
+                # Skip result turns
+                ai += 1
+                while ai < len(turns) and turns[ai].get("role") == "action_result":
+                    ai += 1
+                continue
+            ai += 1
+
+        # Fallback: if grouping didn't work, treat all as linear
+        if not group_list:
+            group_list = [[n["id"]] for n in action_nodes]
+
+        # Connect groups: start -> group[0], group[-1] -> next group[0], last group -> end
+        prev_nodes = ["start"]
+        for group in group_list:
+            # Fan-out: each prev node connects to each node in current group
+            for src in prev_nodes:
+                for tgt in group:
+                    edges.append(
+                        {
+                            "id": f"e-{src}-{tgt}",
+                            "source": src,
+                            "target": tgt,
+                        }
+                    )
+            prev_nodes = group
+        # Fan-in to end
+        for src in prev_nodes:
+            edges.append(
+                {
+                    "id": f"e-{src}-end",
+                    "source": src,
+                    "target": "end",
+                }
+            )
 
     return nodes, edges
 

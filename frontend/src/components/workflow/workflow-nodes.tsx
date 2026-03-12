@@ -43,6 +43,7 @@ const statusBorder: Record<string, string> = {
   running: "border-blue-500 animate-pulse",
   done: "border-green-500",
   failed: "border-destructive",
+  skipped: "border-muted-foreground/40 opacity-50",
 };
 
 export function WorkflowPluginNode({ data }: NodeProps) {

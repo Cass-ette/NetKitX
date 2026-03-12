@@ -53,6 +53,13 @@ class WorkflowListItem(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class WorkflowPatchBody(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    nodes: list[dict] | None = None
+    edges: list[dict] | None = None
+
+
 class WorkflowListResponse(BaseModel):
     items: list[WorkflowListItem]
     total: int

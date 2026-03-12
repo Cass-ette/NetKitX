@@ -4,6 +4,7 @@ import pytest
 from unittest.mock import patch
 from app.services.agent_service import (
     parse_action,
+    parse_actions,
     strip_action_tags,
     build_plugin_catalog,
     format_action_result,
@@ -113,6 +114,65 @@ def test_parse_action_no_reason():
     assert result is not None
     assert result["command"] == "ls -la"
     assert result["reason"] == ""
+
+
+# ---------------------------------------------------------------------------
+# parse_actions (multi-action) tests
+# ---------------------------------------------------------------------------
+
+
+MULTI_ACTION_XML = """
+Let me scan multiple ports simultaneously.
+
+<action type="plugin">
+  <plugin>port-scan</plugin>
+  <params>
+    <param name="target">10.0.0.1</param>
+    <param name="port">80</param>
+  </params>
+  <reason>Scan HTTP port</reason>
+</action>
+
+<action type="plugin">
+  <plugin>port-scan</plugin>
+  <params>
+    <param name="target">10.0.0.1</param>
+    <param name="port">443</param>
+  </params>
+  <reason>Scan HTTPS port</reason>
+</action>
+
+<action type="shell">
+  <command>curl -s http://10.0.0.1/</command>
+  <reason>Check web server</reason>
+</action>
+"""
+
+
+def test_parse_actions_multiple():
+    actions = parse_actions(MULTI_ACTION_XML)
+    assert len(actions) == 3
+    assert actions[0]["type"] == "plugin"
+    assert actions[0]["params"]["port"] == "80"
+    assert actions[1]["type"] == "plugin"
+    assert actions[1]["params"]["port"] == "443"
+    assert actions[2]["type"] == "shell"
+    assert "curl" in actions[2]["command"]
+
+
+def test_parse_actions_empty():
+    actions = parse_actions(NO_ACTION_TEXT)
+    assert actions == []
+
+
+def test_parse_actions_single():
+    actions = parse_actions(PLUGIN_ACTION_XML)
+    assert len(actions) == 1
+    assert actions[0]["type"] == "plugin"
+    assert actions[0]["plugin"] == "sql-inject"
+    # Should be consistent with parse_action
+    single = parse_action(PLUGIN_ACTION_XML)
+    assert actions[0] == single
 
 
 # ---------------------------------------------------------------------------
@@ -439,7 +499,7 @@ async def test_fatal_error_terminates_loop():
     async def mock_stream_fn(api_key, model, messages):
         yield '<action type="shell"><command>rm -rf /</command><reason>test</reason></action>'
 
-    async def mock_execute(action, agent_mode, user_id=None, user_token=None):
+    async def mock_execute(action, agent_mode, user_id=None, is_admin=False, user_token=None):
         return {"error": "Command blocked: dangerous operation", "exit_code": -1}
 
     with (

@@ -1,7 +1,10 @@
 """Tests for workflow service pure functions."""
 
+import pytest
+
 from app.services.workflow_service import (
     _summarize_result,
+    build_execution_plan,
     build_reflection_prompt,
     extract_workflow_from_turns,
 )
@@ -379,3 +382,194 @@ class TestBuildReflectionPrompt:
             lang="zh-CN",
         )
         assert "Simplified Chinese" in prompt
+
+
+# ---------------------------------------------------------------------------
+# build_execution_plan (DAG)
+# ---------------------------------------------------------------------------
+
+
+class TestBuildExecutionPlan:
+    def test_linear_chain(self):
+        """Linear chain: each level has exactly 1 node."""
+        nodes = [
+            {"id": "start", "type": "start"},
+            {"id": "a", "type": "action-plugin"},
+            {"id": "b", "type": "action-plugin"},
+            {"id": "end", "type": "end"},
+        ]
+        edges = [
+            {"source": "start", "target": "a"},
+            {"source": "a", "target": "b"},
+            {"source": "b", "target": "end"},
+        ]
+        levels, parents = build_execution_plan(nodes, edges)
+        # start has no deps → level 0, a depends on start → level 1, etc.
+        assert len(levels) >= 3
+        # Each level should have at most 1 action node in linear chain
+        action_levels = [lv for lv in levels if any(n not in ("start", "end") for n in lv)]
+        assert all(len(lv) <= 2 for lv in action_levels)  # could include start/end in same level
+
+    def test_diamond_dag(self):
+        """Diamond: start→a,b→end → a and b should be in the same level."""
+        nodes = [
+            {"id": "start", "type": "start"},
+            {"id": "a", "type": "action-plugin"},
+            {"id": "b", "type": "action-plugin"},
+            {"id": "end", "type": "end"},
+        ]
+        edges = [
+            {"source": "start", "target": "a"},
+            {"source": "start", "target": "b"},
+            {"source": "a", "target": "end"},
+            {"source": "b", "target": "end"},
+        ]
+        levels, parents = build_execution_plan(nodes, edges)
+        # Find the level containing both a and b
+        ab_level = None
+        for level in levels:
+            if "a" in level and "b" in level:
+                ab_level = level
+                break
+        assert ab_level is not None, "a and b should be in the same level"
+
+    def test_fan_out_fan_in(self):
+        """Fan-out: scan→a,b,c→end → a,b,c should be parallel."""
+        nodes = [
+            {"id": "scan", "type": "action-plugin"},
+            {"id": "a", "type": "action-plugin"},
+            {"id": "b", "type": "action-plugin"},
+            {"id": "c", "type": "action-plugin"},
+            {"id": "end", "type": "end"},
+        ]
+        edges = [
+            {"source": "scan", "target": "a"},
+            {"source": "scan", "target": "b"},
+            {"source": "scan", "target": "c"},
+            {"source": "a", "target": "end"},
+            {"source": "b", "target": "end"},
+            {"source": "c", "target": "end"},
+        ]
+        levels, parents = build_execution_plan(nodes, edges)
+        # Find the level containing a, b, c
+        parallel_level = None
+        for level in levels:
+            if "a" in level and "b" in level and "c" in level:
+                parallel_level = level
+                break
+        assert parallel_level is not None, "a, b, c should be in the same level"
+
+    def test_cycle_raises(self):
+        """Cycle should raise ValueError."""
+        nodes = [
+            {"id": "a", "type": "action-plugin"},
+            {"id": "b", "type": "action-plugin"},
+        ]
+        edges = [
+            {"source": "a", "target": "b"},
+            {"source": "b", "target": "a"},
+        ]
+        with pytest.raises(ValueError, match="cycle"):
+            build_execution_plan(nodes, edges)
+
+    def test_empty_graph(self):
+        """Empty graph returns empty levels."""
+        levels, parents = build_execution_plan([], [])
+        assert levels == []
+        assert parents == {}
+
+    def test_single_node(self):
+        """Single node graph."""
+        nodes = [{"id": "a", "type": "action-plugin"}]
+        levels, parents = build_execution_plan(nodes, [])
+        assert len(levels) == 1
+        assert "a" in levels[0]
+
+    def test_complex_dag(self):
+        """Complex DAG: start→A,B; A,B→C; B→D; C,D→end."""
+        nodes = [
+            {"id": "start", "type": "start"},
+            {"id": "A", "type": "action-plugin"},
+            {"id": "B", "type": "action-plugin"},
+            {"id": "C", "type": "action-plugin"},
+            {"id": "D", "type": "action-plugin"},
+            {"id": "end", "type": "end"},
+        ]
+        edges = [
+            {"source": "start", "target": "A"},
+            {"source": "start", "target": "B"},
+            {"source": "A", "target": "C"},
+            {"source": "B", "target": "C"},
+            {"source": "B", "target": "D"},
+            {"source": "C", "target": "end"},
+            {"source": "D", "target": "end"},
+        ]
+        levels, parents = build_execution_plan(nodes, edges)
+        # A and B should be parallel (same level)
+        ab_level = None
+        for level in levels:
+            if "A" in level and "B" in level:
+                ab_level = level
+                break
+        assert ab_level is not None
+
+        # C depends on both A and B, D depends on B only
+        assert parents["C"] == {"A", "B"}
+        assert parents["D"] == {"B"}
+
+        # Flatten levels to check ordering
+        flat = [nid for level in levels for nid in level]
+        assert flat.index("start") < flat.index("A")
+        assert flat.index("start") < flat.index("B")
+        assert flat.index("A") < flat.index("C")
+        assert flat.index("B") < flat.index("C")
+        assert flat.index("B") < flat.index("D")
+
+
+# ---------------------------------------------------------------------------
+# Multi-action workflow extraction
+# ---------------------------------------------------------------------------
+
+
+class TestExtractWorkflowMultiAction:
+    def test_multi_action_turn_creates_fan_out(self):
+        """A turn with list action should create fan-out nodes."""
+        turns = [
+            {
+                "role": "assistant",
+                "content": "Running parallel scans",
+                "action": [
+                    {"type": "plugin", "plugin": "port-scan", "params": {"port": "80"}},
+                    {"type": "plugin", "plugin": "port-scan", "params": {"port": "443"}},
+                ],
+                "action_result": None,
+                "action_status": "done",
+            },
+            {
+                "role": "action_result",
+                "content": "",
+                "action": None,
+                "action_result": {"items": [{"port": 80}]},
+                "action_status": None,
+            },
+            {
+                "role": "action_result",
+                "content": "",
+                "action": None,
+                "action_result": {"items": [{"port": 443}]},
+                "action_status": None,
+            },
+        ]
+        nodes, edges = extract_workflow_from_turns(turns, "Fan-out Test")
+        # start + 2 action nodes + end = 4
+        assert len(nodes) == 4
+        action_nodes = [n for n in nodes if n["type"] not in ("start", "end")]
+        assert len(action_nodes) == 2
+
+        # Both action nodes should have edges from start
+        start_edges = [e for e in edges if e["source"] == "start"]
+        assert len(start_edges) == 2
+
+        # Both action nodes should have edges to end
+        end_edges = [e for e in edges if e["target"] == "end"]
+        assert len(end_edges) == 2

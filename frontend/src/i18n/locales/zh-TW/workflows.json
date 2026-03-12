@@ -19,5 +19,7 @@
   "reflection": "AI 反思",
   "reflectionLoading": "分析中...",
   "noReflection": "設定 AI 後可查看反思",
-  "expandResult": "展開詳情"
+  "expandResult": "展開詳情",
+  "skipped": "已跳過",
+  "parallelNodes": "{{count}} 個節點並行執行"
 }

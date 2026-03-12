@@ -19,5 +19,7 @@
   "reflection": "AI 분석",
   "reflectionLoading": "분석 중...",
   "noReflection": "AI를 설정하면 분석을 볼 수 있습니다",
-  "expandResult": "상세 보기"
+  "expandResult": "상세 보기",
+  "skipped": "건너뜀",
+  "parallelNodes": "{{count}}개 노드 병렬 실행"
 }

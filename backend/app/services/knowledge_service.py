@@ -224,8 +224,16 @@ def _events_to_turns(
 
     # 2. Process collected SSE events
     current_content = ""
-    current_action: dict | None = None
+    current_actions: list[dict] = []
     current_action_status: str | None = None
+
+    def _flush_action() -> dict | list[dict] | None:
+        """Return single dict or list depending on count."""
+        if len(current_actions) > 1:
+            return list(current_actions)
+        elif len(current_actions) == 1:
+            return current_actions[0]
+        return None
 
     for evt in collected:
         event_type = evt.get("event", "")
@@ -233,18 +241,18 @@ def _events_to_turns(
 
         if event_type == "turn":
             # Flush previous assistant content if any
-            if current_content or current_action:
+            if current_content or current_actions:
                 turns.append(
                     {
                         "turn_number": turn_number,
                         "role": "assistant",
                         "content": current_content,
-                        "action": current_action,
+                        "action": _flush_action(),
                         "action_status": current_action_status,
                     }
                 )
                 current_content = ""
-                current_action = None
+                current_actions = []
                 current_action_status = None
             turn_number = data.get("turn", turn_number + 1)
 
@@ -252,26 +260,32 @@ def _events_to_turns(
             current_content += data.get("content", "")
 
         elif event_type == "action":
-            current_action = data.get("action")
+            # Support both single action and multi-action events
+            actions_data = data.get("actions")
+            action_data = data.get("action")
+            if actions_data and isinstance(actions_data, list):
+                current_actions.extend(actions_data)
+            elif action_data:
+                current_actions.append(action_data)
             current_action_status = "proposed"
 
         elif event_type == "action_status":
             current_action_status = "executing"
 
         elif event_type == "action_result":
-            # Flush assistant turn with action
-            if current_content or current_action:
+            # On first action_result, flush assistant turn with accumulated actions
+            if current_content or current_actions:
                 turns.append(
                     {
                         "turn_number": turn_number,
                         "role": "assistant",
                         "content": current_content,
-                        "action": current_action,
+                        "action": _flush_action(),
                         "action_status": "done",
                     }
                 )
                 current_content = ""
-                current_action = None
+                current_actions = []
                 current_action_status = None
 
             # Add action result as separate turn
@@ -289,19 +303,19 @@ def _events_to_turns(
                 "error": data.get("error", ""),
                 "error_type": data.get("error_type", ""),
             }
-            if current_content or current_action:
+            if current_content or current_actions:
                 turns.append(
                     {
                         "turn_number": turn_number,
                         "role": "assistant",
                         "content": current_content,
-                        "action": current_action,
+                        "action": _flush_action(),
                         "action_result": error_data,
                         "action_status": "error",
                     }
                 )
                 current_content = ""
-                current_action = None
+                current_actions = []
                 current_action_status = None
             else:
                 turns.append(
@@ -317,13 +331,13 @@ def _events_to_turns(
             break
 
     # Flush any remaining assistant content
-    if current_content or current_action:
+    if current_content or current_actions:
         turns.append(
             {
                 "turn_number": turn_number,
                 "role": "assistant",
                 "content": current_content,
-                "action": current_action,
+                "action": _flush_action(),
                 "action_status": current_action_status,
             }
         )
@@ -429,6 +443,21 @@ def _compress_action_result(result: dict | None) -> str:
     return " | ".join(parts) if parts else "(empty result)"
 
 
+def _format_single_action(action: dict) -> str:
+    """Format a single action dict into a one-line description."""
+    atype = action.get("type", "?")
+    if atype == "plugin":
+        desc = f"plugin: {action.get('plugin', '?')}"
+        params = action.get("params")
+        if params:
+            desc += f" params={json.dumps(params, ensure_ascii=False)[:200]}"
+    elif atype == "shell":
+        desc = f"shell: {action.get('command', '?')[:200]}"
+    else:
+        desc = json.dumps(action, ensure_ascii=False)[:200]
+    return desc
+
+
 def build_session_digest(turns: list[SessionTurn]) -> str:
     """Compress session turns into a compact text digest for AI extraction."""
     lines: list[str] = []
@@ -441,17 +470,11 @@ def build_session_digest(turns: list[SessionTurn]) -> str:
                 lines.append(f"[Turn {turn.turn_number}] {content_preview}")
             if turn.action:
                 action = turn.action
-                atype = action.get("type", "?")
-                if atype == "plugin":
-                    desc = f"plugin: {action.get('plugin', '?')}"
-                    params = action.get("params")
-                    if params:
-                        desc += f" params={json.dumps(params, ensure_ascii=False)[:200]}"
-                elif atype == "shell":
-                    desc = f"shell: {action.get('command', '?')[:200]}"
-                else:
-                    desc = json.dumps(action, ensure_ascii=False)[:200]
-                lines.append(f"[Action] {desc}")
+                if isinstance(action, list):
+                    for a in action:
+                        lines.append(f"[Action] {_format_single_action(a)}")
+                elif isinstance(action, dict):
+                    lines.append(f"[Action] {_format_single_action(action)}")
         elif turn.role == "action_result":
             compressed = _compress_action_result(turn.action_result)
             lines.append(f"[Result] {compressed}")
