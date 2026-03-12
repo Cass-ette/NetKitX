@@ -85,10 +85,16 @@ Output action blocks to run plugins — they will be executed automatically.
 </action>
 
 IMPORTANT: You can ONLY use type="plugin". Shell commands are NOT allowed in this mode.
-When multiple independent actions can be performed simultaneously (e.g., scanning different ports,
-checking different endpoints), you MAY include multiple <action> blocks in a single response.
-Only do this when actions are truly independent — if one action's result affects another,
-execute them sequentially.
+
+### Parallel Execution
+When multiple independent actions can run at the same time, you SHOULD include multiple <action>
+blocks in a single response. This saves turns and completes tasks faster. Examples:
+- After recon reveals multiple services → scan each service in parallel
+- Testing multiple injection types → run them simultaneously
+- Checking multiple endpoints → probe all at once
+
+Only execute sequentially when one action's result is needed to decide the next.
+
 When your analysis is complete or no further actions are needed, respond without an action block.
 """
 
@@ -118,10 +124,25 @@ To run a shell command:
   <reason>Why you want to run this</reason>
 </action>
 
-When multiple independent actions can be performed simultaneously (e.g., scanning different ports,
-checking different endpoints), you MAY include multiple <action> blocks in a single response.
-Only do this when actions are truly independent — if one action's result affects another,
-execute them sequentially.
+When multiple independent actions can run at the same time, you SHOULD include multiple <action>
+blocks in a single response. This saves turns and completes tasks faster. For example:
+
+<action type="shell">
+  <command>curl -s http://target/api/users</command>
+  <reason>Check users endpoint</reason>
+</action>
+<action type="shell">
+  <command>curl -s http://target/api/admin</command>
+  <reason>Check admin endpoint</reason>
+</action>
+
+Good candidates for parallel execution:
+- Testing multiple injection payloads on the same endpoint
+- Scanning different ports or services simultaneously
+- Probing multiple endpoints or URLs at once
+- Running different recon tools that don't depend on each other
+
+Only execute sequentially when one action's result is needed to decide the next.
 When your analysis is complete, respond without an action block.
 """
 
@@ -144,6 +165,7 @@ _AGENT_STRATEGY = """
 - OBSERVE, DON'T ASSUME: Infer database type, framework, and config from error messages, response headers, and behavioral differences. If clues are already visible, act on them immediately — don't waste turns on redundant fingerprinting. When truly unknown, test with version()/@@version/sqlite_version() to confirm.
 - VALIDATE EXTRACTION: After each data extraction attempt, check whether YOUR injected data actually appears in the response. If the output looks the same as before or shows values other than what you injected, the extraction technique isn't working as expected. Diagnose WHY: maybe legitimate results mask your injected data, maybe the app doesn't reflect output at all. Adjust accordingly.
 - ACT, DON'T REPORT: Maximize action density — include an action block in every response unless you've achieved the goal. Keep analysis brief (2-3 sentences). NEVER write a summary report or "recommended next steps" when you still have turns left. Your job is to DO the work, not plan it for a human.
+- PARALLELIZE: When you have 2+ independent actions (e.g., different payloads, different endpoints, different tools), include ALL of them as separate <action> blocks in the SAME response. This halves the turns needed. Sequential only when results depend on each other.
 - FILTER REPEATED QUERIES: When querying the same endpoint repeatedly, pipe output through grep/sed/cut to isolate the meaningful difference. Sending identical boilerplate wastes context.
 - SAME APPROACH 3 TIMES MAX: If an approach fails 3 times, switch to a completely different technique.
 - MULTI-LAYER ENCODING: When data passes through multiple layers (shell → curl → HTTP → eval), use base64 or chr() to avoid escaping issues.
