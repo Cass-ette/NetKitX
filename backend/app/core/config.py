@@ -47,10 +47,11 @@ class Settings(BaseSettings):
 
     # RAG
     RAG_ENABLED: bool = False
-    RAG_EMBEDDING_PROVIDER: str = ""  # "openai" | "zhipuai"
+    RAG_EMBEDDING_PROVIDER: str = ""  # "openai" | "zhipuai" | "custom"
     RAG_EMBEDDING_API_KEY: str = ""
     RAG_EMBEDDING_MODEL: str = "text-embedding-3-small"
     RAG_EMBEDDING_DIM: int = 1536
+    RAG_EMBEDDING_URL: str = ""  # Custom OpenAI-compatible embedding endpoint
     RAG_TOP_K: int = 5
     RAG_SIMILARITY_THRESHOLD: float = 0.6
 

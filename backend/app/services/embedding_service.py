@@ -30,7 +30,9 @@ async def generate_embedding(text_input: str) -> list[float] | None:
         logger.debug("RAG embedding not configured, skipping")
         return None
 
-    if provider == "openai":
+    if settings.RAG_EMBEDDING_URL:
+        url = settings.RAG_EMBEDDING_URL
+    elif provider == "openai":
         url = OPENAI_EMBEDDING_URL
     elif provider == "zhipuai":
         url = ZHIPUAI_EMBEDDING_URL
