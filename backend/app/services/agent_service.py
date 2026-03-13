@@ -984,8 +984,12 @@ async def run_agent_loop(
                         "actions_count": len(actions),
                         "agent_mode": agent_mode,
                         "security_mode": security_mode,
+                        "all_actions_ok": all_ok,
                         "health_score": compute_health_score(
-                            effective_stagnation, consecutive_errors, results_negative
+                            effective_stagnation,
+                            consecutive_errors,
+                            results_negative,
+                            all_actions_ok=all_ok,
                         ),
                     },
                 )

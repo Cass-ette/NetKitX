@@ -19,31 +19,40 @@ from app.services.agent_metrics import (
 
 
 def test_health_score_perfect():
-    assert compute_health_score(0, 0, False) == 100
+    # 50 + 20(ok) + 15(no stag) + 15(no err) = 100
+    assert compute_health_score(0, 0, False, all_actions_ok=True) == 100
 
 
 def test_health_score_stagnation():
-    # 3 effective stagnation → -24
-    assert compute_health_score(3, 0, False) == 76
+    # 50 + 20(ok) - 24(stag=3) + 15(no err) = 61
+    assert compute_health_score(3, 0, False, all_actions_ok=True) == 61
 
 
 def test_health_score_errors():
-    # 2 consecutive errors → -30
-    assert compute_health_score(0, 2, False) == 70
+    # 50 + 15(no stag) - 30(err=2) = 35
+    assert compute_health_score(0, 2, False, all_actions_ok=False) == 35
 
 
 def test_health_score_negative():
-    assert compute_health_score(0, 0, True) == 90
+    # 50 + 20(ok) + 15(no stag) + 15(no err) - 10(neg) = 90
+    assert compute_health_score(0, 0, True, all_actions_ok=True) == 90
 
 
 def test_health_score_combined():
-    # stagnation=5 (-40) + errors=2 (-30) + negative (-10) = 20
-    assert compute_health_score(5, 2, True) == 20
+    # 50 - 40(stag=5) - 30(err=2) - 10(neg) = -30 → 0
+    assert compute_health_score(5, 2, True, all_actions_ok=False) == 0
 
 
 def test_health_score_floor():
-    # Should clamp to 0
-    assert compute_health_score(10, 10, True) == 0
+    assert compute_health_score(10, 10, True, all_actions_ok=False) == 0
+
+
+def test_health_score_recovery():
+    """After stagnation clears and actions succeed, score bounces back."""
+    bad = compute_health_score(3, 1, True, all_actions_ok=False)
+    good = compute_health_score(0, 0, False, all_actions_ok=True)
+    assert good > bad
+    assert good == 100
 
 
 # ---------------------------------------------------------------------------

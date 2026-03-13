@@ -23,9 +23,23 @@ def compute_health_score(
     effective_stagnation: int,
     consecutive_errors: int,
     results_negative: bool,
+    all_actions_ok: bool = True,
 ) -> int:
-    """Compute 0-100 health score from agent loop signals."""
-    health = 100
+    """Compute 0-100 health score from agent loop signals.
+
+    Baseline 50, bidirectional: positive signals add points,
+    negative signals subtract.  A healthy turn scores ~80-100,
+    a stuck turn drops to 30 or below.
+    """
+    health = 50
+    # Positive
+    if all_actions_ok:
+        health += 20
+    if effective_stagnation == 0:
+        health += 15
+    if consecutive_errors == 0:
+        health += 15
+    # Negative
     health -= effective_stagnation * 8
     health -= consecutive_errors * 15
     if results_negative:
