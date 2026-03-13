@@ -617,7 +617,10 @@ def _results_look_negative(combined_result: str) -> bool:
     """Heuristic: check if action results indicate no meaningful progress.
 
     Returns True when results contain only error/404-like signals and
-    nothing that looks like newly discovered data.
+    nothing that looks like newly discovered data.  Also returns True
+    when there is NO signal at all (neither positive nor negative) —
+    getting back generic HTML/noise with no useful data IS lack of
+    progress and should not suppress stagnation detection.
     """
     if not combined_result:
         return True
@@ -625,8 +628,9 @@ def _results_look_negative(combined_result: str) -> bool:
     has_positive = any(p in lower for p in _POSITIVE_PATTERNS)
     if has_positive:
         return False
-    has_negative = any(p in lower for p in _NEGATIVE_PATTERNS)
-    return has_negative
+    # No positive signal → no meaningful progress (whether or not there
+    # are explicit error patterns).
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -948,10 +952,14 @@ async def run_agent_loop(
         reasoning_similar = _reasoning_stagnation(reasoning_history, reasoning_fp)
         reasoning_history.append(reasoning_fp)
 
-        # Only escalate reasoning stagnation when results are also negative.
-        # If results show new data, the AI may be legitimately persisting.
+        # Escalate reasoning stagnation when results are negative OR when
+        # the similarity count is extremely high — 5+ consecutive identical
+        # reasoning texts cannot be legitimate regardless of result content.
         results_negative = _results_look_negative(combined_result)
-        effective_reasoning = reasoning_similar if results_negative else 0
+        if results_negative or reasoning_similar >= REASONING_STAGNATION_STOP:
+            effective_reasoning = reasoning_similar
+        else:
+            effective_reasoning = 0
 
         if reasoning_similar > 0:
             logger.warning(

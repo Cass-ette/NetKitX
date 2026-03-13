@@ -19,6 +19,7 @@ from app.services.agent_service import (
     count_similar_recent,
     _extract_reasoning,
     _reasoning_stagnation,
+    _results_look_negative,
     _compress_output,
     _strip_html,
     compress_result,
@@ -905,6 +906,47 @@ def test_reasoning_stagnation_different_strategies():
     current = "尝试 sql 注入攻击登录页面"
     count = _reasoning_stagnation(history, current)
     assert count == 0
+
+
+# ---------------------------------------------------------------------------
+# Result negativity tests
+# ---------------------------------------------------------------------------
+
+
+def test_results_negative_404():
+    result = "Error: Unexpected path: /rest/video/subtitles\n404 Not Found"
+    assert _results_look_negative(result) is True
+
+
+def test_results_negative_unauthorized():
+    result = "UnauthorizedError: No Authorization header was found"
+    assert _results_look_negative(result) is True
+
+
+def test_results_negative_empty():
+    assert _results_look_negative("") is True
+
+
+def test_results_positive_with_data():
+    result = '{"status":"success","data":{"id":1,"username":"admin","password":"hash123"}}'
+    assert _results_look_negative(result) is False
+
+
+def test_results_positive_flag():
+    result = "Congratulations! flag{xss_in_video_subtitles}"
+    assert _results_look_negative(result) is False
+
+
+def test_results_positive_overrides_negative():
+    """Positive signal should override negative patterns."""
+    result = "Error 404 on /api but found admin token=abc123"
+    assert _results_look_negative(result) is False
+
+
+def test_results_neutral_no_pattern():
+    """No positive signal = no meaningful progress, treated as negative."""
+    result = '{"items": [{"port": 80, "state": "open"}]}'
+    assert _results_look_negative(result) is True
 
 
 # ---------------------------------------------------------------------------
