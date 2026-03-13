@@ -267,6 +267,7 @@ async def agent(
                 is_admin=user.role == "admin",
                 user_token=user_token,
                 base_url=ai.base_url,
+                session_id=agent_session.id,
             ):
                 collected.append(evt)
                 if evt.get("event") == "done":
@@ -286,6 +287,12 @@ async def agent(
             done_reason_holder[0],
             user_id=user.id,
         )
+        try:
+            from app.services.agent_metrics import remove_session
+
+            await remove_session(agent_session.id)
+        except Exception:
+            pass
 
     return StreamingResponse(
         event_stream(),

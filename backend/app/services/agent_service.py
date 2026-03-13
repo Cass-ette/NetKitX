@@ -168,6 +168,7 @@ _AGENT_STRATEGY = """
 - PARALLELIZE: When you have 2+ independent actions (e.g., different payloads, different endpoints, different tools), include ALL of them as separate <action> blocks in the SAME response. This halves the turns needed. Sequential only when results depend on each other.
 - FILTER REPEATED QUERIES: When querying the same endpoint repeatedly, pipe output through grep/sed/cut to isolate the meaningful difference. Sending identical boilerplate wastes context.
 - SAME APPROACH 3 TIMES MAX: If an approach fails 3 times, switch to a completely different technique.
+- MONITOR YOUR OWN THINKING: If you catch yourself repeating similar reasoning (e.g., "let me try another upload endpoint", "let me look for another file upload path"), STOP. You are stuck in a strategic loop. Step back and ask: "What fundamentally different attack vector have I NOT tried?" Switch to a different vulnerability class entirely (e.g., from file upload to SQL injection, from brute-force to logic flaw, from client-side to server-side). Trying the same strategy with different URLs is NOT progress.
 - MULTI-LAYER ENCODING: When data passes through multiple layers (shell → curl → HTTP → eval), use base64 or chr() to avoid escaping issues.
 - VERIFY EACH STEP: If a command returns no useful output, verify each step individually with the simplest possible command before adding complexity.
 - RECOGNIZE TARGET DATA: Learn to identify what you're looking for. CTF flags match the pattern `word{...}` (e.g. flag{xx}, CTF{xx}, any_prefix{xx}). Credentials are username/password pairs, API keys (sk-..., key-..., Bearer tokens), or session tokens. Sensitive files include /etc/shadow, .env, config files with secrets, database dumps. When ANY of these appear in a response, you have found the target.
@@ -581,6 +582,53 @@ def _reasoning_stagnation(history: list[str], current: str) -> int:
     return count
 
 
+# Negative-result patterns (case-insensitive substrings)
+_NEGATIVE_PATTERNS = [
+    "404",
+    "not found",
+    "unexpected path",
+    "error:",
+    "forbidden",
+    "unauthorized",
+    "denied",
+    "no such",
+    "refused",
+    "cannot ",
+    "failed to",
+    "invalid",
+    "405 method not allowed",
+]
+_POSITIVE_PATTERNS = [
+    "flag{",
+    "ctf{",
+    "password",
+    "token",
+    "admin",
+    "success",
+    "logged in",
+    "session",
+    "secret",
+    "key=",
+    "api_key",
+]
+
+
+def _results_look_negative(combined_result: str) -> bool:
+    """Heuristic: check if action results indicate no meaningful progress.
+
+    Returns True when results contain only error/404-like signals and
+    nothing that looks like newly discovered data.
+    """
+    if not combined_result:
+        return True
+    lower = combined_result.lower()
+    has_positive = any(p in lower for p in _POSITIVE_PATTERNS)
+    if has_positive:
+        return False
+    has_negative = any(p in lower for p in _NEGATIVE_PATTERNS)
+    return has_negative
+
+
 # ---------------------------------------------------------------------------
 # Main agent loop
 # ---------------------------------------------------------------------------
@@ -601,6 +649,7 @@ async def run_agent_loop(
     is_admin: bool = False,
     user_token: str | None = None,
     base_url: str | None = None,
+    session_id: int | str | None = None,
 ) -> AsyncIterator[dict]:
     """
     Main agent loop generator. Yields SSE event dicts.
@@ -898,46 +947,101 @@ async def run_agent_loop(
         reasoning_fp = _extract_reasoning(full_text)
         reasoning_similar = _reasoning_stagnation(reasoning_history, reasoning_fp)
         reasoning_history.append(reasoning_fp)
+
+        # Only escalate reasoning stagnation when results are also negative.
+        # If results show new data, the AI may be legitimately persisting.
+        results_negative = _results_look_negative(combined_result)
+        effective_reasoning = reasoning_similar if results_negative else 0
+
         if reasoning_similar > 0:
             logger.warning(
-                "Reasoning stagnation: %d consecutive similar, text=%.80s",
+                "Reasoning stagnation: %d consecutive similar, negative=%s, text=%.80s",
                 reasoning_similar,
+                results_negative,
                 reasoning_fp,
             )
 
         # Pick the more severe signal between action and reasoning stagnation
-        effective_stagnation = max(max_similar, reasoning_similar)
+        effective_stagnation = max(max_similar, effective_reasoning)
+
+        # ---- Metrics (zero token cost) ----
+        if session_id is not None:
+            try:
+                from app.services.agent_metrics import compute_health_score, publish_metrics
+
+                await publish_metrics(
+                    session_id,
+                    {
+                        "session_id": session_id,
+                        "turn": turn,
+                        "max_turns": max_turns,
+                        "action_stagnation": max_similar,
+                        "reasoning_stagnation": reasoning_similar,
+                        "effective_reasoning": effective_reasoning,
+                        "effective_stagnation": effective_stagnation,
+                        "results_negative": results_negative,
+                        "consecutive_errors": consecutive_errors,
+                        "actions_count": len(actions),
+                        "agent_mode": agent_mode,
+                        "security_mode": security_mode,
+                        "health_score": compute_health_score(
+                            effective_stagnation, consecutive_errors, results_negative
+                        ),
+                    },
+                )
+            except Exception:
+                pass  # monitoring must never break the agent
 
         if (
             effective_stagnation >= STAGNATION_STOP
-            or reasoning_similar >= REASONING_STAGNATION_STOP
+            or effective_reasoning >= REASONING_STAGNATION_STOP
         ):
             logger.warning(
-                "Stagnation STOP: action=%d reasoning=%d, terminating",
+                "Stagnation STOP: action=%d reasoning=%d (effective=%d), terminating",
                 max_similar,
                 reasoning_similar,
+                effective_reasoning,
             )
             yield {"event": "done", "data": {"reason": "stagnation"}}
             return
         elif (
             effective_stagnation >= STAGNATION_FORCE
-            or reasoning_similar >= REASONING_STAGNATION_WARN
+            or effective_reasoning >= REASONING_STAGNATION_WARN
         ):
             logger.warning(
-                "Stagnation FORCE: action=%d reasoning=%d, injecting hard warning",
+                "Stagnation FORCE: action=%d reasoning=%d (effective=%d), injecting warning",
                 max_similar,
                 reasoning_similar,
+                effective_reasoning,
             )
-            full_messages.append(
-                {
-                    "role": "user",
-                    "content": "[System Warning: STAGNATION DETECTED] "
-                    "Your reasoning and approach have been repeating for several turns. "
-                    "You MUST either: (1) try a completely different technique/tool, or "
-                    "(2) stop and provide a summary of your findings so far. "
-                    "Do NOT repeat the same approach again.",
-                }
-            )
+            if effective_reasoning >= REASONING_STAGNATION_WARN:
+                # Reasoning-level stagnation: same strategy, different URLs
+                full_messages.append(
+                    {
+                        "role": "user",
+                        "content": "[System Warning: STRATEGIC LOOP DETECTED] "
+                        "You have been repeating the same strategic thinking for multiple turns "
+                        "(same approach, just trying different URLs or parameters). "
+                        "This is NOT progress. You MUST:\n"
+                        "1. STOP trying variations of your current approach entirely.\n"
+                        "2. Name a DIFFERENT vulnerability class or attack vector you haven't tried "
+                        "(e.g., if stuck on file upload → try SQLi, XSS, SSRF, auth bypass, or API abuse).\n"
+                        "3. If you've exhausted your ideas, summarize findings and stop.\n"
+                        "Do NOT say 'let me try a different endpoint' — that is the SAME strategy.",
+                    }
+                )
+            else:
+                # Action-level stagnation: literally similar commands
+                full_messages.append(
+                    {
+                        "role": "user",
+                        "content": "[System Warning: STAGNATION DETECTED] "
+                        "You have attempted very similar actions multiple times without progress. "
+                        "You MUST either: (1) try a completely different technique/tool, or "
+                        "(2) stop and provide a summary of your findings so far. "
+                        "Do NOT repeat the same approach again.",
+                    }
+                )
         elif effective_stagnation >= STAGNATION_WARN:
             full_messages.append(
                 {
