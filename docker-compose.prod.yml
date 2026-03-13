@@ -5,7 +5,7 @@ services:
       dockerfile: backend/Dockerfile
     ports:
       - "127.0.0.1:8000:8000"
-      - "127.0.0.1:9090:9090"
+      - "9090:9090"
     env_file:
       - ./backend/.env
     environment:
