@@ -386,6 +386,51 @@ Agent 会话 → finalize_session() → build_session_digest()
 - **靶场部署**：服务器 `/opt/targets` 下运行 Juice Shop (4001)、DVWA (4002)、WebGoat (4003)
 - 新增 22 项单元测试（指纹归一化 13 项 + reasoning 停滞 6 项 + NULL 字节 7 项）
 
+### Phase 11: Agent 健康监控 ✅
+- **零 token 开销**：agent loop 每轮写 metrics 到 Redis，独立 FastAPI 读取
+- **监控端口 9090**：JSON API + HTML Dashboard（2s 自动刷新）
+- **健康分**：基线 50 分，正向（成功/新策略/无错误）加分，负向（停滞/错误/无效结果）扣分
+- **停滞检测优化**：无 positive 信号 = 无进展，reasoning stagnation 在 STOP 级别绕过 negative gate
+
 ### 待定
 - 网安专用模型微调
 - 高级功能（包签名、CDN）
+
+---
+
+## 插件生态架构
+
+### 仓库结构
+
+```
+NetKitX (主仓库)
+├── plugins/
+│   ├── port-scan/          # 官方内置插件
+│   ├── sql-inject/
+│   ├── dir-scan/
+│   └── community/          # 社区插件 (Git Submodule)
+│       └── → NetKitX-Plugins/community/
+
+NetKitX-Plugins (独立仓库)
+├── community/              # 稳定的社区插件
+├── experimental/           # 实验性插件
+└── templates/              # 插件开发模板
+```
+
+### 部署方式：Git Submodule
+
+```bash
+# 服务器更新
+cd /opt/NetKitX
+git pull origin main
+git submodule update --init --recursive --remote
+docker compose -f docker-compose.prod.yml restart backend
+```
+
+### 插件分类
+
+| 类型 | 位置 | 维护 | 质量标准 |
+|------|------|------|----------|
+| 官方插件 | `NetKitX/plugins/` | 核心团队 | 充分测试 |
+| 社区插件 | `NetKitX-Plugins/community/` | 社区贡献者 | 经过审核 |
+| 实验性插件 | `NetKitX-Plugins/experimental/` | 个人开发者 | 未充分测试 |

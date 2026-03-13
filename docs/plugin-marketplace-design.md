@@ -1,5 +1,7 @@
 # 插件市场设计方案
 
+> **Status: All 7 phases implemented** (Infrastructure → Resolver → Installer → UI → Publishing → Security → Update System)
+
 ## 1. 架构概览
 
 ### 1.1 核心组件

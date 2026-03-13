@@ -16,6 +16,21 @@
 
 ---
 
+## 文档导航
+
+| 文档 | 说明 |
+|------|------|
+| [architecture.md](architecture.md) | 系统架构、数据模型、插件生态、各 Phase 实现细节 |
+| [rag-system.md](rag-system.md) | RAG 知识增强系统：向量检索、API 调用、完整流程 |
+| [plugin-development.md](plugin-development.md) | 插件开发指南：SDK、Python/Go 示例、最佳实践 |
+| [plugin-marketplace-design.md](plugin-marketplace-design.md) | 插件市场设计：版本管理、依赖解析、安全扫描 |
+| [marketplace-usage.md](marketplace-usage.md) | 插件市场使用指南：Web UI 与 CLI 操作 |
+| [ci-cd.md](ci-cd.md) | CI/CD 流程：GitHub Actions、Docker 构建、自动发布 |
+| [tools-roadmap.md](tools-roadmap.md) | 安全工具规划：现有 16+ 工具 + 后续扩展计划 |
+| [roadmap.md](roadmap.md) | 项目总路线图：已完成 / 进行中 / 待定功能 |
+
+---
+
 ## 二、核心创新点
 
 ### 2.1 AI 自主执行引擎（网安领域深度集成）

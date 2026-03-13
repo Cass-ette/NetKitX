@@ -470,3 +470,11 @@ Agent 启动前：
 | 无 ANN 索引 | zhipuai embedding-3 为 2048 维，超过 pgvector HNSW/IVFFlat 的 2000 维限制，使用顺序扫描（小数据量足够） |
 | 阈值过滤 | 相似度 < 0.6 的结果丢弃，避免注入无关经验干扰 agent |
 | 自定义 URL | `RAG_EMBEDDING_URL` 支持任意 OpenAI 兼容端点，不绑定厂商 |
+
+---
+
+> **写入**：每次攻防会话结束 → AI 提取结构化知识 → Embedding API 转向量 → 存入 pgvector
+>
+> **读取**：新会话开始 → 用户问题转向量 → 余弦相似度检索 TOP 5 → 拼接到 System Prompt → AI 带着历史经验执行
+>
+> **核心价值：AI Agent 不再失忆，每次攻防都能站在历史经验的肩膀上。**

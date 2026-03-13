@@ -6,8 +6,22 @@
 
 | 工具 | 引擎 | 类别 | 功能 |
 |------|------|------|------|
-| example-ping | Python | recon | Ping 扫描，检测主机存活 |
-| example-portscan | Go | recon | TCP 端口扫描，支持并发 |
+| port-scan | Go | recon | TCP/SYN 端口扫描，支持并发 |
+| dir-scan | Go | recon | 目录字典爆破（类 dirsearch） |
+| sql-inject | Python | sqli | 10 种注入类型，Cookie/UA/Referer 注入位置 |
+| http-request | Python | http | 自定义 HTTP 请求工具 |
+| webshell | Python | exploit | Webshell 管理与连接 |
+| file-upload | Python | exploit | 文件上传绕过测试 |
+| weak-pass | Python | brute | 多协议弱口令检测 |
+| subdomain | Python | recon | 子域名枚举 |
+| whois | Python | recon | 域名/IP 注册信息查询 |
+| dns-lookup | Python | recon | DNS 全量记录查询 |
+| ssl-check | Python | recon | SSL/TLS 证书与配置检测 |
+| git-leak | Python | leak | .git 泄露检测与恢复 |
+| svn-leak | Python | leak | .svn 泄露检测 |
+| backup-scan | Python | leak | 备份文件探测 |
+| cms-detect | Python | recon | CMS/框架指纹识别 |
+| banner-grab | Go | recon | 服务 Banner 抓取 |
 
 ---
 
