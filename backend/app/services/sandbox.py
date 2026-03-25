@@ -4,6 +4,7 @@ import asyncio
 import logging
 import os
 import re
+from urllib.parse import quote, urlparse, urlunparse, unquote
 from typing import Any
 
 from app.core.config import settings
@@ -42,6 +43,44 @@ _SANDBOX_PATH = os.environ.get(
 )
 
 
+_UNSAFE_QUERY_CHARS = frozenset("' \"<>{}`\\")
+_DQUOTED_URL_RE = re.compile(r'"(https?://[^"]+)"')
+_SQUOTED_URL_RE = re.compile(r"'(https?://[^']+)'")
+
+
+def _encode_query(raw_url: str) -> str | None:
+    """If query string has unsafe chars, return URL with encoded query. Else None."""
+    try:
+        parsed = urlparse(raw_url)
+    except Exception:
+        return None
+    if not parsed.query:
+        return None
+    if not any(c in _UNSAFE_QUERY_CHARS for c in parsed.query):
+        return None
+    decoded_query = unquote(parsed.query)
+    encoded_query = quote(decoded_query, safe="=&+%")
+    return urlunparse(parsed._replace(query=encoded_query))
+
+
+def _fix_curl_url(command: str) -> str:
+    """Auto-encode special chars in curl URL query strings to prevent exit_code 3."""
+    if "curl" not in command.lower():
+        return command
+
+    def _fix_dquoted(m: re.Match) -> str:
+        fixed = _encode_query(m.group(1))
+        return f'"{fixed}"' if fixed else m.group(0)
+
+    def _fix_squoted(m: re.Match) -> str:
+        fixed = _encode_query(m.group(1))
+        return f"'{fixed}'" if fixed else m.group(0)
+
+    result = _DQUOTED_URL_RE.sub(_fix_dquoted, command)
+    result = _SQUOTED_URL_RE.sub(_fix_squoted, result)
+    return result
+
+
 def is_command_safe(command: str) -> tuple[bool, str]:
     """Check if a command is safe to execute. Returns (safe, reason)."""
     if not command or not command.strip():
@@ -56,6 +95,7 @@ def is_command_safe(command: str) -> tuple[bool, str]:
 
 async def execute_shell(command: str) -> dict[str, Any]:
     """Execute a shell command in a sandboxed environment."""
+    command = _fix_curl_url(command)
     safe, reason = is_command_safe(command)
     if not safe:
         return {"error": f"Command blocked: {reason}", "exit_code": -1}
