@@ -15,7 +15,6 @@ from app.api.v1 import (
     tasks,
     plugins,
     reports,
-    topology,
     ai,
     terminal,
     admin,
@@ -104,7 +103,6 @@ app.include_router(tools.router, prefix="/api/v1/tools", tags=["tools"])
 app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["tasks"])
 app.include_router(plugins.router, prefix="/api/v1/plugins", tags=["plugins"])
 app.include_router(reports.router, prefix="/api/v1/reports", tags=["reports"])
-app.include_router(topology.router, prefix="/api/v1/topology", tags=["topology"])
 app.include_router(ai.router, prefix="/api/v1/ai", tags=["ai"])
 app.include_router(terminal.router, prefix="/api/v1/terminal", tags=["terminal"])
 app.include_router(admin.router, prefix="/api/v1")
