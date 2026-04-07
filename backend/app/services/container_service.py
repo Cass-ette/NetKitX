@@ -1,5 +1,6 @@
 """Container lifecycle management for user sandbox terminals."""
 
+import asyncio
 import logging
 import os
 import time
@@ -76,11 +77,39 @@ def create_user_container(user_id: int, token: str) -> str:
     return container.id
 
 
+async def _exec_local(command: str) -> dict[str, Any]:
+    """Execute a shell command locally (fallback when sandbox container is unavailable)."""
+    try:
+        proc = await asyncio.create_subprocess_shell(
+            command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=120)
+        return {
+            "stdout": stdout.decode("utf-8", errors="replace")[:30720],
+            "stderr": stderr.decode("utf-8", errors="replace")[:10240],
+            "exit_code": proc.returncode or 0,
+        }
+    except asyncio.TimeoutError:
+        return {"error": "Command timed out (120s)", "exit_code": -1}
+    except Exception as e:
+        return {"error": str(e), "exit_code": -1}
+
+
 async def exec_in_container(user_id: int, command: str, token: str) -> dict[str, Any]:
-    """Execute a shell command in the user's sandbox container."""
+    """Execute a shell command in the user's sandbox container.
+
+    Falls back to local execution if the sandbox image is not available
+    (e.g. local dev environment without the netkitx-sandbox image).
+    """
     container_id = get_user_container(user_id)
     if not container_id:
-        container_id = create_user_container(user_id, token)
+        try:
+            container_id = create_user_container(user_id, token)
+        except Exception as e:
+            logger.warning("Cannot create sandbox container, falling back to local exec: %s", e)
+            return await _exec_local(command)
 
     _last_active[user_id] = time.monotonic()
 

@@ -29,7 +29,8 @@ class Settings(BaseSettings):
     AGENT_COMMAND_TIMEOUT: int = 30
 
     # Knowledge extraction
-    AUTO_EXTRACT_KNOWLEDGE: bool = False
+    AUTO_EXTRACT_KNOWLEDGE: bool = True
+    AUTO_EXTRACT_MIN_TURNS: int = 5
 
     # GitHub OAuth
     GITHUB_CLIENT_ID: str = ""
@@ -40,7 +41,7 @@ class Settings(BaseSettings):
     DEFAULT_MAX_DAILY_TASKS: int = 100
 
     # CORS
-    ALLOWED_ORIGINS: list[str] = ["http://localhost:3000"]
+    ALLOWED_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:3002"]
 
     # WebAuthn / Passkey
     DOMAIN: str | None = None  # e.g. "wql.me" for production, None for localhost

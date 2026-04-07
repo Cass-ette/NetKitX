@@ -13,6 +13,24 @@ from app.models.knowledge import AgentSession, KnowledgeEntry, SessionTurn
 
 logger = logging.getLogger(__name__)
 
+
+logger.info("Knowledge service loaded")
+
+
+def _sanitize_text(value: Any) -> Any:
+    """Remove null bytes unsupported by PostgreSQL text columns."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value.replace("\x00", "")
+    if isinstance(value, dict):
+        json_str = json.dumps(value).replace("\x00", "")
+        try:
+            return json.loads(json_str)
+        except (json.JSONDecodeError):
+            return value
+    return value
+
 EXTRACTION_PROMPT = """\
 You are a cybersecurity knowledge extractor. Analyze this agent session and extract structured data.
 
@@ -351,18 +369,23 @@ async def finalize_session(
 
             # Batch insert
             for td in turn_dicts:
+                # Strip null bytes — PostgreSQL text columns cannot store \x00
+                for key in ("content", "action", "action_result"):
+                    val = td.get(key)
+                    if isinstance(val, str):
+                        td[key] = val.replace("\x00", "")
+                    elif isinstance(val, dict):
+                        _strip_nulls(val)
                 turn = SessionTurn(
                     session_id=session_id,
                     turn_number=td.get("turn_number", 0),
                     role=td["role"],
-                    content=td.get("content", ""),
-                    action=td.get("action"),
-                    action_result=td.get("action_result"),
+                    content=_sanitize_text(td.get("content", "")),
+                    action=_sanitize_text(td.get("action")),
+                    action_result=_sanitize_text(td.get("action_result")),
                     action_status=td.get("action_status"),
                 )
-                db.add(turn)
-
-            # Update session
+                db.add(turn)            # Update session
             agent_session = (
                 await db.execute(select(AgentSession).where(AgentSession.id == session_id))
             ).scalar_one_or_none()
@@ -389,10 +412,20 @@ async def finalize_session(
         from app.core.config import settings
 
         if settings.AUTO_EXTRACT_KNOWLEDGE and user_id is not None:
-            try:
-                await extract_knowledge(session_id, user_id)
-            except Exception:
-                logger.exception("Auto-extract failed for session %d", session_id)
+            # Only auto-extract if session has enough turns to be meaningful
+            min_turns = getattr(settings, "AUTO_EXTRACT_MIN_TURNS", 5)
+            if max_turn >= min_turns:
+                try:
+                    await extract_knowledge(session_id, user_id)
+                except Exception:
+                    logger.exception("Auto-extract failed for session %d", session_id)
+            else:
+                logger.info(
+                    "Skipping auto-extract for session %d: only %d turns (min: %d)",
+                    session_id,
+                    max_turn,
+                    min_turns,
+                )
 
     except Exception:
         logger.exception("Failed to finalize session %d", session_id)

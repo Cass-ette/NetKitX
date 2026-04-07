@@ -3,6 +3,7 @@ version: 1.0.0
 description: 弱口令检测 — 多协议弱密码爆破（SSH/FTP/MySQL/Redis/PostgreSQL）
 category: vuln
 engine: python
+kill_chain_phase: initial_access
 
 params:
   - name: host

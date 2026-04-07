@@ -31,6 +31,7 @@ class PluginMeta:
     ui_component: str | None = None  # custom UI component name
     params: list[dict[str, Any]] = field(default_factory=list)
     output: dict[str, Any] = field(default_factory=dict)
+    kill_chain_phase: str | None = None
 
 
 class PluginBase(ABC):

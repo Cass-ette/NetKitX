@@ -3,6 +3,7 @@ version: 1.0.0
 description: 子域名枚举 — DNS 字典爆破发现子域名
 category: recon
 engine: python
+kill_chain_phase: reconnaissance
 
 params:
   - name: domain

@@ -3,6 +3,7 @@ version: 1.0.0
 description: DNS 记录查询 — 查询 A/AAAA/MX/CNAME/TXT/NS/SOA 记录
 category: recon
 engine: python
+kill_chain_phase: reconnaissance
 
 params:
   - name: domain

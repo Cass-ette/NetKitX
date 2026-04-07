@@ -3,6 +3,7 @@ version: 1.0.0
 description: SSL/TLS Certificate Inspector - check certificate validity, expiry, issuer, SANs and weak configs
 category: recon
 engine: python
+kill_chain_phase: reconnaissance
 
 params:
   - name: target

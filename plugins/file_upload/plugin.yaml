@@ -3,6 +3,7 @@ version: 1.0.0
 description: 文件上传漏洞检测 — 无验证/前端验证/.htaccess/MIME绕过/00截断/后缀大小写/点绕过/空格绕过/双写后缀/文件头检查/getimagesize/exif_imagetype/二次渲染
 category: vuln
 engine: python
+kill_chain_phase: initial_access
 
 params:
   - name: url

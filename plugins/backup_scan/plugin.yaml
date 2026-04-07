@@ -3,6 +3,7 @@ version: 1.0.0
 description: 备份文件探测 — 扫描 .bak/.zip/.sql 等敏感备份文件
 category: recon
 engine: python
+kill_chain_phase: initial_access
 
 params:
   - name: url

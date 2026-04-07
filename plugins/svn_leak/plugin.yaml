@@ -3,6 +3,7 @@ version: 1.0.0
 description: SVN 泄露检测 — 探测 .svn/ 目录泄露
 category: recon
 engine: python
+kill_chain_phase: initial_access
 
 params:
   - name: url

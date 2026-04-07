@@ -108,7 +108,7 @@ async def run_workflow(
 
     async def event_stream():
         from app.core.database import async_session
-        from app.services.agent_service import execute_plugin_action
+        from app.services.agent_utils import execute_plugin_action
 
         final_status = "completed"
 

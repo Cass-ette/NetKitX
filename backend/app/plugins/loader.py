@@ -32,6 +32,7 @@ def load_plugin_meta(plugin_dir: Path) -> PluginMeta | None:
         ui_component=config.get("ui_component"),
         params=config.get("params", []),
         output=config.get("output", {}),
+        kill_chain_phase=config.get("kill_chain_phase"),
     )
 
 

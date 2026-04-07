@@ -3,6 +3,7 @@ version: 1.0.0
 description: 目录扫描 — 字典爆破发现隐藏路径
 category: recon
 engine: python
+kill_chain_phase: reconnaissance
 
 params:
   - name: url
