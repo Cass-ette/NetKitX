@@ -40,3 +40,6 @@ sandbox/netkitx
 .coverage
 htmlcov/
 .pytest_cache/
+
+# Competition materials (local reference only)
+competition/
