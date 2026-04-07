@@ -14,7 +14,6 @@ from app.api.v1 import (
     tools,
     tasks,
     plugins,
-    marketplace,
     reports,
     topology,
     ai,
@@ -104,7 +103,6 @@ app.include_router(passkey.router, prefix="/api/v1/auth/passkey", tags=["passkey
 app.include_router(tools.router, prefix="/api/v1/tools", tags=["tools"])
 app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["tasks"])
 app.include_router(plugins.router, prefix="/api/v1/plugins", tags=["plugins"])
-app.include_router(marketplace.router, prefix="/api/v1")
 app.include_router(reports.router, prefix="/api/v1/reports", tags=["reports"])
 app.include_router(topology.router, prefix="/api/v1/topology", tags=["topology"])
 app.include_router(ai.router, prefix="/api/v1/ai", tags=["ai"])
