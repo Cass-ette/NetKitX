@@ -43,3 +43,12 @@ htmlcov/
 
 # Competition materials (local reference only)
 competition/
+
+# Contest branch specific
+.dev.pid
+*.pid
+backups/
+NetKitX-Plugins/
+docs/RECRUIT.md
+task_plan.md
+*.md.bak
