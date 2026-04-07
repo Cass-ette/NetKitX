@@ -15,7 +15,7 @@ NetKitX 是一个可扩展的网络安全集成工具 Web 应用，支持插件�
 | 缓存/队列 | Redis |
 | 任务队列 | Celery |
 | 认证 | JWT + GitHub OAuth + WebAuthn (Passkey) |
-| AI | Claude (Anthropic) / DeepSeek / GLM (智谱 AI) |
+| AI | DeepSeek / GLM (智谱 AI) / 阿里通义 (Custom) |
 | 沙箱 | Docker per-user containers |
 | 部署 | Docker Compose + Nginx + Let's Encrypt |
 
@@ -97,7 +97,7 @@ NetKitX/
 │   │   │   ├── knowledge.py   # 知识库 (AgentSession, SessionTurn, KnowledgeEntry)
 │   │   │   └── marketplace.py # 市场 (Package, Version, Review...)
 │   │   ├── services/
-│   │   │   ├── ai_service.py       # AI 调用 (Claude/DeepSeek/GLM)
+│   │   │   ├── ai_service.py       # AI 调用 (DeepSeek/GLM/Custom)
 │   │   │   ├── agent_service.py    # AI Agent 自主执行
 │   │   │   ├── passkey_service.py  # WebAuthn 注册/认证
 │   │   │   ├── knowledge_service.py # 知识提取/学习报告
@@ -347,7 +347,7 @@ Agent 会话 → finalize_session() → build_session_digest()
 - 网络拓扑可视化 — React Flow + dagre 自动布局
 
 ### Phase 4: AI 集成 ✅
-- AI 对话 — Claude/DeepSeek/GLM 多提供商支持
+- AI 对话 — DeepSeek/GLM/Custom 多提供商支持
 - 防御/进攻模式切换
 - 语言感知响应
 - AI 分析面板 + 全页面聊天

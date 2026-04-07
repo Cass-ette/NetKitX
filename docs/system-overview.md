@@ -331,7 +331,7 @@ class SessionPlugin(PluginBase):
 | **后端 API** | 15 个模块，65+ 端点 |
 | **插件数量** | 15 个内置 + 社区插件 |
 | **插件模式** | 2 种（oneshot + session） |
-| **AI 提供商** | 4 个（Claude, DeepSeek, GLM, OpenAI-compatible） |
+| **AI 提供商** | 3 个（DeepSeek, GLM, 阿里通义 Custom） |
 | **AI 模式** | 3 种执行模式 × 2 种安全模式 = 6 种组合 |
 | **国际化** | 8 种语言 × 484 键 = 3872 条翻译 |
 | **认证方式** | 3 种（密码、OAuth、Passkey） |
