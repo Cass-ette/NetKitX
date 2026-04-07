@@ -402,17 +402,6 @@ async def _execute_action(
     action_type = action.get("type", "")
 
     if action_type == "plugin":
-        # Validate whitelist for non-admin users
-        if not is_admin and user_id:
-            from app.core.database import async_session
-            from app.services.whitelist_service import validate_targets
-
-            params = action.get("params", {})
-            async with async_session() as session:
-                is_valid, error_msg = await validate_targets(session, user_id, False, params)
-                if not is_valid:
-                    return {"error": f"Unauthorized target: {error_msg}"}
-
         return await execute_plugin_action(action)
     elif action_type == "shell":
         if agent_mode != "terminal":

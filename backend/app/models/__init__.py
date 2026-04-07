@@ -7,8 +7,6 @@ from app.models.audit_log import AuditLog
 from app.models.announcement import Announcement
 from app.models.knowledge import AgentSession, SessionTurn, KnowledgeEntry
 from app.models.passkey import PasskeyCredential
-from app.models.whitelist import AuthorizedTarget
-from app.models.workflow import Workflow
 
 __all__ = [
     "User",
@@ -22,6 +20,4 @@ __all__ = [
     "SessionTurn",
     "KnowledgeEntry",
     "PasskeyCredential",
-    "AuthorizedTarget",
-    "Workflow",
 ]

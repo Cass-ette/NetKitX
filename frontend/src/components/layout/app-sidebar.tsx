@@ -31,17 +31,13 @@ import { useTranslations } from "@/i18n/use-translations";
 import { useAuth } from "@/lib/auth";
 import type { LucideIcon } from "lucide-react";
 
-const navItems: { key: string; href: string; icon: LucideIcon; adminOnly?: boolean }[] = [
+const navItems: { key: string; href: string; icon: LucideIcon }[] = [
   { key: "dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { key: "tools", href: "/tools", icon: Wrench },
-  { key: "tasks", href: "/tasks", icon: ListTodo },
-  { key: "plugins", href: "/plugins", icon: Puzzle },
-  { key: "developers", href: "/developers", icon: BookOpen },
   { key: "aiChat", href: "/ai-chat", icon: Bot },
   { key: "sessions", href: "/sessions", icon: History },
-  { key: "workflows", href: "/workflows", icon: GitBranch },
   { key: "knowledge", href: "/knowledge", icon: Brain },
-  { key: "admin", href: "/admin", icon: ShieldCheck, adminOnly: true },
+  { key: "plugins", href: "/plugins", icon: Puzzle },
+  { key: "tasks", href: "/tasks", icon: ListTodo },
   { key: "settings", href: "/settings", icon: Settings },
 ];
 
@@ -63,9 +59,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>{t("navigation")}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems
-                .filter((item) => !item.adminOnly || user?.role === "admin")
-                .map((item) => (
+              {navItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)}>
                     <Link href={item.href}>

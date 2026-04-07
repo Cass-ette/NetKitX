@@ -17,12 +17,8 @@ from app.api.v1 import (
     reports,
     ai,
     terminal,
-    admin,
     knowledge,
     passkey,
-    whitelist,
-    plugin_sessions,
-    workflows,
 )
 from app.plugins.loader import load_all_plugins
 
@@ -105,11 +101,7 @@ app.include_router(plugins.router, prefix="/api/v1/plugins", tags=["plugins"])
 app.include_router(reports.router, prefix="/api/v1/reports", tags=["reports"])
 app.include_router(ai.router, prefix="/api/v1/ai", tags=["ai"])
 app.include_router(terminal.router, prefix="/api/v1/terminal", tags=["terminal"])
-app.include_router(admin.router, prefix="/api/v1")
 app.include_router(knowledge.router, prefix="/api/v1", tags=["knowledge"])
-app.include_router(whitelist.router, prefix="/api/v1", tags=["whitelist"])
-app.include_router(plugin_sessions.router, prefix="/api/v1", tags=["plugin-sessions"])
-app.include_router(workflows.router, prefix="/api/v1", tags=["workflows"])
 
 
 @app.get("/api/health")
@@ -150,16 +142,6 @@ async def stats():
     }
 
 
-@app.get("/api/v1/announcements")
-async def public_announcements(session: AsyncSession = Depends(get_session)):
-    """Public endpoint: active announcements for dashboard banner."""
-    from app.services.admin_service import get_announcements
-    from app.schemas.admin import AnnouncementResponse
-
-    anns = await get_announcements(session, active_only=True, limit=10)
-    return [AnnouncementResponse.model_validate(a) for a in anns]
-
-
 @app.websocket("/api/v1/ws/tasks/{task_id}")
 async def task_websocket(websocket: WebSocket, task_id: int):
     """WebSocket endpoint for real-time task updates."""
@@ -171,9 +153,3 @@ async def task_websocket(websocket: WebSocket, task_id: int):
             await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(tid, websocket)
-
-
-@app.websocket("/api/v1/ws/plugin-sessions/{session_id}")
-async def plugin_session_ws(websocket: WebSocket, session_id: str):
-    """WebSocket endpoint for plugin session communication."""
-    await plugin_sessions.plugin_session_websocket(websocket, session_id)
