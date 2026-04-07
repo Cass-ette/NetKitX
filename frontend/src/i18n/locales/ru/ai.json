@@ -22,7 +22,6 @@
   "welcome": "Спросите меня о сетевой безопасности, анализе уязвимостей или тестировании на проникновение.",
   "deletedSuccess": "Настройка ИИ удалена",
   "savedSuccess": "Настройка ИИ сохранена",
-  "providerClaude": "Claude (Anthropic)",
   "providerDeepseek": "DeepSeek",
   "modeDefense": "Защита",
   "modeOffense": "Атака",

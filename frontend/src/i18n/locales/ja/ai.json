@@ -22,7 +22,6 @@
   "welcome": "ネットワークセキュリティ、脆弱性分析、ペネトレーションテストについて何でもお聞きください。",
   "deletedSuccess": "AI設定を削除しました",
   "savedSuccess": "AI設定を保存しました",
-  "providerClaude": "Claude (Anthropic)",
   "providerDeepseek": "DeepSeek",
   "modeDefense": "防御モード",
   "modeOffense": "攻撃モード",

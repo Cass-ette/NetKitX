@@ -22,7 +22,6 @@
   "welcome": "Posez-moi des questions sur la sécurité réseau, l'analyse de vulnérabilités ou les tests d'intrusion.",
   "deletedSuccess": "Configuration IA supprimée",
   "savedSuccess": "Configuration IA enregistrée",
-  "providerClaude": "Claude (Anthropic)",
   "providerDeepseek": "DeepSeek",
   "modeDefense": "Défense",
   "modeOffense": "Attaque",

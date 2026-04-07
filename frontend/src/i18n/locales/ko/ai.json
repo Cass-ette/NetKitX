@@ -22,7 +22,6 @@
   "welcome": "네트워크 보안, 취약점 분석 또는 침투 테스트에 대해 무엇이든 물어보세요.",
   "deletedSuccess": "AI 설정이 삭제되었습니다",
   "savedSuccess": "AI 설정이 저장되었습니다",
-  "providerClaude": "Claude (Anthropic)",
   "providerDeepseek": "DeepSeek",
   "modeDefense": "방어 모드",
   "modeOffense": "공격 모드",

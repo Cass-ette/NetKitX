@@ -1,462 +1,36 @@
-"""AI Agent service: plugin catalog, action parsing, agent loop."""
+"""AI Agent service: main agent loop and action execution."""
 
-import json
 import logging
-import re
 from collections.abc import AsyncIterator
-from difflib import SequenceMatcher
 from typing import Any
 
 from app.core.config import settings
-from app.plugins.registry import registry
 from app.services.ai_service import (
-    get_system_prompt,
     get_lang_reminder,
-    stream_claude,
     stream_deepseek,
     stream_glm,
     stream_openai_compatible,
 )
+from app.services.agent_prompts import get_agent_system_prompt
+from app.services.agent_utils import (
+    MAX_CONSECUTIVE_ERRORS,
+    STAGNATION_FORCE,
+    STAGNATION_STOP,
+    STAGNATION_WARN,
+    _action_fingerprint,
+    _estimate_context_chars,
+    _preprocess_shell_command,
+    _summarize_context,
+    classify_error,
+    count_similar_recent,
+    execute_plugin_action,
+    format_action_result,
+    has_action_attempt,
+    parse_action,
+)
+from app.services.attack_tree_service import get_next_phase, is_command_dangerous
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Plugin catalog generation
-# ---------------------------------------------------------------------------
-
-
-def build_plugin_catalog() -> str:
-    """Build a text catalog of all enabled plugins for the system prompt."""
-    plugins = registry.list_enabled()
-    if not plugins:
-        return "No plugins available."
-
-    lines = ["## Available Plugins\n"]
-    for meta in plugins:
-        lines.append(f"### {meta.name} (v{meta.version})")
-        lines.append(f"Category: {meta.category} | Engine: {meta.engine}")
-        lines.append(f"Description: {meta.description}")
-        if meta.params:
-            lines.append("Parameters:")
-            for p in meta.params:
-                req = " (required)" if p.get("required") else ""
-                default = f" [default: {p.get('default')}]" if "default" in p else ""
-                lines.append(f"  - {p['name']}: {p.get('type', 'string')}{req}{default}")
-                if p.get("placeholder"):
-                    lines.append(f"    hint: {p['placeholder']}")
-                if p.get("options"):
-                    lines.append(f"    options: {', '.join(p['options'])}")
-        lines.append("")
-    return "\n".join(lines)
-
-
-# ---------------------------------------------------------------------------
-# Agent system prompts
-# ---------------------------------------------------------------------------
-
-AGENT_INSTRUCTION_SEMI_AUTO = """
-## Agent Mode: Semi-Auto
-You are an AI agent that can propose actions for the user to approve.
-When you want to run a plugin or command, output an action block using XML tags:
-
-<action type="plugin">
-  <plugin>plugin-name</plugin>
-  <params>
-    <param name="key">value</param>
-  </params>
-  <reason>Why you want to run this</reason>
-</action>
-
-Only propose ONE action at a time. After the action, the user will decide to execute or skip.
-You will receive the result and can then propose the next action.
-"""
-
-AGENT_INSTRUCTION_FULL_AUTO = """
-## Agent Mode: Full-Auto (Plugin Only)
-You are an autonomous AI agent that automatically executes plugins.
-Output action blocks to run plugins — they will be executed automatically.
-
-<action type="plugin">
-  <plugin>plugin-name</plugin>
-  <params>
-    <param name="key">value</param>
-  </params>
-  <reason>Why you want to run this</reason>
-</action>
-
-IMPORTANT: You can ONLY use type="plugin". Shell commands are NOT allowed in this mode.
-Only propose ONE action per response. After execution, you'll see the result and can continue.
-When your analysis is complete or no further actions are needed, respond without an action block.
-"""
-
-AGENT_INSTRUCTION_TERMINAL = """
-## Agent Mode: Terminal (Plugins + Shell)
-You are an autonomous AI agent that can execute plugins and shell commands.
-
-Use the right tool for the job:
-- **Plugins** return structured JSON — ideal for standard scans (port scan, dir scan, SQL injection tests).
-- **Shell commands** offer full flexibility — ideal for custom payloads, command chaining, and anything plugins don't cover.
-Check the Available Plugins list for built-in capabilities, but use shell freely when you need more control.
-
-To use a plugin:
-
-<action type="plugin">
-  <plugin>plugin-name</plugin>
-  <params>
-    <param name="key">value</param>
-  </params>
-  <reason>Why you want to run this</reason>
-</action>
-
-To run a shell command:
-
-<action type="shell">
-  <command>your command here</command>
-  <reason>Why you want to run this</reason>
-</action>
-
-Only propose ONE action per response. After execution, you'll see the result and can continue.
-When your analysis is complete, respond without an action block.
-"""
-
-_AGENT_ERROR_HANDLING = """
-## Error Handling
-If an action fails, you will receive an error message in the format [Action Failed: ...].
-When this happens:
-- Analyze the error message carefully before retrying.
-- If a plugin was not found, check the Available Plugins list and use the exact name.
-- If parameters were wrong, review the plugin's parameter requirements and correct them.
-- Try a different approach, different plugin, or different parameters.
-- Do NOT repeat the exact same action that just failed.
-- If you have failed multiple consecutive times, continue analysis in plain text.
-"""
-
-_AGENT_STRATEGY = """
-## Strategy
-- RIGHT TOOL: Use plugins for standard scans (structured data, fewer tokens). Use shell for custom payloads, chaining, or when plugins don't fit. Don't force a plugin where a curl one-liner would be simpler.
-- RECON FIRST: Before attacking, map the environment (OS, versions, services, technologies).
-- OBSERVE, DON'T ASSUME: Infer database type, framework, and config from error messages, response headers, and behavioral differences. If clues are already visible, act on them immediately — don't waste turns on redundant fingerprinting. When truly unknown, test with version()/@@version/sqlite_version() to confirm.
-- VALIDATE EXTRACTION: After each data extraction attempt, check whether YOUR injected data actually appears in the response. If the output looks the same as before or shows values other than what you injected, the extraction technique isn't working as expected. Diagnose WHY: maybe legitimate results mask your injected data, maybe the app doesn't reflect output at all. Adjust accordingly.
-- ACT, DON'T REPORT: Maximize action density — include an action block in every response unless you've achieved the goal. Keep analysis brief (2-3 sentences). NEVER write a summary report or "recommended next steps" when you still have turns left. Your job is to DO the work, not plan it for a human.
-- FILTER REPEATED QUERIES: When querying the same endpoint repeatedly, pipe output through grep/sed/cut to isolate the meaningful difference. Sending identical boilerplate wastes context.
-- SAME APPROACH 3 TIMES MAX: If an approach fails 3 times, switch to a completely different technique.
-- MULTI-LAYER ENCODING: When data passes through multiple layers (shell → curl → HTTP → eval), use base64 or chr() to avoid escaping issues.
-- VERIFY EACH STEP: If a command returns no useful output, verify each step individually with the simplest possible command before adding complexity.
-- RECOGNIZE TARGET DATA: Learn to identify what you're looking for. CTF flags match the pattern `word{...}` (e.g. flag{xx}, CTF{xx}, any_prefix{xx}). Credentials are username/password pairs, API keys (sk-..., key-..., Bearer tokens), or session tokens. Sensitive files include /etc/shadow, .env, config files with secrets, database dumps. When ANY of these appear in a response, you have found the target.
-- KNOW WHEN TO STOP: When you find the target data, IMMEDIATELY present it and stop. Do NOT continue testing or "verify" the same finding again. State the result clearly and end without an action block.
-"""
-
-_AGENT_INSTRUCTIONS = {
-    "semi_auto": AGENT_INSTRUCTION_SEMI_AUTO,
-    "full_auto": AGENT_INSTRUCTION_FULL_AUTO,
-    "terminal": AGENT_INSTRUCTION_TERMINAL,
-}
-
-
-def get_agent_system_prompt(agent_mode: str, security_mode: str, lang: str) -> str:
-    """Compose full system prompt: language + security + agent instructions + error handling + plugin catalog."""
-    base = get_system_prompt(security_mode, lang)
-    agent_inst = _AGENT_INSTRUCTIONS.get(agent_mode, "")
-    catalog = build_plugin_catalog()
-    return f"{base}\n\n{agent_inst}\n\n{_AGENT_ERROR_HANDLING}\n\n{_AGENT_STRATEGY}\n\n{catalog}"
-
-
-# ---------------------------------------------------------------------------
-# Action parsing (regex-based, tolerates XML-unfriendly content like <?php, &, >)
-# ---------------------------------------------------------------------------
-
-_ACTION_RE = re.compile(r"<action\s[^>]*>.*?</action>", re.DOTALL)
-_TYPE_RE = re.compile(r'<action\s[^>]*type\s*=\s*["\'](\w+)["\']')
-_TAG_RE = {
-    "plugin": re.compile(r"<plugin>(.*?)</plugin>", re.DOTALL),
-    "command": re.compile(r"<command>(.*?)</command>", re.DOTALL),
-    "reason": re.compile(r"<reason>(.*?)</reason>", re.DOTALL),
-    "params": re.compile(r"<params>(.*?)</params>", re.DOTALL),
-    "param": re.compile(r'<param\s+name\s*=\s*["\']([^"\']+)["\']>(.*?)</param>', re.DOTALL),
-}
-
-
-def parse_action(text: str) -> dict[str, Any] | None:
-    """Extract the first <action> block from AI text using regex (no strict XML parsing)."""
-    match = _ACTION_RE.search(text)
-    if not match:
-        return None
-
-    block = match.group(0)
-
-    type_match = _TYPE_RE.search(block)
-    if not type_match:
-        return None
-
-    action_type = type_match.group(1)
-    result: dict[str, Any] = {"type": action_type, "raw": block}
-
-    if action_type == "plugin":
-        m = _TAG_RE["plugin"].search(block)
-        result["plugin"] = m.group(1).strip() if m else ""
-        params: dict[str, str] = {}
-        for pm in _TAG_RE["param"].finditer(block):
-            name = pm.group(1).strip()
-            value = pm.group(2).strip()
-            if name:
-                params[name] = value
-        result["params"] = params
-    elif action_type == "shell":
-        m = _TAG_RE["command"].search(block)
-        result["command"] = m.group(1).strip() if m else ""
-
-    m = _TAG_RE["reason"].search(block)
-    result["reason"] = m.group(1).strip() if m else ""
-
-    return result
-
-
-def strip_action_tags(text: str) -> str:
-    """Remove <action>...</action> blocks from AI text for display."""
-    return _ACTION_RE.sub("", text).strip()
-
-
-_ACTION_ATTEMPT_RE = re.compile(r"<action[\s>]", re.IGNORECASE)
-
-
-def has_action_attempt(text: str) -> bool:
-    """Check if text looks like a failed action attempt (malformed XML)."""
-    return bool(_ACTION_ATTEMPT_RE.search(text))
-
-
-# ---------------------------------------------------------------------------
-# Shell command preprocessing
-# ---------------------------------------------------------------------------
-
-_CURL_RE = re.compile(r"\bcurl\b")
-_CURL_SILENT_RE = re.compile(r"\bcurl\s+.*-[a-zA-Z]*s")
-
-
-def _preprocess_shell_command(command: str) -> str:
-    """Add -s (silent) to curl commands to suppress noisy progress output."""
-    if "curl" not in command:
-        return command
-    # Skip if any curl invocation already has -s flag
-    if _CURL_SILENT_RE.search(command):
-        return command
-    return _CURL_RE.sub("curl -s", command)
-
-
-# ---------------------------------------------------------------------------
-# Plugin execution (synchronous wait for result)
-# ---------------------------------------------------------------------------
-
-
-async def execute_plugin_action(action: dict[str, Any]) -> dict[str, Any]:
-    """Execute a plugin action and return the result."""
-    plugin_name = action.get("plugin", "")
-    params = action.get("params", {})
-
-    plugin = registry.get(plugin_name)
-    if not plugin:
-        return {"error": f"Plugin '{plugin_name}' not found or not enabled"}
-
-    if not registry.is_enabled(plugin_name):
-        return {"error": f"Plugin '{plugin_name}' is disabled"}
-
-    results: list[dict] = []
-    logs: list[str] = []
-    try:
-        async for event in plugin.execute(params):
-            if event.type == "result":
-                results.append(event.data)
-            elif event.type == "log":
-                logs.append(event.data.get("message", str(event.data)))
-            elif event.type == "error":
-                return {"error": event.data.get("message", str(event.data))}
-    except Exception as e:
-        return {"error": str(e)}
-
-    return {"items": results, "logs": logs}
-
-
-# ---------------------------------------------------------------------------
-# Output compression (clean result before injecting into conversation)
-# ---------------------------------------------------------------------------
-
-_HTML_TAG_RE = re.compile(r"<[^>]+>")
-_ANSI_RE = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]")
-_BLANK_LINES_RE = re.compile(r"\n{3,}")
-_WHITESPACE_LINES_RE = re.compile(r"\n[ \t]+\n")
-
-# Tags whose attributes are security-relevant (preserve as [tag attr=val] text)
-_SEC_ATTR_RE = re.compile(
-    r"<(form|input|a|iframe|meta|img|button|select|option|textarea)\s+([^>]*)>",
-    re.IGNORECASE,
-)
-_ATTR_PAIR_RE = re.compile(r'(\w+)\s*=\s*["\']([^"\']*)["\']')
-
-# Small inline scripts (< threshold) may contain tokens/endpoints — keep them.
-# Large scripts (bundled JS, libraries) are noise — strip them.
-_SCRIPT_RE = re.compile(r"<script[^>]*>(.*?)</script>", re.DOTALL | re.IGNORECASE)
-_SCRIPT_KEEP_THRESHOLD = 1000  # chars
-
-# Max chars to keep from a single stdout/stderr field before smart truncation
-_FIELD_MAX = 12000
-_FIELD_HEAD = 5000
-_FIELD_TAIL = 5000
-
-
-def _preserve_sec_attrs(match: re.Match) -> str:
-    """Convert security-relevant HTML tags to compact [tag attr=val] text."""
-    tag = match.group(1).lower()
-    attrs_str = match.group(2)
-    pairs = _ATTR_PAIR_RE.findall(attrs_str)
-    if pairs:
-        attr_text = " ".join(f"{k}={v}" for k, v in pairs)
-        return f"[{tag} {attr_text}]"
-    return ""
-
-
-def _strip_html(text: str) -> str:
-    """Remove HTML tags, preserve security-relevant content.
-
-    - Keeps small inline <script> bodies (may contain tokens, endpoints, secrets)
-    - Strips large <script> blocks (bundled JS / library noise)
-    - Extracts attributes from form/input/a/iframe/meta tags
-    - Strips <style> blocks and purely presentational tags
-    """
-    # Strip style blocks (CSS is noise for security analysis)
-    text = re.sub(r"<style[^>]*>.*?</style>", "", text, flags=re.DOTALL | re.IGNORECASE)
-
-    # Keep small inline scripts, strip large ones (bundled JS is noise)
-    def _handle_script(m: re.Match) -> str:
-        content = m.group(1).strip()
-        return content if len(content) <= _SCRIPT_KEEP_THRESHOLD else ""
-
-    text = _SCRIPT_RE.sub(_handle_script, text)
-    # Extract security-relevant tag attributes before stripping
-    text = _SEC_ATTR_RE.sub(_preserve_sec_attrs, text)
-    # Strip remaining tags
-    text = _HTML_TAG_RE.sub("", text)
-    # Decode common HTML entities
-    for entity, char in [
-        ("&amp;", "&"),
-        ("&lt;", "<"),
-        ("&gt;", ">"),
-        ("&quot;", '"'),
-        ("&#39;", "'"),
-        ("&nbsp;", " "),
-    ]:
-        text = text.replace(entity, char)
-    return text
-
-
-def _compress_output(text: str) -> str:
-    """Clean and compress command output for token efficiency."""
-    if not text:
-        return text
-    # Strip ANSI color codes
-    text = _ANSI_RE.sub("", text)
-    # Strip HTML if detected
-    if "<html" in text.lower() or "<body" in text.lower() or "<div" in text.lower():
-        text = _strip_html(text)
-    # Collapse excessive blank lines
-    text = _WHITESPACE_LINES_RE.sub("\n\n", text)
-    text = _BLANK_LINES_RE.sub("\n\n", text)
-    text = text.strip()
-    # Smart truncation: keep head + tail, cut middle
-    if len(text) > _FIELD_MAX:
-        head = text[:_FIELD_HEAD]
-        tail = text[-_FIELD_TAIL:]
-        cut = len(text) - _FIELD_HEAD - _FIELD_TAIL
-        text = f"{head}\n\n...[{cut} chars omitted]...\n\n{tail}"
-    return text
-
-
-def compress_result(result: dict[str, Any]) -> dict[str, Any]:
-    """Compress stdout/stderr in a shell result dict."""
-    out = dict(result)
-    if "stdout" in out and isinstance(out["stdout"], str):
-        out["stdout"] = _compress_output(out["stdout"])
-    if "stderr" in out and isinstance(out["stderr"], str):
-        out["stderr"] = _compress_output(out["stderr"])
-    return out
-
-
-# ---------------------------------------------------------------------------
-# Format result for conversation injection
-# ---------------------------------------------------------------------------
-
-MAX_RESULT_CHARS = 20000
-
-
-def format_action_result(action: dict[str, Any], result: dict[str, Any]) -> str:
-    """Format an action result as text to inject into the conversation."""
-    action_type = action.get("type", "")
-    if action_type == "plugin":
-        header = f"[Plugin Result: {action.get('plugin', '?')}]"
-    elif action_type == "shell":
-        header = f"[Shell Result: {action.get('command', '?')[:80]}]"
-    else:
-        header = "[Action Result]"
-
-    # Compress output before serialization
-    compressed = compress_result(result)
-    result_str = json.dumps(compressed, default=str, ensure_ascii=False)
-    if len(result_str) > MAX_RESULT_CHARS:
-        result_str = result_str[:MAX_RESULT_CHARS] + "...(truncated)"
-
-    return f"{header}\n{result_str}"
-
-
-# ---------------------------------------------------------------------------
-# Error classification
-# ---------------------------------------------------------------------------
-
-MAX_CONSECUTIVE_ERRORS = 3
-
-_FATAL_ERROR_PATTERNS = [
-    "Command blocked:",
-    "Unknown action type:",
-    "Shell commands only allowed",
-]
-
-
-def classify_error(error: str) -> str:
-    """Classify an action error as 'fatal' or 'retryable'."""
-    for pattern in _FATAL_ERROR_PATTERNS:
-        if pattern in error:
-            return "fatal"
-    return "retryable"
-
-
-# ---------------------------------------------------------------------------
-# Stagnation detection (semantic loop breaker)
-# ---------------------------------------------------------------------------
-
-STAGNATION_SIMILARITY = 0.7  # two actions >70% similar = "same approach"
-STAGNATION_WARN = 3  # inject soft warning
-STAGNATION_FORCE = 5  # inject hard warning
-STAGNATION_STOP = 7  # terminate
-
-
-def _action_fingerprint(action: dict[str, Any]) -> str:
-    """Extract a comparable fingerprint from an action dict."""
-    atype = action.get("type", "")
-    if atype == "shell":
-        return f"shell:{action.get('command', '')}"
-    elif atype == "plugin":
-        params_str = json.dumps(action.get("params", {}), sort_keys=True)
-        return f"plugin:{action.get('plugin', '')}:{params_str}"
-    return ""
-
-
-def _is_similar(a: str, b: str) -> bool:
-    """Check if two fingerprints are similar enough to count as repetition."""
-    if not a or not b:
-        return False
-    return SequenceMatcher(None, a, b).ratio() >= STAGNATION_SIMILARITY
-
-
-def count_similar_recent(history: list[str], current: str) -> int:
-    """Count how many recent actions are similar to the current one."""
-    return sum(1 for h in history if _is_similar(h, current))
 
 
 # ---------------------------------------------------------------------------
@@ -485,20 +59,31 @@ async def run_agent_loop(
 
     For semi_auto: yields one AI response, parses action, yields waiting event, then stops.
     For full_auto/terminal: loops up to max_turns, auto-executing actions.
+
+    Enhanced with:
+    - Attack tree phase tracking (reconnaissance -> initial_access -> ... -> exfiltration)
+    - PEP role rotation (planner/perceptor alternation for focused thinking)
+    - Context compression when conversation grows too large
+    - RAG re-query every 3 turns for updated knowledge
     """
-    system_prompt = get_agent_system_prompt(agent_mode, security_mode, lang)
+    # --- Phase tracking state ---
+    current_phase = "reconnaissance"
+
+    # --- Build initial system prompt (phase-aware) ---
+    system_prompt = get_agent_system_prompt(agent_mode, security_mode, lang, phase=current_phase)
     lang_reminder = get_lang_reminder(lang)
 
     # RAG: inject related historical knowledge into system prompt
+    rag_context_cache: str | None = None
     if settings.RAG_ENABLED and user_id:
         user_query = next((m["content"] for m in messages if m["role"] == "user"), "")
         if user_query:
             try:
                 from app.services.embedding_service import search_and_format_knowledge
 
-                rag_context = await search_and_format_knowledge(user_query, user_id, lang)
-                if rag_context:
-                    system_prompt += f"\n\n{rag_context}"
+                rag_context_cache = await search_and_format_knowledge(user_query, user_id, lang)
+                if rag_context_cache:
+                    system_prompt += f"\n\n{rag_context_cache}"
             except Exception:
                 logger.warning("RAG context injection failed, continuing without it")
 
@@ -540,15 +125,29 @@ async def run_agent_loop(
         turn += 1
         if max_turns > 0 and turn > max_turns:
             break
-        yield {"event": "turn", "data": {"turn": turn, "max_turns": max_turns}}
 
-        # Stream AI response
+        # --- PEP Role rotation: odd turns = planner, even turns = perceptor ---
+        role = "planner" if turn % 2 == 1 else "perceptor"
+
+        # --- Rebuild system prompt each turn with current phase and role ---
+        new_prompt = get_agent_system_prompt(
+            agent_mode, security_mode, lang, phase=current_phase, role=role
+        )
+        # Re-attach RAG context if available
+        if rag_context_cache:
+            new_prompt += f"\n\n{rag_context_cache}"
+        full_messages[0] = {"role": "system", "content": new_prompt}
+
+        yield {
+            "event": "turn",
+            "data": {"turn": turn, "max_turns": max_turns, "role": role, "phase": current_phase},
+        }
+
+        # Stream AI response (with retry on transient failures)
         full_text = ""
         try:
             if base_url:
                 gen = stream_openai_compatible(api_key, model, full_messages, base_url)
-            elif provider == "claude":
-                gen = stream_claude(api_key, model, full_messages)
             elif provider == "deepseek":
                 gen = stream_deepseek(api_key, model, full_messages)
             elif provider == "glm":
@@ -562,18 +161,55 @@ async def run_agent_loop(
                 full_text += chunk
                 yield {"event": "text", "data": {"content": chunk}}
         except Exception as e:
-            logger.exception("Streaming error in agent loop")
+            logger.warning("Streaming error in agent loop (turn %d): %s", turn, e)
+            consecutive_errors += 1
             yield {
                 "event": "action_error",
                 "data": {
-                    "error": str(e),
-                    "error_type": "fatal",
+                    "error": f"AI streaming failed: {e}",
+                    "error_type": "retryable",
                     "retry_count": consecutive_errors,
                     "max_retries": MAX_CONSECUTIVE_ERRORS,
                 },
             }
-            yield {"event": "done", "data": {"reason": "error"}}
-            return
+            if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
+                yield {"event": "done", "data": {"reason": "error"}}
+                return
+            # Retryable: continue to next turn
+            full_messages.append(
+                {
+                    "role": "user",
+                    "content": "[AI Streaming Error — please continue your analysis.]",
+                }
+            )
+            continue
+
+        # --- Check for phase transition hints in AI response ---
+        _check_phase_transition = False
+        lower_text = full_text.lower()
+        phase_keywords = {
+            "initial_access": ["initial access", "gain access", "exploit", "vulnerability found"],
+            "execution": ["execute", "code execution", "rce", "command execution"],
+            "persistence": ["persist", "backdoor", "maintain access", "persistence"],
+            "privilege_escalation": ["privilege escalation", "privesc", "escalate", "root access"],
+            "lateral_movement": ["lateral movement", "pivot", "internal network", "lateral"],
+            "exfiltration": ["exfiltrat", "data extraction", "steal data", "download data"],
+        }
+        for next_phase_candidate in phase_keywords:
+            if next_phase_candidate == current_phase:
+                continue
+            for keyword in phase_keywords[next_phase_candidate]:
+                if keyword in lower_text:
+                    next_phase = get_next_phase(current_phase)
+                    if next_phase == next_phase_candidate:
+                        current_phase = next_phase_candidate
+                        _check_phase_transition = True
+                        logger.info(
+                            "Phase transition: %s (detected keyword: %s)", current_phase, keyword
+                        )
+                    break
+            if _check_phase_transition:
+                break
 
         # Parse action from response
         action = parse_action(full_text)
@@ -710,6 +346,24 @@ async def run_agent_loop(
         result_text = format_action_result(action, result)
         full_messages.append({"role": "user", "content": result_text})
 
+        # --- Context compression: trigger when conversation grows too large ---
+        if _estimate_context_chars(full_messages) > 50_000:
+            full_messages = _summarize_context(full_messages)
+            logger.info("Context compressed at turn %d", turn)
+
+        # --- RAG re-query every 3 turns for updated knowledge ---
+        if settings.RAG_ENABLED and user_id and turn % 3 == 0:
+            try:
+                from app.services.embedding_service import search_and_format_knowledge
+
+                rag_query = result_text[:500] if result_text else ""
+                if rag_query:
+                    new_rag = await search_and_format_knowledge(rag_query, user_id, lang)
+                    if new_rag:
+                        rag_context_cache = new_rag
+            except Exception:
+                logger.warning("RAG re-query failed at turn %d, keeping existing context", turn)
+
         if similar_count >= STAGNATION_STOP:
             yield {"event": "done", "data": {"reason": "stagnation"}}
             return
@@ -768,6 +422,12 @@ async def _execute_action(
 
         command = action.get("command", "")
         command = _preprocess_shell_command(command)
+
+        # Check against attack tree dangerous command patterns
+        dangerous, danger_reason = is_command_dangerous(command)
+        if dangerous:
+            return {"error": f"Command blocked: {danger_reason}", "exit_code": -1}
+
         safe, reason = is_command_safe(command)
         if not safe:
             return {"error": f"Command blocked: {reason}", "exit_code": -1}

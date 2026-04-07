@@ -2,15 +2,12 @@
 
 import pytest
 from unittest.mock import patch
-from app.services.agent_service import (
+from app.services.agent_utils import (
     parse_action,
     strip_action_tags,
-    build_plugin_catalog,
     format_action_result,
-    get_agent_system_prompt,
     has_action_attempt,
     classify_error,
-    run_agent_loop,
     _preprocess_shell_command,
     _action_fingerprint,
     _is_similar,
@@ -20,6 +17,8 @@ from app.services.agent_service import (
     compress_result,
     MAX_CONSECUTIVE_ERRORS,
 )
+from app.services.agent_prompts import build_plugin_catalog, get_agent_system_prompt
+from app.services.agent_service import run_agent_loop
 from app.services.sandbox import is_command_safe
 
 
@@ -404,10 +403,10 @@ async def test_malformed_action_does_not_terminate_loop():
             # Second turn: no action, analysis done
             yield "Analysis complete. No further actions needed."
 
-    with patch("app.services.agent_service.stream_claude", mock_stream_fn):
+    with patch("app.services.agent_service.stream_deepseek", mock_stream_fn):
         events = await _collect_events(
             run_agent_loop(
-                provider="claude",
+                provider="deepseek",
                 api_key="test",
                 model="test",
                 messages=[{"role": "user", "content": "test"}],
@@ -443,12 +442,12 @@ async def test_fatal_error_terminates_loop():
         return {"error": "Command blocked: dangerous operation", "exit_code": -1}
 
     with (
-        patch("app.services.agent_service.stream_claude", mock_stream_fn),
+        patch("app.services.agent_service.stream_deepseek", mock_stream_fn),
         patch("app.services.agent_service._execute_action", mock_execute),
     ):
         events = await _collect_events(
             run_agent_loop(
-                provider="claude",
+                provider="deepseek",
                 api_key="test",
                 model="test",
                 messages=[{"role": "user", "content": "test"}],
@@ -485,12 +484,12 @@ async def test_retryable_error_continues_loop():
         return {"error": "Plugin 'nonexistent' not found or not enabled"}
 
     with (
-        patch("app.services.agent_service.stream_claude", mock_stream_fn),
+        patch("app.services.agent_service.stream_deepseek", mock_stream_fn),
         patch("app.services.agent_service._execute_action", mock_execute),
     ):
         events = await _collect_events(
             run_agent_loop(
-                provider="claude",
+                provider="deepseek",
                 api_key="test",
                 model="test",
                 messages=[{"role": "user", "content": "test"}],
@@ -524,10 +523,10 @@ async def test_consecutive_errors_injects_plain_text_request():
         else:
             yield "OK, continuing in plain text."
 
-    with patch("app.services.agent_service.stream_claude", mock_stream_fn):
+    with patch("app.services.agent_service.stream_deepseek", mock_stream_fn):
         events = await _collect_events(
             run_agent_loop(
-                provider="claude",
+                provider="deepseek",
                 api_key="test",
                 model="test",
                 messages=[{"role": "user", "content": "test"}],
@@ -563,12 +562,12 @@ async def test_successful_action_resets_error_counter():
         return {"items": [{"result": "ok"}], "logs": []}
 
     with (
-        patch("app.services.agent_service.stream_claude", mock_stream_fn),
+        patch("app.services.agent_service.stream_deepseek", mock_stream_fn),
         patch("app.services.agent_service._execute_action", mock_execute),
     ):
         events = await _collect_events(
             run_agent_loop(
-                provider="claude",
+                provider="deepseek",
                 api_key="test",
                 model="test",
                 messages=[{"role": "user", "content": "test"}],

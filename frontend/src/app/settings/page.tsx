@@ -43,9 +43,9 @@ export default function SettingsPage() {
   const { t } = useTranslations("settings");
   const token = useAuth((s) => s.token);
 
-  const [aiProvider, setAiProvider] = useState("claude");
+  const [aiProvider, setAiProvider] = useState("deepseek");
   const [aiApiKey, setAiApiKey] = useState("");
-  const [aiModel, setAiModel] = useState("claude-sonnet-4-20250514");
+  const [aiModel, setAiModel] = useState("deepseek-chat");
   const [aiBaseUrl, setAiBaseUrl] = useState("");
   const [aiConfigured, setAiConfigured] = useState(false);
   const [aiMasked, setAiMasked] = useState("");
@@ -336,7 +336,6 @@ export default function SettingsPage() {
   };
 
   const defaultModels: Record<string, string> = {
-    claude: "claude-sonnet-4-20250514",
     deepseek: "deepseek-chat",
     glm: "glm-4-flash",
     custom: "",
@@ -401,7 +400,6 @@ export default function SettingsPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="claude">Claude (Anthropic)</SelectItem>
                 <SelectItem value="deepseek">DeepSeek</SelectItem>
                 <SelectItem value="glm">GLM (智谱 AI)</SelectItem>
                 <SelectItem value="custom">{t("aiCustom")}</SelectItem>
@@ -422,7 +420,7 @@ export default function SettingsPage() {
           <div className="space-y-2">
             <Label>{t("aiModel")}</Label>
             <Input
-              placeholder="e.g. claude-sonnet-4-20250514"
+              placeholder="e.g. deepseek-chat"
               value={aiModel}
               onChange={(e) => setAiModel(e.target.value)}
             />

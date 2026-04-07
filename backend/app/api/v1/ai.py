@@ -19,7 +19,6 @@ from app.services.ai_service import (
     encrypt_key,
     decrypt_key,
     mask_key,
-    stream_claude,
     stream_deepseek,
     stream_glm,
     stream_openai_compatible,
@@ -106,8 +105,6 @@ async def _stream_ai(
     # Custom base_url → always use OpenAI-compatible format
     if base_url:
         gen = stream_openai_compatible(api_key, model, messages, base_url)
-    elif provider == "claude":
-        gen = stream_claude(api_key, model, messages)
     elif provider == "deepseek":
         gen = stream_deepseek(api_key, model, messages)
     elif provider == "glm":

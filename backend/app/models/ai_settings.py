@@ -14,7 +14,7 @@ class AISettings(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True, index=True)
-    provider: Mapped[str] = mapped_column(String(20))  # "claude" | "deepseek"
+    provider: Mapped[str] = mapped_column(String(20))  # "deepseek" | "glm" | "custom"
     api_key_enc: Mapped[str] = mapped_column(Text)  # Fernet-encrypted
     model: Mapped[str] = mapped_column(String(100))
     base_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True, default=None)

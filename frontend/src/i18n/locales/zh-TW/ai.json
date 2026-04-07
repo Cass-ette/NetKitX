@@ -22,7 +22,6 @@
   "welcome": "你可以問我任何關於網路安全、漏洞分析或滲透測試的問題。",
   "deletedSuccess": "AI 組態已刪除",
   "savedSuccess": "AI 組態已儲存",
-  "providerClaude": "Claude (Anthropic)",
   "providerDeepseek": "DeepSeek",
   "modeDefense": "防禦模式",
   "modeOffense": "進攻模式",

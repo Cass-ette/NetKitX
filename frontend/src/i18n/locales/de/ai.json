@@ -22,7 +22,6 @@
   "welcome": "Fragen Sie mich alles über Netzwerksicherheit, Schwachstellenanalyse oder Penetrationstests.",
   "deletedSuccess": "KI-Konfiguration gelöscht",
   "savedSuccess": "KI-Konfiguration gespeichert",
-  "providerClaude": "Claude (Anthropic)",
   "providerDeepseek": "DeepSeek",
   "modeDefense": "Verteidigung",
   "modeOffense": "Angriff",
