@@ -81,8 +81,11 @@ export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   action?: AgentAction;
+  actions?: AgentAction[];
   actionResult?: AgentActionResult;
+  actionResults?: AgentActionResult[];
   actionStatus?: "proposed" | "executing" | "done" | "skipped";
+  pendingResults?: number;
 }
 
 export type AgentMode = "chat" | "semi_auto" | "full_auto" | "terminal";
