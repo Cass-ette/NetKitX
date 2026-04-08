@@ -259,6 +259,7 @@ export function useAIChat() {
             // semi_auto: action card already shows confirm buttons
           } else if (event === "done") {
             doneReasonRef.current = (data.reason as string) || null;
+            console.log("[DEBUG] received 'done' event with reason:", doneReasonRef.current);
             streamDone = true;
             break;
           }
@@ -292,12 +293,14 @@ export function useAIChat() {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       const reason = doneReasonRef.current;
+      console.log("[DEBUG] finally block - reason:", reason, "doneReasonRef:", doneReasonRef.current);
       doneReasonRef.current = null;
 
       setMessages((prev) => {
         const last = prev[prev.length - 1];
         const isTrailingEmpty =
           last && last.role === "assistant" && !last.content.trim() && !last.action;
+        console.log("[DEBUG] setMessages in finally - last:", last, "isTrailingEmpty:", isTrailingEmpty, "reason:", reason);
 
         if (reason === "max_turns") {
           const notice = t("maxTurnsReached", { max: maxTurns });
