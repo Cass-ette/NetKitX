@@ -400,7 +400,10 @@ export function AIChatCore({ variant = "full" }: AIChatCoreProps) {
           className="resize-none"
         />
         <Button
-          onClick={handleSend}
+          onClick={() => {
+            console.log("[AIChat] Send button clicked", { loading, input: input.trim(), hasToken: !!token });
+            handleSend();
+          }}
           disabled={loading || !input.trim()}
           size="icon"
           className="h-auto"
