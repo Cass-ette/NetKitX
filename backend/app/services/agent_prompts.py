@@ -1,12 +1,6 @@
 """Agent prompts and system prompt generation."""
 
-from app.services.ai_service import (
-    get_system_prompt,
-)
-from app.services.attack_tree_service import (
-    build_phase_catalog_for_prompt,
-    build_phase_guidance_prompt,
-)
+from app.services.ai_service import get_system_prompt
 from app.plugins.registry import registry
 
 
@@ -126,34 +120,15 @@ _AGENT_STRATEGY = """
 - RIGHT TOOL: Use plugins for standard scans (structured data, fewer tokens). Use shell for custom payloads, chaining, or when plugins do not fit. Do not force a plugin where a curl one-liner would be simpler.
 - NON-PRIVILEGED SCANNING: You are NOT running as root. Always use nmap flags that work without privileges: use `-sT` (TCP connect scan) instead of `-sS` (SYN scan), and avoid `-O` (OS detection). Example: `nmap -sT -sV -p- -T4 <target>`. If a command fails with "requires root" or "permission denied", immediately retry with non-privileged alternatives.
 - RECON FIRST: Before attacking, map the environment (OS, versions, services, technologies).
-- OBSERVE, DON NOT ASSUME: Infer database type, framework, and config from error messages, response headers, and behavioral differences. If clues are already visible, act on them immediately — do not waste turns on redundant fingerprinting. When truly unknown, test with version()/@@version/sqlite_version() to confirm.
+- OBSERVE, DO NOT ASSUME: Infer database type, framework, and config from error messages, response headers, and behavioral differences. If clues are already visible, act on them immediately — do not waste turns on redundant fingerprinting. When truly unknown, test with version()/@@version/sqlite_version() to confirm.
 - VALIDATE EXTRACTION: After each data extraction attempt, check whether YOUR injected data actually appears in the response. If the output looks the same as before or shows values other than what you injected, the extraction technique is not working as expected. Diagnose WHY: maybe legitimate results mask your injected data, maybe the app does not reflect output at all. Adjust accordingly.
-- ACT, DON NOT REPORT: Maximize action density — include an action block in every response unless you have achieved the goal. Keep analysis brief (2-3 sentences). NEVER write a summary report or recommended next steps when you still have turns left. Your job is to DO the work, not plan it for a human.
+- ACT, DO NOT REPORT: Maximize action density — include an action block in every response unless you have achieved the goal. Keep analysis brief (2-3 sentences). NEVER write a summary report or recommended next steps when you still have turns left. Your job is to DO the work, not plan it for a human.
 - FILTER REPEATED QUERIES: When querying the same endpoint repeatedly, pipe output through grep/sed/cut to isolate the meaningful difference. Sending identical boilerplate wastes context.
 - SAME APPROACH 3 TIMES MAX: If an approach fails 3 times, switch to a completely different technique.
 - MULTI-LAYER ENCODING: When data passes through multiple layers (shell, curl, HTTP, eval), use base64 or chr() to avoid escaping issues.
 - VERIFY EACH STEP: If a command returns no useful output, verify each step individually with the simplest possible command before adding complexity.
 - RECOGNIZE TARGET DATA: Learn to identify what you are looking for. CTF flags match the pattern word{...} (e.g. flag{xx}, CTF{xx}, any_prefix{xx}). Credentials are username/password pairs, API keys (sk-..., key-..., Bearer tokens), or session tokens. Sensitive files include /etc/shadow, .env, config files with secrets, database dumps. When ANY of these appear in a response, you have found the target.
 - KNOW WHEN TO STOP: When you find the target data, IMMEDIATELY present it and stop. Do NOT continue testing or verify the same finding again. State the result clearly and end without an action block.
-"""
-
-# ---------------------------------------------------------------------------
-# PEP Role-based prompt extensions (Planner / Perceptor alternation)
-# ---------------------------------------------------------------------------
-
-_AGENT_ROLE_PLANNER = """
-## Your Current Role: Planner
-Focus on STRATEGY this turn. Analyze collected information, identify the next high-value
-objective, and decide the optimal action. Think about the big picture: what do you already
-know, what is missing, and what is the most efficient next step?
-"""
-
-_AGENT_ROLE_PERCEPTOR = """
-## Your Current Role: Perceptor
-Focus on OBSERVATION this turn. Carefully examine the latest results, extract every
-useful signal, and identify patterns or anomalies. Pay special attention to: error messages,
-response headers, timing differences, partial data leaks, and behavioral variations.
-Report concrete findings, not assumptions.
 """
 
 _AGENT_INSTRUCTIONS = {
@@ -163,27 +138,9 @@ _AGENT_INSTRUCTIONS = {
 }
 
 
-def get_agent_system_prompt(
-    agent_mode: str,
-    security_mode: str,
-    lang: str,
-    phase: str = "reconnaissance",
-    role: str | None = None,
-) -> str:
-    """Compose full system prompt with phase-aware catalog and optional role injection."""
+def get_agent_system_prompt(agent_mode: str, security_mode: str, lang: str) -> str:
+    """Compose full system prompt: language + security + agent instructions + error handling + plugin catalog."""
     base = get_system_prompt(security_mode, lang)
     agent_inst = _AGENT_INSTRUCTIONS.get(agent_mode, "")
-    # Phase-aware plugin catalog (marks recommended plugins for current phase)
-    catalog = build_phase_catalog_for_prompt(phase)
-    # Phase guidance (description, recommended plugins, shell tools, next phase hint)
-    phase_guidance = build_phase_guidance_prompt(phase)
-    prompt = (
-        f"{base}\n\n{agent_inst}\n\n{_AGENT_ERROR_HANDLING}\n\n"
-        f"{_AGENT_STRATEGY}\n\n{phase_guidance}\n\n{catalog}"
-    )
-    # Optional PEP role injection
-    if role == "planner":
-        prompt += f"\n\n{_AGENT_ROLE_PLANNER}"
-    elif role == "perceptor":
-        prompt += f"\n\n{_AGENT_ROLE_PERCEPTOR}"
-    return prompt
+    catalog = build_plugin_catalog()
+    return f"{base}\n\n{agent_inst}\n\n{_AGENT_ERROR_HANDLING}\n\n{_AGENT_STRATEGY}\n\n{catalog}"

@@ -13,7 +13,13 @@ from app.core.database import get_session
 from app.core.deps import get_current_user
 from app.models.user import User
 from app.models.ai_settings import AISettings
-from app.schemas.ai import AISettingsUpdate, AISettingsResponse, AIAnalyzeRequest, AIChatRequest
+from app.schemas.ai import (
+    AISettingsUpdate,
+    AISettingsResponse,
+    AIAnalyzeRequest,
+    AIChatRequest,
+    ProviderConfig,
+)
 from app.schemas.agent import AgentRequest
 from app.services.ai_service import (
     encrypt_key,
@@ -29,6 +35,48 @@ from app.services.ai_service import (
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# Default configurations for each provider
+DEFAULT_CONFIGS = {
+    "deepseek": ProviderConfig(model="deepseek-chat", api_key="", api_key_masked=""),
+    "glm": ProviderConfig(model="glm-4-flash", api_key="", api_key_masked=""),
+    "custom": ProviderConfig(model="", api_key="", api_key_masked=""),
+}
+
+
+def _get_provider_config(ai: AISettings, provider: str) -> dict:
+    """Get config dict for a specific provider."""
+    if provider == "deepseek":
+        return {
+            "api_key_enc": ai.deepseek_api_key_enc,
+            "model": ai.deepseek_model or "deepseek-chat",
+            "base_url": None,
+        }
+    elif provider == "glm":
+        return {
+            "api_key_enc": ai.glm_api_key_enc,
+            "model": ai.glm_model or "glm-4-flash",
+            "base_url": None,
+        }
+    elif provider == "custom":
+        return {
+            "api_key_enc": ai.custom_api_key_enc,
+            "model": ai.custom_model or "",
+            "base_url": ai.custom_base_url,
+        }
+    return {}
+
+
+def _build_provider_config(ai: AISettings, provider: str) -> ProviderConfig:
+    """Build ProviderConfig for response."""
+    config = _get_provider_config(ai, provider)
+    api_key_enc = config.get("api_key_enc")
+    return ProviderConfig(
+        api_key="",  # Never return plaintext key
+        api_key_masked=mask_key(decrypt_key(api_key_enc)) if api_key_enc else "",
+        model=config.get("model") or "",
+        base_url=config.get("base_url"),
+    )
+
 
 async def _get_ai_settings(session: AsyncSession, user_id: int) -> AISettings | None:
     result = await session.execute(select(AISettings).where(AISettings.user_id == user_id))
@@ -43,12 +91,12 @@ async def get_settings(
     ai = await _get_ai_settings(session, user.id)
     if not ai:
         raise HTTPException(status_code=404, detail="AI not configured")
-    plain_key = decrypt_key(ai.api_key_enc)
+
     return AISettingsResponse(
         provider=ai.provider,
-        api_key_masked=mask_key(plain_key),
-        model=ai.model,
-        base_url=ai.base_url,
+        deepseek=_build_provider_config(ai, "deepseek"),
+        glm=_build_provider_config(ai, "glm"),
+        custom=_build_provider_config(ai, "custom"),
     )
 
 
@@ -59,27 +107,62 @@ async def update_settings(
     session: AsyncSession = Depends(get_session),
 ):
     ai = await _get_ai_settings(session, user.id)
-    enc = encrypt_key(body.api_key)
+
+    # Encrypt keys (only if provided/non-empty)
+    def encrypt_if_provided(key: str) -> str | None:
+        if key and key.strip():
+            return encrypt_key(key.strip())
+        return None
+
+    deepseek_key_enc = encrypt_if_provided(body.deepseek.api_key)
+    glm_key_enc = encrypt_if_provided(body.glm.api_key)
+    custom_key_enc = encrypt_if_provided(body.custom.api_key)
+
     if ai:
+        # Update provider selection
         ai.provider = body.provider
-        ai.api_key_enc = enc
-        ai.model = body.model
-        ai.base_url = body.base_url
+
+        # Update DeepSeek (only if key provided, otherwise keep existing)
+        if deepseek_key_enc:
+            ai.deepseek_api_key_enc = deepseek_key_enc
+        if body.deepseek.model:
+            ai.deepseek_model = body.deepseek.model
+
+        # Update GLM
+        if glm_key_enc:
+            ai.glm_api_key_enc = glm_key_enc
+        if body.glm.model:
+            ai.glm_model = body.glm.model
+
+        # Update Custom
+        if custom_key_enc:
+            ai.custom_api_key_enc = custom_key_enc
+        if body.custom.model:
+            ai.custom_model = body.custom.model
+        if body.custom.base_url is not None:
+            ai.custom_base_url = body.custom.base_url
     else:
+        # Create new settings
         ai = AISettings(
             user_id=user.id,
             provider=body.provider,
-            api_key_enc=enc,
-            model=body.model,
-            base_url=body.base_url,
+            deepseek_api_key_enc=deepseek_key_enc,
+            deepseek_model=body.deepseek.model or "deepseek-chat",
+            glm_api_key_enc=glm_key_enc,
+            glm_model=body.glm.model or "glm-4-flash",
+            custom_api_key_enc=custom_key_enc,
+            custom_model=body.custom.model or "",
+            custom_base_url=body.custom.base_url,
         )
         session.add(ai)
+
     await session.commit()
+
     return AISettingsResponse(
-        provider=body.provider,
-        api_key_masked=mask_key(body.api_key),
-        model=body.model,
-        base_url=body.base_url,
+        provider=ai.provider,
+        deepseek=_build_provider_config(ai, "deepseek"),
+        glm=_build_provider_config(ai, "glm"),
+        custom=_build_provider_config(ai, "custom"),
     )
 
 
@@ -121,6 +204,22 @@ async def _stream_ai(
     yield "data: [DONE]\n\n"
 
 
+async def _get_active_config(ai: AISettings) -> tuple[str, str, str, str | None]:
+    """Get the currently active provider's config."""
+    provider = ai.provider
+    config = _get_provider_config(ai, provider)
+
+    api_key_enc = config.get("api_key_enc")
+    if not api_key_enc:
+        raise ValueError(f"No API key configured for {provider}")
+
+    api_key = decrypt_key(api_key_enc)
+    model = config.get("model") or ""
+    base_url = config.get("base_url")
+
+    return provider, api_key, model, base_url
+
+
 @router.post("/analyze")
 async def analyze(
     body: AIAnalyzeRequest,
@@ -131,7 +230,10 @@ async def analyze(
     if not ai:
         raise HTTPException(status_code=400, detail="AI not configured")
 
-    api_key = decrypt_key(ai.api_key_enc)
+    try:
+        provider, api_key, model, base_url = _get_active_config(ai)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     # Build context from task if provided
     context_parts: list[str] = []
@@ -165,7 +267,7 @@ async def analyze(
     ]
 
     return StreamingResponse(
-        _stream_ai(ai.provider, api_key, ai.model, messages, ai.base_url),
+        _stream_ai(provider, api_key, model, messages, base_url),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
@@ -181,7 +283,10 @@ async def chat(
     if not ai:
         raise HTTPException(status_code=400, detail="AI not configured")
 
-    api_key = decrypt_key(ai.api_key_enc)
+    try:
+        provider, api_key, model, base_url = _get_active_config(ai)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     # Prepend system prompt for security context
     messages = [
@@ -190,7 +295,7 @@ async def chat(
     ]
 
     return StreamingResponse(
-        _stream_ai(ai.provider, api_key, ai.model, messages, ai.base_url),
+        _stream_ai(provider, api_key, model, messages, base_url),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
@@ -209,7 +314,10 @@ async def agent(
     if not ai:
         raise HTTPException(status_code=400, detail="AI not configured")
 
-    api_key = decrypt_key(ai.api_key_enc)
+    try:
+        provider, api_key, model, base_url = _get_active_config(ai)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     from app.services.agent_service import run_agent_loop
 
@@ -251,9 +359,9 @@ async def agent(
 
         try:
             async for evt in run_agent_loop(
-                provider=ai.provider,
+                provider=provider,
                 api_key=api_key,
-                model=ai.model,
+                model=model,
                 messages=list(body.messages),
                 agent_mode=body.agent_mode,
                 security_mode=body.security_mode,
@@ -263,7 +371,7 @@ async def agent(
                 user_id=user.id,
                 is_admin=user.role == "admin",
                 user_token=user_token,
-                base_url=ai.base_url,
+                base_url=base_url,
             ):
                 collected.append(evt)
                 if evt.get("event") == "done":

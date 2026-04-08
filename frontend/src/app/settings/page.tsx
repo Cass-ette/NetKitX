@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -17,7 +18,7 @@ import { Loader2, Save, Trash2, Fingerprint, Plus } from "lucide-react";
 import { useTranslations } from "@/i18n/use-translations";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
-import type { AISettings } from "@/types";
+import type { AISettings, ProviderConfig } from "@/types";
 
 interface PasskeyCredential {
   id: number;
@@ -37,18 +38,36 @@ interface PasskeyRegistrationOptions {
   excludeCredentials?: Array<{ id: string; type: string }>;
 }
 
+const defaultModels: Record<string, string> = {
+  deepseek: "deepseek-chat",
+  glm: "glm-4-flash",
+  custom: "",
+};
+
+
 export default function SettingsPage() {
   const { t } = useTranslations("settings");
   const token = useAuth((s) => s.token);
 
-  const [aiProvider, setAiProvider] = useState("deepseek");
-  const [aiApiKey, setAiApiKey] = useState("");
-  const [aiModel, setAiModel] = useState("deepseek-chat");
-  const [aiBaseUrl, setAiBaseUrl] = useState("");
+  // Active provider selection
+  const [activeProvider, setActiveProvider] = useState("deepseek");
   const [aiConfigured, setAiConfigured] = useState(false);
-  const [aiMasked, setAiMasked] = useState("");
   const [aiSaving, setAiSaving] = useState(false);
   const [aiMsg, setAiMsg] = useState<string | null>(null);
+
+  // Provider-specific configs
+  const [configs, setConfigs] = useState<Record<string, ProviderConfig>>({
+    deepseek: { api_key: "", api_key_masked: "", model: defaultModels.deepseek, base_url: null },
+    glm: { api_key: "", api_key_masked: "", model: defaultModels.glm, base_url: null },
+    custom: { api_key: "", api_key_masked: "", model: "", base_url: "" },
+  });
+
+  // Temp input state for API keys (not saved until click save)
+  const [tempKeys, setTempKeys] = useState<Record<string, string>>({
+    deepseek: "",
+    glm: "",
+    custom: "",
+  });
 
   const [passkeys, setPasskeys] = useState<PasskeyCredential[]>([]);
   const [passkeySupported, setPasskeySupported] = useState(false);
@@ -59,10 +78,12 @@ export default function SettingsPage() {
     if (!token) return;
     try {
       const data = await api<AISettings>("/api/v1/ai/settings", { token });
-      setAiProvider(data.provider);
-      setAiModel(data.model);
-      setAiBaseUrl(data.base_url || "");
-      setAiMasked(data.api_key_masked);
+      setActiveProvider(data.provider);
+      setConfigs({
+        deepseek: data.deepseek,
+        glm: data.glm,
+        custom: data.custom,
+      });
       setAiConfigured(true);
     } catch {
       setAiConfigured(false);
@@ -101,7 +122,7 @@ export default function SettingsPage() {
   }, [loadAiSettings, loadPasskeys]);
 
   const handleAiSave = async () => {
-    if (!token || !aiApiKey) return;
+    if (!token) return;
     setAiSaving(true);
     setAiMsg(null);
     try {
@@ -109,13 +130,28 @@ export default function SettingsPage() {
         method: "PUT",
         token,
         body: JSON.stringify({
-          provider: aiProvider,
-          api_key: aiApiKey,
-          model: aiModel,
-          base_url: aiBaseUrl || null,
+          provider: activeProvider,
+          deepseek: {
+            api_key: tempKeys.deepseek,
+            api_key_masked: configs.deepseek.api_key_masked,
+            model: configs.deepseek.model,
+            base_url: null,
+          },
+          glm: {
+            api_key: tempKeys.glm,
+            api_key_masked: configs.glm.api_key_masked,
+            model: configs.glm.model,
+            base_url: null,
+          },
+          custom: {
+            api_key: tempKeys.custom,
+            api_key_masked: configs.custom.api_key_masked,
+            model: configs.custom.model,
+            base_url: configs.custom.base_url,
+          },
         }),
       });
-      setAiApiKey("");
+      setTempKeys({ deepseek: "", glm: "", custom: "" });
       setAiMsg(t("aiSaved"));
       await loadAiSettings();
     } catch (err) {
@@ -132,13 +168,70 @@ export default function SettingsPage() {
     try {
       await api("/api/v1/ai/settings", { method: "DELETE", token });
       setAiConfigured(false);
-      setAiMasked("");
+      setConfigs({
+        deepseek: { api_key: "", api_key_masked: "", model: defaultModels.deepseek, base_url: null },
+        glm: { api_key: "", api_key_masked: "", model: defaultModels.glm, base_url: null },
+        custom: { api_key: "", api_key_masked: "", model: "", base_url: "" },
+      });
       setAiMsg(t("aiDeleted"));
     } catch (err) {
       setAiMsg(err instanceof Error ? err.message : "Error");
     } finally {
       setAiSaving(false);
     }
+  };
+
+  const updateConfig = (provider: string, field: keyof ProviderConfig, value: string | null) => {
+    setConfigs((prev) => ({
+      ...prev,
+      [provider]: { ...prev[provider], [field]: value },
+    }));
+  };
+
+  const renderProviderConfig = (provider: string) => {
+    const config = configs[provider];
+    const hasKey = config.api_key_masked && config.api_key_masked !== "";
+
+    return (
+      <div className="space-y-4">
+        {hasKey && (
+          <div className="rounded-md bg-muted p-3 text-sm">
+            <p><strong>{t("aiApiKey")}:</strong> {config.api_key_masked}</p>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <Label>{t("aiApiKey")}</Label>
+          <Input
+            type="password"
+            placeholder={hasKey ? "Enter new key to update..." : "sk-..."}
+            value={tempKeys[provider]}
+            onChange={(e) => setTempKeys((prev) => ({ ...prev, [provider]: e.target.value }))}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>{t("aiModel")}</Label>
+          <Input
+            placeholder={provider === "deepseek" ? "deepseek-chat" : provider === "glm" ? "glm-4-flash" : "model-name"}
+            value={config.model}
+            onChange={(e) => updateConfig(provider, "model", e.target.value)}
+          />
+        </div>
+
+        {provider === "custom" && (
+          <div className="space-y-2">
+            <Label>{t("aiBaseUrl")}</Label>
+            <Input
+              placeholder={t("aiBaseUrlPlaceholder")}
+              value={config.base_url || ""}
+              onChange={(e) => updateConfig(provider, "base_url", e.target.value || null)}
+            />
+            <p className="text-xs text-muted-foreground">{t("aiBaseUrlHint")}</p>
+          </div>
+        )}
+      </div>
+    );
   };
 
   const handleAddPasskey = async () => {
@@ -258,11 +351,8 @@ export default function SettingsPage() {
     }
   };
 
-  const defaultModels: Record<string, string> = {
-    deepseek: "deepseek-chat",
-    glm: "glm-4-flash",
-    custom: "",
-  };
+  // Check if any provider has a key to enable save
+  const hasAnyKey = Object.values(tempKeys).some((k) => k.trim() !== "");
 
   return (
     <div className="space-y-6">
@@ -300,24 +390,10 @@ export default function SettingsPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {aiConfigured && (
-            <div className="rounded-md bg-muted p-3 text-sm space-y-1">
-              <p><strong>{t("aiProvider")}:</strong> {aiProvider}</p>
-              <p><strong>{t("aiModel")}:</strong> {aiModel}</p>
-              <p><strong>{t("aiApiKey")}:</strong> {aiMasked}</p>
-              {aiBaseUrl && <p><strong>{t("aiBaseUrl")}:</strong> {aiBaseUrl}</p>}
-            </div>
-          )}
-
+          {/* Active Provider Selection */}
           <div className="space-y-2">
-            <Label>{t("aiProvider")}</Label>
-            <Select
-              value={aiProvider}
-              onValueChange={(v) => {
-                setAiProvider(v);
-                setAiModel(defaultModels[v] || "");
-              }}
-            >
+            <Label>{t("aiProvider")} ({t("active")})</Label>
+            <Select value={activeProvider} onValueChange={setActiveProvider}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -327,41 +403,33 @@ export default function SettingsPage() {
                 <SelectItem value="custom">{t("aiCustom")}</SelectItem>
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground">
+              {t("activeProviderHint") || "Select which provider to use for AI features"}
+            </p>
           </div>
 
-          <div className="space-y-2">
-            <Label>{t("aiApiKey")}</Label>
-            <Input
-              type="password"
-              placeholder={aiConfigured ? "Enter new key to update..." : "sk-..."}
-              value={aiApiKey}
-              onChange={(e) => setAiApiKey(e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>{t("aiModel")}</Label>
-            <Input
-              placeholder="e.g. deepseek-chat"
-              value={aiModel}
-              onChange={(e) => setAiModel(e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>{t("aiBaseUrl")}</Label>
-            <Input
-              placeholder={t("aiBaseUrlPlaceholder")}
-              value={aiBaseUrl}
-              onChange={(e) => setAiBaseUrl(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">{t("aiBaseUrlHint")}</p>
-          </div>
+          {/* Provider-specific Tabs */}
+          <Tabs defaultValue="deepseek" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="deepseek">DeepSeek</TabsTrigger>
+              <TabsTrigger value="glm">GLM</TabsTrigger>
+              <TabsTrigger value="custom">{t("aiCustom")}</TabsTrigger>
+            </TabsList>
+            <TabsContent value="deepseek" className="pt-4">
+              {renderProviderConfig("deepseek")}
+            </TabsContent>
+            <TabsContent value="glm" className="pt-4">
+              {renderProviderConfig("glm")}
+            </TabsContent>
+            <TabsContent value="custom" className="pt-4">
+              {renderProviderConfig("custom")}
+            </TabsContent>
+          </Tabs>
 
           {aiMsg && <p className="text-sm text-muted-foreground">{aiMsg}</p>}
 
           <div className="flex gap-2">
-            <Button onClick={handleAiSave} disabled={aiSaving || !aiApiKey}>
+            <Button onClick={handleAiSave} disabled={aiSaving || (!hasAnyKey && !aiConfigured)}>
               {aiSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
               {t("aiSave")}
             </Button>

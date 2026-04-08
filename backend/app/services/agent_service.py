@@ -28,7 +28,6 @@ from app.services.agent_utils import (
     has_action_attempt,
     parse_action,
 )
-from app.services.attack_tree_service import get_next_phase, is_command_dangerous
 
 logger = logging.getLogger(__name__)
 
@@ -59,31 +58,21 @@ async def run_agent_loop(
 
     For semi_auto: yields one AI response, parses action, yields waiting event, then stops.
     For full_auto/terminal: loops up to max_turns, auto-executing actions.
-
-    Enhanced with:
-    - Attack tree phase tracking (reconnaissance -> initial_access -> ... -> exfiltration)
-    - PEP role rotation (planner/perceptor alternation for focused thinking)
-    - Context compression when conversation grows too large
-    - RAG re-query every 3 turns for updated knowledge
     """
-    # --- Phase tracking state ---
-    current_phase = "reconnaissance"
-
-    # --- Build initial system prompt (phase-aware) ---
-    system_prompt = get_agent_system_prompt(agent_mode, security_mode, lang, phase=current_phase)
+    # Build system prompt once (contest: removed phase/role rotation)
+    system_prompt = get_agent_system_prompt(agent_mode, security_mode, lang)
     lang_reminder = get_lang_reminder(lang)
 
     # RAG: inject related historical knowledge into system prompt
-    rag_context_cache: str | None = None
     if settings.RAG_ENABLED and user_id:
         user_query = next((m["content"] for m in messages if m["role"] == "user"), "")
         if user_query:
             try:
                 from app.services.embedding_service import search_and_format_knowledge
 
-                rag_context_cache = await search_and_format_knowledge(user_query, user_id, lang)
-                if rag_context_cache:
-                    system_prompt += f"\n\n{rag_context_cache}"
+                rag_context = await search_and_format_knowledge(user_query, user_id, lang)
+                if rag_context:
+                    system_prompt += f"\n\n{rag_context}"
             except Exception:
                 logger.warning("RAG context injection failed, continuing without it")
 
@@ -126,24 +115,9 @@ async def run_agent_loop(
         if max_turns > 0 and turn > max_turns:
             break
 
-        # --- PEP Role rotation: odd turns = planner, even turns = perceptor ---
-        role = "planner" if turn % 2 == 1 else "perceptor"
+        yield {"event": "turn", "data": {"turn": turn, "max_turns": max_turns}}
 
-        # --- Rebuild system prompt each turn with current phase and role ---
-        new_prompt = get_agent_system_prompt(
-            agent_mode, security_mode, lang, phase=current_phase, role=role
-        )
-        # Re-attach RAG context if available
-        if rag_context_cache:
-            new_prompt += f"\n\n{rag_context_cache}"
-        full_messages[0] = {"role": "system", "content": new_prompt}
-
-        yield {
-            "event": "turn",
-            "data": {"turn": turn, "max_turns": max_turns, "role": role, "phase": current_phase},
-        }
-
-        # Stream AI response (with retry on transient failures)
+        # Stream AI response
         full_text = ""
         try:
             if base_url:
@@ -183,33 +157,6 @@ async def run_agent_loop(
                 }
             )
             continue
-
-        # --- Check for phase transition hints in AI response ---
-        _check_phase_transition = False
-        lower_text = full_text.lower()
-        phase_keywords = {
-            "initial_access": ["initial access", "gain access", "exploit", "vulnerability found"],
-            "execution": ["execute", "code execution", "rce", "command execution"],
-            "persistence": ["persist", "backdoor", "maintain access", "persistence"],
-            "privilege_escalation": ["privilege escalation", "privesc", "escalate", "root access"],
-            "lateral_movement": ["lateral movement", "pivot", "internal network", "lateral"],
-            "exfiltration": ["exfiltrat", "data extraction", "steal data", "download data"],
-        }
-        for next_phase_candidate in phase_keywords:
-            if next_phase_candidate == current_phase:
-                continue
-            for keyword in phase_keywords[next_phase_candidate]:
-                if keyword in lower_text:
-                    next_phase = get_next_phase(current_phase)
-                    if next_phase == next_phase_candidate:
-                        current_phase = next_phase_candidate
-                        _check_phase_transition = True
-                        logger.info(
-                            "Phase transition: %s (detected keyword: %s)", current_phase, keyword
-                        )
-                    break
-            if _check_phase_transition:
-                break
 
         # Parse action from response
         action = parse_action(full_text)
@@ -346,23 +293,10 @@ async def run_agent_loop(
         result_text = format_action_result(action, result)
         full_messages.append({"role": "user", "content": result_text})
 
-        # --- Context compression: trigger when conversation grows too large ---
+        # Context compression: trigger when conversation grows too large
         if _estimate_context_chars(full_messages) > 50_000:
             full_messages = _summarize_context(full_messages)
             logger.info("Context compressed at turn %d", turn)
-
-        # --- RAG re-query every 3 turns for updated knowledge ---
-        if settings.RAG_ENABLED and user_id and turn % 3 == 0:
-            try:
-                from app.services.embedding_service import search_and_format_knowledge
-
-                rag_query = result_text[:500] if result_text else ""
-                if rag_query:
-                    new_rag = await search_and_format_knowledge(rag_query, user_id, lang)
-                    if new_rag:
-                        rag_context_cache = new_rag
-            except Exception:
-                logger.warning("RAG re-query failed at turn %d, keeping existing context", turn)
 
         if similar_count >= STAGNATION_STOP:
             yield {"event": "done", "data": {"reason": "stagnation"}}
@@ -411,11 +345,6 @@ async def _execute_action(
 
         command = action.get("command", "")
         command = _preprocess_shell_command(command)
-
-        # Check against attack tree dangerous command patterns
-        dangerous, danger_reason = is_command_dangerous(command)
-        if dangerous:
-            return {"error": f"Command blocked: {danger_reason}", "exit_code": -1}
 
         safe, reason = is_command_safe(command)
         if not safe:

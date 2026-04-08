@@ -63,12 +63,18 @@ export interface User {
   created_at: string;
 }
 
-export interface AISettings {
-  provider: string;
+export interface ProviderConfig {
+  api_key: string;
   api_key_masked: string;
   model: string;
   base_url?: string | null;
-  configured: boolean;
+}
+
+export interface AISettings {
+  provider: string;
+  deepseek: ProviderConfig;
+  glm: ProviderConfig;
+  custom: ProviderConfig;
 }
 
 export interface ChatMessage {

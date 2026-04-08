@@ -1,9 +1,14 @@
 """AI service: encryption helpers and streaming API calls."""
 
+import asyncio
 import base64
 import hashlib
+import json
 import logging
+import random
 from collections.abc import AsyncIterator
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 
 import httpx
 from cryptography.fernet import Fernet
@@ -11,6 +16,12 @@ from cryptography.fernet import Fernet
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+_RETRYABLE_STATUS_CODES = {408, 425, 429, 500, 502, 503, 504}
+_STREAM_MAX_ATTEMPTS = 4
+_BACKOFF_BASE_SECONDS = 1.0
+_BACKOFF_CAP_SECONDS = 20.0
+_BACKOFF_JITTER_RATIO = 0.2
 
 DEFENSE_SYSTEM_PROMPT = (
     "You are a senior cybersecurity defense analyst. The user will provide network scan results, "

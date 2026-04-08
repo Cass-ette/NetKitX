@@ -13,6 +13,8 @@
   "aiConfig": "AI Configuration",
   "aiConfigDesc": "Configure your AI provider for vulnerability analysis",
   "aiProvider": "Provider",
+  "active": "Active",
+  "activeProviderHint": "Select which provider to use for AI features",
   "aiApiKey": "API Key",
   "aiModel": "Model",
   "aiSave": "Save",

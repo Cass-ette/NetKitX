@@ -13,6 +13,8 @@
   "aiConfig": "AI 配置",
   "aiConfigDesc": "配置 AI 服务商以进行漏洞分析",
   "aiProvider": "服务商",
+  "active": "当前使用",
+  "activeProviderHint": "选择要用于 AI 功能的服务商",
   "aiApiKey": "API 密钥",
   "aiModel": "模型",
   "aiSave": "保存",
