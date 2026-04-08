@@ -139,7 +139,6 @@ export function useAIChat() {
       messagesToSend: ChatMessage[],
       confirmAction?: { approved: boolean; action: AgentAction },
     ) => {
-      window.alert("processAgentStream called! agentMode=" + agentMode);
       abortRef.current = new AbortController();
 
       const body: Record<string, unknown> = {
@@ -214,10 +213,13 @@ export function useAIChat() {
 
           const { event, data } = evt;
 
+          // Support both nested format (agent) and flat format (chat)
+          const textContent = (data.content as string) || (data as unknown as string) || "";
+
           if (event === "session_start") {
-            setCurrentSessionId(data.session_id as number);
-          } else if (event === "text") {
-            assistantContent += (data.content as string) || "";
+            setCurrentSessionId((data as { session_id: number }).session_id);
+          } else if (event === "text" && textContent) {
+            assistantContent += textContent;
             const snap = assistantContent;
             setMessages((prev) => {
               const updated = [...prev];
@@ -226,7 +228,7 @@ export function useAIChat() {
               return updated;
             });
           } else if (event === "turn") {
-            setCurrentTurn(data.turn as number);
+            setCurrentTurn((data as { turn: number }).turn);
           } else if (event === "action") {
             const action = data.action as AgentAction;
             const status = agentMode === "semi_auto" ? "proposed" : "executing";
