@@ -157,6 +157,7 @@ export function useAIChat() {
       }
 
       console.log("[processAgentStream] Starting fetch...");
+      console.log("[processAgentStream] Messages to send:", messagesToSend);
       const res = await fetch(`${API_BASE}/api/v1/ai/agent`, {
         method: "POST",
         headers: {
@@ -200,7 +201,11 @@ export function useAIChat() {
       let buffer = "";
       let assistantContent = "";
 
-      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+      console.log("[processAgentStream] Adding empty assistant message");
+      setMessages((prev) => {
+        console.log("[processAgentStream] setMessages prev length:", prev.length);
+        return [...prev, { role: "assistant", content: "" }];
+      });
 
       // Set a timeout to detect stuck streams
       const timeoutId = setTimeout(() => {
@@ -304,6 +309,7 @@ export function useAIChat() {
 
     const userMsg: ChatMessage = { role: "user", content: input.trim() };
     const newMessages = [...messages, userMsg];
+    console.log("[handleSend] Adding user message:", userMsg);
     setMessages(newMessages);
     setInput("");
     setLoading(true);
