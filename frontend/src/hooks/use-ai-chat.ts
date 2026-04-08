@@ -139,6 +139,7 @@ export function useAIChat() {
       messagesToSend: ChatMessage[],
       confirmAction?: { approved: boolean; action: AgentAction },
     ) => {
+      window.alert("processAgentStream called! agentMode=" + agentMode);
       abortRef.current = new AbortController();
 
       const body: Record<string, unknown> = {
