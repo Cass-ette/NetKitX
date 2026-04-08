@@ -80,7 +80,7 @@ def _build_provider_config(ai: AISettings, provider: str) -> ProviderConfig:
 
 async def _get_ai_settings(session: AsyncSession, user_id: int) -> AISettings | None:
     result = await session.execute(select(AISettings).where(AISettings.user_id == user_id))
-    return result.scalar_one_or_none()
+    return result.scalars().first()
 
 
 @router.get("/settings", response_model=AISettingsResponse)
