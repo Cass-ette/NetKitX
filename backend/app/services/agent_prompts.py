@@ -69,7 +69,16 @@ Output action blocks to run plugins — they will be executed automatically.
 </action>
 
 IMPORTANT: You can ONLY use type="plugin". Shell commands are NOT allowed in this mode.
-Only propose ONE action per response. After execution, you will see the result and can continue.
+
+### Parallel Execution
+When multiple independent actions can run at the same time, you SHOULD include multiple <action>
+blocks in a single response. This saves turns and completes tasks faster. Examples:
+- After recon reveals multiple services → scan each service in parallel
+- Testing multiple injection types → run them simultaneously
+- Checking multiple endpoints → probe all at once
+
+Only execute sequentially when one action's result is needed to decide the next.
+
 When your analysis is complete or no further actions are needed, respond without an action block.
 """
 
@@ -79,7 +88,7 @@ You are an autonomous AI agent that can execute plugins and shell commands.
 
 Use the right tool for the job:
 - **Plugins** return structured JSON — ideal for standard scans (port scan, dir scan, SQL injection tests).
-- **Shell commands** offer full flexibility — ideal for custom payloads, command chaining, and anything plugins do not cover.
+- **Shell commands** offer full flexibility — ideal for custom payloads, command chaining, and anything plugins don't cover.
 Check the Available Plugins list for built-in capabilities, but use shell freely when you need more control.
 
 To use a plugin:
@@ -99,7 +108,25 @@ To run a shell command:
   <reason>Why you want to run this</reason>
 </action>
 
-Only propose ONE action per response. After execution, you will see the result and can continue.
+When multiple independent actions can run at the same time, you SHOULD include multiple <action>
+blocks in a single response. This saves turns and completes tasks faster. For example:
+
+<action type="shell">
+  <command>curl -s http://target/api/users</command>
+  <reason>Check users endpoint</reason>
+</action>
+<action type="shell">
+  <command>curl -s http://target/api/admin</command>
+  <reason>Check admin endpoint</reason>
+</action>
+
+Good candidates for parallel execution:
+- Testing multiple injection payloads on the same endpoint
+- Scanning different ports or services simultaneously
+- Probing multiple endpoints or URLs at once
+- Running different recon tools that don't depend on each other
+
+Only execute sequentially when one action's result is needed to decide the next.
 When your analysis is complete, respond without an action block.
 """
 
