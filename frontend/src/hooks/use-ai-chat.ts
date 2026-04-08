@@ -34,6 +34,7 @@ export function useAIChat() {
   // Stop agent loop
   const handleStop = useCallback(() => {
     abortRef.current?.abort();
+    abortRef.current = null;
     setLoading(false);
     setCurrentSessionId(null);
     // Clean trailing empty assistant message
@@ -121,7 +122,12 @@ export function useAIChat() {
           if (streamDone) break;
         }
       } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") {
+        // Check for abort error (handle different browser implementations)
+        const isAbortError =
+          (err instanceof DOMException && err.name === "AbortError") ||
+          (err instanceof Error && err.name === "AbortError") ||
+          (err instanceof Error && err.message?.includes("aborted"));
+        if (isAbortError) {
           setLoading(false);
           return;
         }
@@ -288,7 +294,15 @@ export function useAIChat() {
         await processAgentStream(newMessages);
       }
     } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") return;
+      // Check for abort error (handle different browser implementations)
+      const isAbortError =
+        (err instanceof DOMException && err.name === "AbortError") ||
+        (err instanceof Error && err.name === "AbortError") ||
+        (err instanceof Error && err.message?.includes("aborted"));
+      if (isAbortError) {
+        setLoading(false);
+        return;
+      }
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       const reason = doneReasonRef.current;
@@ -364,7 +378,12 @@ export function useAIChat() {
       try {
         await processAgentStream(apiMessages, { approved, action });
       } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") {
+        // Check for abort error (handle different browser implementations)
+        const isAbortError =
+          (err instanceof DOMException && err.name === "AbortError") ||
+          (err instanceof Error && err.name === "AbortError") ||
+          (err instanceof Error && err.message?.includes("aborted"));
+        if (isAbortError) {
           setLoading(false);
           return;
         }
