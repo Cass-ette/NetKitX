@@ -231,7 +231,7 @@ async def analyze(
         raise HTTPException(status_code=400, detail="AI not configured")
 
     try:
-        provider, api_key, model, base_url = _get_active_config(ai)
+        provider, api_key, model, base_url = await _get_active_config(ai)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -284,7 +284,7 @@ async def chat(
         raise HTTPException(status_code=400, detail="AI not configured")
 
     try:
-        provider, api_key, model, base_url = _get_active_config(ai)
+        provider, api_key, model, base_url = await _get_active_config(ai)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -315,7 +315,7 @@ async def agent(
         raise HTTPException(status_code=400, detail="AI not configured")
 
     try:
-        provider, api_key, model, base_url = _get_active_config(ai)
+        provider, api_key, model, base_url = await _get_active_config(ai)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
