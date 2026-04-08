@@ -13,7 +13,7 @@ from app.plugins.registry import registry
 # ---------------------------------------------------------------------------
 
 _ACTION_RE = re.compile(r"<action\s[^>]*>.*?</action>", re.DOTALL)
-_TYPE_RE = re.compile(r'<action\s[^>]*type\s*=\s*["\'](?P<t>\w+)["\']')
+_TYPE_RE = re.compile(r'<action\s[^>]*type\s*=\s*["\'](\w+)["\']')
 _TAG_RE = {
     "plugin": re.compile(r"<plugin>(.*?)</plugin>", re.DOTALL),
     "command": re.compile(r"<command>(.*?)</command>", re.DOTALL),
