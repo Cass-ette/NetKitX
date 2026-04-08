@@ -121,9 +121,7 @@ export function useAIChat() {
           if (streamDone) break;
         }
       } catch (err) {
-        const isAbort = (err instanceof DOMException && err.name === "AbortError") ||
-                        (err instanceof Error && (err.name === "AbortError" || err.message?.includes("aborted")));
-        if (isAbort) {
+        if (err instanceof DOMException && err.name === "AbortError") {
           setLoading(false);
           return;
         }
@@ -214,7 +212,7 @@ export function useAIChat() {
           const { event, data } = evt;
 
           if (event === "session_start") {
-            setCurrentSessionId((data as { session_id: number }).session_id);
+            setCurrentSessionId(data.session_id as number);
           } else if (event === "text") {
             assistantContent += (data.content as string) || "";
             const snap = assistantContent;
@@ -225,7 +223,7 @@ export function useAIChat() {
               return updated;
             });
           } else if (event === "turn") {
-            setCurrentTurn((data as { turn: number }).turn);
+            setCurrentTurn(data.turn as number);
           } else if (event === "action") {
             const action = data.action as AgentAction;
             const status = agentMode === "semi_auto" ? "proposed" : "executing";
@@ -290,12 +288,7 @@ export function useAIChat() {
         await processAgentStream(newMessages);
       }
     } catch (err) {
-      const isAbort = (err instanceof DOMException && err.name === "AbortError") ||
-                      (err instanceof Error && (err.name === "AbortError" || err.message?.includes("aborted")));
-      if (isAbort) {
-        setLoading(false);
-        return;
-      }
+      if (err instanceof DOMException && err.name === "AbortError") return;
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       const reason = doneReasonRef.current;
@@ -371,9 +364,7 @@ export function useAIChat() {
       try {
         await processAgentStream(apiMessages, { approved, action });
       } catch (err) {
-        const isAbort = (err instanceof DOMException && err.name === "AbortError") ||
-                        (err instanceof Error && (err.name === "AbortError" || err.message?.includes("aborted")));
-        if (isAbort) {
+        if (err instanceof DOMException && err.name === "AbortError") {
           setLoading(false);
           return;
         }
