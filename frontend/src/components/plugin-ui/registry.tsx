@@ -5,11 +5,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { PluginUIProps } from "@/types";
 
 const ChartView = React.lazy(() => import("./chart-view"));
-const TopologyView = React.lazy(() => import("./topology-view"));
 
 const UI_REGISTRY: Record<string, React.LazyExoticComponent<React.ComponentType<PluginUIProps>>> = {
   chart: ChartView,
-  topology: TopologyView,
 };
 
 export function isRegisteredUI(name: string): boolean {

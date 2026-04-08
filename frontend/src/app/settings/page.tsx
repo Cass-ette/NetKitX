@@ -6,8 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -15,11 +13,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Save, Trash2, Fingerprint, Plus, Shield } from "lucide-react";
+import { Loader2, Save, Trash2, Fingerprint, Plus } from "lucide-react";
 import { useTranslations } from "@/i18n/use-translations";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
-import type { AISettings, AuthorizedTarget } from "@/types";
+import type { AISettings } from "@/types";
 
 interface PasskeyCredential {
   id: number;
@@ -57,14 +55,6 @@ export default function SettingsPage() {
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [passkeyMsg, setPasskeyMsg] = useState<string | null>(null);
 
-  const [whitelist, setWhitelist] = useState<AuthorizedTarget[]>([]);
-  const [whitelistType, setWhitelistType] = useState<"domain" | "ip" | "cidr">("domain");
-  const [whitelistValue, setWhitelistValue] = useState("");
-  const [whitelistNotes, setWhitelistNotes] = useState("");
-  const [whitelistDeclaration, setWhitelistDeclaration] = useState(true);
-  const [whitelistLoading, setWhitelistLoading] = useState(false);
-  const [whitelistMsg, setWhitelistMsg] = useState<string | null>(null);
-
   const loadAiSettings = useCallback(async () => {
     if (!token) return;
     try {
@@ -89,23 +79,10 @@ export default function SettingsPage() {
     }
   }, [token]);
 
-  const loadWhitelist = useCallback(async () => {
-    if (!token) return;
-    try {
-      const data = await api<AuthorizedTarget[]>("/api/v1/whitelist", { token });
-      setWhitelist(data);
-    } catch {
-      setWhitelist([]);
-    }
-  }, [token]);
-
   useEffect(() => {
     loadAiSettings();
     loadPasskeys();
-    loadWhitelist();
 
-    // Check if platform authenticator (biometric) is available
-    // This will return false on Android without Google Play Services
     const checkPasskeySupport = async () => {
       if (typeof window === "undefined" || !window.PublicKeyCredential) {
         setPasskeySupported(false);
@@ -121,7 +98,7 @@ export default function SettingsPage() {
     };
 
     checkPasskeySupport();
-  }, [loadAiSettings, loadPasskeys, loadWhitelist]);
+  }, [loadAiSettings, loadPasskeys]);
 
   const handleAiSave = async () => {
     if (!token || !aiApiKey) return;
@@ -169,26 +146,22 @@ export default function SettingsPage() {
     setPasskeyLoading(true);
     setPasskeyMsg(null);
     try {
-      // Begin registration
       const beginRes = await api<PasskeyRegistrationOptions>("/api/v1/auth/passkey/register/begin", {
         method: "POST",
         token,
         body: JSON.stringify({ name: null }),
       });
 
-      // Convert challenge from base64url to Uint8Array
       const challenge = Uint8Array.from(
         atob(beginRes.challenge.replace(/-/g, "+").replace(/_/g, "/")),
         (c) => c.charCodeAt(0)
       );
 
-      // Convert user.id
       const userId = Uint8Array.from(
         atob(beginRes.user.id.replace(/-/g, "+").replace(/_/g, "/")),
         (c) => c.charCodeAt(0)
       );
 
-      // Convert excludeCredentials
       const excludeCredentials = beginRes.excludeCredentials?.map((cred: { id: string; type: string }) => ({
         id: Uint8Array.from(
           atob(cred.id.replace(/-/g, "+").replace(/_/g, "/")),
@@ -197,7 +170,6 @@ export default function SettingsPage() {
         type: "public-key" as const,
       }));
 
-      // Create credential
       const credential = await navigator.credentials.create({
         publicKey: {
           challenge,
@@ -216,22 +188,20 @@ export default function SettingsPage() {
 
       if (!credential) throw new Error("No credential returned");
 
-      // Prepare credential data for server
       const response = credential.response as AuthenticatorAttestationResponse;
 
-      // Helper to convert ArrayBuffer to base64url
       const bufferToBase64url = (buffer: ArrayBuffer) => {
         const bytes = new Uint8Array(buffer);
-        let binary = '';
+        let binary = "";
         for (let i = 0; i < bytes.length; i++) {
           binary += String.fromCharCode(bytes[i]);
         }
-        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+        return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
       };
 
       const credentialData = {
         id: credential.id,
-        rawId: credential.id,  // id is already base64url
+        rawId: credential.id,
         type: credential.type,
         response: {
           clientDataJSON: bufferToBase64url(response.clientDataJSON),
@@ -240,7 +210,6 @@ export default function SettingsPage() {
         },
       };
 
-      // Complete registration
       await api("/api/v1/auth/passkey/register/complete", {
         method: "POST",
         token,
@@ -250,13 +219,8 @@ export default function SettingsPage() {
       setPasskeyMsg(t("passkeyAdded"));
       await loadPasskeys();
     } catch (err) {
-      console.error("Passkey registration error:", err);
       let errorMsg = "Error";
       if (err instanceof Error) {
-        // Show detailed error info for debugging
-        const errorDetails = `Name: ${err.name}, Message: ${err.message}`;
-        console.error("Error details:", errorDetails);
-
         if (err.name === "NotAllowedError") {
           errorMsg = "Passkey registration was cancelled or timed out";
         } else if (err.name === "InvalidStateError") {
@@ -266,9 +230,9 @@ export default function SettingsPage() {
         } else if (err.name === "SecurityError") {
           errorMsg = `Security error: ${err.message}`;
         } else if (err.name === "NotReadableError") {
-          errorMsg = "Cannot access biometric sensor. Please check: 1) Browser has biometric permission 2) No other app is using fingerprint 3) Google Play Services is installed (Android)";
+          errorMsg = "Cannot access biometric sensor. Please check device permissions and configuration.";
         } else if (err.name === "UnknownError") {
-          errorMsg = `Unknown error: ${err.message}. Check if biometric/screen lock is enabled.`;
+          errorMsg = `Unknown error: ${err.message}`;
         } else {
           errorMsg = `${err.name}: ${err.message}`;
         }
@@ -291,47 +255,6 @@ export default function SettingsPage() {
       setPasskeyMsg(err instanceof Error ? err.message : "Error");
     } finally {
       setPasskeyLoading(false);
-    }
-  };
-
-  const handleAddWhitelist = async () => {
-    if (!token || !whitelistValue || !whitelistDeclaration) return;
-    setWhitelistLoading(true);
-    setWhitelistMsg(null);
-    try {
-      await api("/api/v1/whitelist", {
-        method: "POST",
-        token,
-        body: JSON.stringify({
-          target_type: whitelistType,
-          target_value: whitelistValue,
-          declaration: whitelistDeclaration,
-          notes: whitelistNotes || null,
-        }),
-      });
-      setWhitelistValue("");
-      setWhitelistNotes("");
-      setWhitelistMsg(t("whitelistAdded"));
-      await loadWhitelist();
-    } catch (err) {
-      setWhitelistMsg(err instanceof Error ? err.message : "Error");
-    } finally {
-      setWhitelistLoading(false);
-    }
-  };
-
-  const handleDeleteWhitelist = async (id: number) => {
-    if (!token) return;
-    setWhitelistLoading(true);
-    setWhitelistMsg(null);
-    try {
-      await api(`/api/v1/whitelist/${id}`, { method: "DELETE", token });
-      setWhitelistMsg(t("whitelistRemoved"));
-      await loadWhitelist();
-    } catch (err) {
-      setWhitelistMsg(err instanceof Error ? err.message : "Error");
-    } finally {
-      setWhitelistLoading(false);
     }
   };
 
@@ -364,7 +287,6 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* AI Configuration Card */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -436,17 +358,11 @@ export default function SettingsPage() {
             <p className="text-xs text-muted-foreground">{t("aiBaseUrlHint")}</p>
           </div>
 
-          {aiMsg && (
-            <p className="text-sm text-muted-foreground">{aiMsg}</p>
-          )}
+          {aiMsg && <p className="text-sm text-muted-foreground">{aiMsg}</p>}
 
           <div className="flex gap-2">
             <Button onClick={handleAiSave} disabled={aiSaving || !aiApiKey}>
-              {aiSaving ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="mr-2 h-4 w-4" />
-              )}
+              {aiSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
               {t("aiSave")}
             </Button>
             {aiConfigured && (
@@ -459,7 +375,6 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Passkey Management Card */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -479,9 +394,7 @@ export default function SettingsPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {!passkeySupported && (
-            <p className="text-sm text-muted-foreground">{t("passkeyNotSupported")}</p>
-          )}
+          {!passkeySupported && <p className="text-sm text-muted-foreground">{t("passkeyNotSupported")}</p>}
 
           {passkeySupported && passkeys.length === 0 && (
             <p className="text-sm text-muted-foreground">{t("passkeyNoCredentials")}</p>
@@ -492,9 +405,7 @@ export default function SettingsPage() {
               {passkeys.map((pk) => (
                 <div key={pk.id} className="flex items-center justify-between rounded-md border p-3">
                   <div className="space-y-1">
-                    <p className="text-sm font-medium">
-                      {pk.name || `Passkey #${pk.id}`}
-                    </p>
+                    <p className="text-sm font-medium">{pk.name || `Passkey #${pk.id}`}</p>
                     <p className="text-xs text-muted-foreground">
                       {t("passkeyCreated")}: {new Date(pk.created_at).toLocaleDateString()}
                     </p>
@@ -515,121 +426,7 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {passkeyMsg && (
-            <p className="text-sm text-muted-foreground">{passkeyMsg}</p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Authorized Targets Whitelist Card */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                {t("whitelistTitle")}
-              </CardTitle>
-              <CardDescription>{t("whitelistDesc")}</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {whitelist.length === 0 && (
-            <p className="text-sm text-muted-foreground">{t("whitelistEmpty")}</p>
-          )}
-
-          {whitelist.length > 0 && (
-            <div className="space-y-2">
-              {whitelist.map((target) => (
-                <div key={target.id} className="flex items-center justify-between rounded-md border p-3">
-                  <div className="space-y-1 flex-1">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">{t(`whitelist${target.target_type.charAt(0).toUpperCase() + target.target_type.slice(1)}`)}</Badge>
-                      <span className="text-sm font-medium">{target.target_value}</span>
-                    </div>
-                    {target.notes && (
-                      <p className="text-xs text-muted-foreground">{target.notes}</p>
-                    )}
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeleteWhitelist(target.id)}
-                    disabled={whitelistLoading}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="space-y-3 rounded-md border p-4 bg-muted/30">
-            <div className="space-y-2">
-              <Label>{t("whitelistType")}</Label>
-              <Select value={whitelistType} onValueChange={(v: "domain" | "ip" | "cidr") => setWhitelistType(v)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="domain">{t("whitelistDomain")}</SelectItem>
-                  <SelectItem value="ip">{t("whitelistIp")}</SelectItem>
-                  <SelectItem value="cidr">{t("whitelistCidr")}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t("whitelistValue")}</Label>
-              <Input
-                placeholder={whitelistType === "domain" ? "example.com" : whitelistType === "ip" ? "192.168.1.1" : "192.168.1.0/24"}
-                value={whitelistValue}
-                onChange={(e) => setWhitelistValue(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t("whitelistNotes")}</Label>
-              <Textarea
-                placeholder={t("whitelistNotesPlaceholder")}
-                value={whitelistNotes}
-                onChange={(e) => setWhitelistNotes(e.target.value)}
-                rows={2}
-              />
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="whitelist-declaration"
-                checked={whitelistDeclaration}
-                onCheckedChange={(c) => setWhitelistDeclaration(!!c)}
-              />
-              <label
-                htmlFor="whitelist-declaration"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                {t("whitelistDeclaration")}
-              </label>
-            </div>
-
-            {whitelistMsg && (
-              <p className="text-sm text-muted-foreground">{whitelistMsg}</p>
-            )}
-
-            <Button
-              onClick={handleAddWhitelist}
-              disabled={whitelistLoading || !whitelistValue || !whitelistDeclaration}
-              className="w-full"
-            >
-              {whitelistLoading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Plus className="mr-2 h-4 w-4" />
-              )}
-              {t("whitelistAdd")}
-            </Button>
-          </div>
+          {passkeyMsg && <p className="text-sm text-muted-foreground">{passkeyMsg}</p>}
         </CardContent>
       </Card>
 

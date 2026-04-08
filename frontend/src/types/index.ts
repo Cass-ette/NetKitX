@@ -60,7 +60,7 @@ export interface User {
   role: "admin" | "user";
   avatar_url?: string | null;
   terms_accepted_at?: string | null;
-  created_at: string; // ISO datetime string from backend
+  created_at: string;
 }
 
 export interface AISettings {
@@ -104,76 +104,6 @@ export interface AgentSSEEvent {
   data: Record<string, unknown>;
 }
 
-export interface PluginUpdateInfo {
-  plugin_name: string;
-  current_version: string;
-  latest_version: string;
-  changelog?: string;
-  published_at: string;
-  has_breaking_changes: boolean;
-}
-
-export interface UpdateCheckResponse {
-  updates_available: number;
-  plugins: PluginUpdateInfo[];
-}
-
-// ── Admin Panel Types ───────────────────────────────────────────────
-
-export interface AdminTask {
-  id: number;
-  plugin_name: string;
-  status: "pending" | "running" | "done" | "failed";
-  params: Record<string, unknown> | null;
-  result: Record<string, unknown> | null;
-  created_by: number | null;
-  created_by_username: string | null;
-  created_at: string;
-  started_at: string | null;
-  finished_at: string | null;
-}
-
-export interface AdminPlugin {
-  name: string;
-  version: string;
-  description: string | null;
-  category: string;
-  engine: string;
-  enabled: boolean;
-  usage_count: number;
-}
-
-export interface AuditLog {
-  id: number;
-  user_id: number;
-  username: string;
-  action: string;
-  target_type: string;
-  target_id: string | null;
-  details: Record<string, unknown> | null;
-  created_at: string;
-}
-
-export interface UserQuota {
-  user_id: number;
-  username: string;
-  max_concurrent_tasks: number;
-  max_daily_tasks: number;
-  current_running_tasks: number;
-  tasks_today: number;
-}
-
-export interface Announcement {
-  id: number;
-  title: string;
-  content: string;
-  type: "info" | "warning" | "error";
-  active: boolean;
-  created_by: number;
-  created_at: string;
-  updated_at: string;
-}
-
 export interface ServiceStatus {
   name: string;
   status: "ok" | "error";
@@ -190,8 +120,6 @@ export interface ServerStatus {
   disk_total_gb: number;
   services: ServiceStatus[];
 }
-
-// ── Knowledge / Session Types ─────────────────────────────────────────
 
 export interface SessionTurn {
   id: number;
@@ -244,74 +172,4 @@ export interface KnowledgeEntry {
   learning_report: string;
   extraction_status: string;
   created_at: string;
-}
-
-export interface AuthorizedTarget {
-  id: number;
-  target_type: "domain" | "ip" | "cidr";
-  target_value: string;
-  declaration: boolean;
-  notes?: string | null;
-  created_at: string;
-}
-
-// ── Plugin Session Types ──────────────────────────────────────────────
-
-export interface PluginSession {
-  session_id: string;
-  plugin_name: string;
-  user_id: number;
-  created_at: string;
-  last_active: string;
-}
-
-// ── Workflow Types ──────────────────────────────────────────────────
-
-export interface WorkflowNodeData {
-  plugin?: string;
-  command?: string;
-  params?: Record<string, string>;
-  reason?: string;
-  result_summary?: string;
-}
-
-export interface WorkflowNode {
-  id: string;
-  type: "action-plugin" | "action-shell" | "start" | "end";
-  label: string;
-  data: WorkflowNodeData;
-}
-
-export interface WorkflowEdge {
-  id: string;
-  source: string;
-  target: string;
-}
-
-export interface Workflow {
-  id: number;
-  user_id: number;
-  session_id?: number | null;
-  name: string;
-  description: string;
-  nodes: WorkflowNode[];
-  edges: WorkflowEdge[];
-  status: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface WorkflowListItem {
-  id: number;
-  name: string;
-  description: string;
-  session_id?: number | null;
-  node_count: number;
-  status: string;
-  created_at: string;
-}
-
-export interface WorkflowListResponse {
-  items: WorkflowListItem[];
-  total: number;
 }
