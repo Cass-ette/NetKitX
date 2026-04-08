@@ -1,14 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-
-// Debug helper component
-function DebugMessages({ messages }: { messages: any[] }) {
-  useEffect(() => {
-    console.log("[AIChat] Messages changed:", messages.length, messages);
-  }, [messages]);
-  return null;
-}
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
@@ -287,7 +279,6 @@ export function AIChatCore({ variant = "full" }: AIChatCoreProps) {
       )}
 
       {/* Messages */}
-      <DebugMessages messages={messages} />
       <div className={`flex-1 overflow-y-auto space-y-4 ${isPanel ? "px-3 pb-2" : "pb-4"}`}>
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center space-y-3">
@@ -409,10 +400,7 @@ export function AIChatCore({ variant = "full" }: AIChatCoreProps) {
           className="resize-none"
         />
         <Button
-          onClick={() => {
-            console.log("[AIChat] Send button clicked", { loading, input: input.trim(), hasToken: !!token });
-            handleSend();
-          }}
+          onClick={handleSend}
           disabled={loading || !input.trim()}
           size="icon"
           className="h-auto"

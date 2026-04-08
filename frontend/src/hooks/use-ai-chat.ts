@@ -34,7 +34,6 @@ export function useAIChat() {
   // Stop agent loop
   const handleStop = useCallback(() => {
     abortRef.current?.abort();
-    abortRef.current = null;
     setLoading(false);
     setCurrentSessionId(null);
     // Clean trailing empty assistant message
@@ -122,12 +121,9 @@ export function useAIChat() {
           if (streamDone) break;
         }
       } catch (err) {
-        // Check for abort error (handle different browser implementations)
-        const isAbortError =
-          (err instanceof DOMException && err.name === "AbortError") ||
-          (err instanceof Error && err.name === "AbortError") ||
-          (err instanceof Error && err.message?.includes("aborted"));
-        if (isAbortError) {
+        const isAbort = (err instanceof DOMException && err.name === "AbortError") ||
+                        (err instanceof Error && (err.name === "AbortError" || err.message?.includes("aborted")));
+        if (isAbort) {
           setLoading(false);
           return;
         }
@@ -156,8 +152,6 @@ export function useAIChat() {
         body.confirm_action = confirmAction;
       }
 
-      console.log("[processAgentStream] Starting fetch...");
-      console.log("[processAgentStream] Messages to send:", messagesToSend);
       const res = await fetch(`${API_BASE}/api/v1/ai/agent`, {
         method: "POST",
         headers: {
@@ -167,7 +161,6 @@ export function useAIChat() {
         body: JSON.stringify(body),
         signal: abortRef.current.signal,
       });
-      console.log("[processAgentStream] Response:", res.status, res.ok);
 
       if (!res.ok) {
         if (res.status === 401) {
@@ -191,108 +184,88 @@ export function useAIChat() {
       }
 
       const reader = res.body?.getReader();
-      if (!reader) {
-        console.error("[processAgentStream] No reader available");
-        setError("Failed to read response stream");
-        return;
-      }
-      console.log("[processAgentStream] Got reader, starting to read...");
+      if (!reader) return;
       const decoder = new TextDecoder();
       let buffer = "";
       let assistantContent = "";
 
-      // Add empty assistant message for streaming
-      const newAssistantMsg: ChatMessage = { role: "assistant", content: "" };
-      setMessages((prev) => [...prev, newAssistantMsg]);
+      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
-      // Set a timeout to detect stuck streams
-      const timeoutId = setTimeout(() => {
-        console.error("[processAgentStream] Stream timeout - aborting");
-        abortRef.current?.abort();
-      }, 120000); // 2 minute timeout
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
 
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
+        let streamDone = false;
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const raw = line.slice(6);
+          if (raw === "[DONE]") { streamDone = true; break; }
 
-          let streamDone = false;
-          for (const line of lines) {
-            if (!line.startsWith("data: ")) continue;
-            const raw = line.slice(6);
-            if (raw === "[DONE]") { streamDone = true; break; }
-
-            let evt: { event: string; data: Record<string, unknown> };
-            try {
-              evt = JSON.parse(raw);
-            } catch {
-              continue;
-            }
-
-            const { event, data } = evt;
-
-            if (event === "session_start") {
-              console.log("[processAgentStream] session_start:", data.session_id);
-              setCurrentSessionId(data.session_id as number);
-            } else if (event === "text") {
-              assistantContent += (data.content as string) || "";
-              const snap = assistantContent;
-              setMessages((prev) => {
-                const updated = [...prev];
-                const last = updated.length - 1;
-                updated[last] = { ...updated[last], content: snap };
-                return updated;
-              });
-            } else if (event === "turn") {
-              setCurrentTurn(data.turn as number);
-            } else if (event === "action") {
-              const action = data.action as AgentAction;
-              const status = agentMode === "semi_auto" ? "proposed" : "executing";
-              setMessages((prev) => {
-                const updated = [...prev];
-                const last = updated.length - 1;
-                updated[last] = { ...updated[last], action, actionStatus: status };
-                return updated;
-              });
-            } else if (event === "action_status") {
-              setMessages((prev) => {
-                const updated = [...prev];
-                const last = updated.length - 1;
-                updated[last] = { ...updated[last], actionStatus: "executing" };
-                return updated;
-              });
-            } else if (event === "action_result") {
-              const result = data.result as AgentActionResult;
-              assistantContent = "";
-              setMessages((prev) => {
-                const updated = [...prev];
-                const last = updated.length - 1;
-                updated[last] = { ...updated[last], actionResult: result, actionStatus: "done" };
-                return [...updated, { role: "assistant", content: "" }];
-              });
-            } else if (event === "action_error") {
-              const errorType = data.error_type as string;
-              if (errorType === "malformed") {
-                assistantContent = "";
-                setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
-              }
-            } else if (event === "waiting") {
-              // semi_auto: action card already shows confirm buttons
-            } else if (event === "done") {
-              console.log("[processAgentStream] done event:", data.reason);
-              doneReasonRef.current = (data.reason as string) || null;
-              streamDone = true;
-              break;
-            }
+          let evt: { event: string; data: Record<string, unknown> };
+          try {
+            evt = JSON.parse(raw);
+          } catch {
+            continue;
           }
-          if (streamDone) break;
+
+          const { event, data } = evt;
+
+          if (event === "session_start") {
+            setCurrentSessionId(data.session_id as number);
+          } else if (event === "text") {
+            assistantContent += (data.content as string) || "";
+            const snap = assistantContent;
+            setMessages((prev) => {
+              const updated = [...prev];
+              const last = updated.length - 1;
+              updated[last] = { ...updated[last], content: snap };
+              return updated;
+            });
+          } else if (event === "turn") {
+            setCurrentTurn(data.turn as number);
+          } else if (event === "action") {
+            const action = data.action as AgentAction;
+            const status = agentMode === "semi_auto" ? "proposed" : "executing";
+            setMessages((prev) => {
+              const updated = [...prev];
+              const last = updated.length - 1;
+              updated[last] = { ...updated[last], action, actionStatus: status };
+              return updated;
+            });
+          } else if (event === "action_status") {
+            setMessages((prev) => {
+              const updated = [...prev];
+              const last = updated.length - 1;
+              updated[last] = { ...updated[last], actionStatus: "executing" };
+              return updated;
+            });
+          } else if (event === "action_result") {
+            const result = data.result as AgentActionResult;
+            assistantContent = "";
+            setMessages((prev) => {
+              const updated = [...prev];
+              const last = updated.length - 1;
+              updated[last] = { ...updated[last], actionResult: result, actionStatus: "done" };
+              return [...updated, { role: "assistant", content: "" }];
+            });
+          } else if (event === "action_error") {
+            const errorType = data.error_type as string;
+            if (errorType === "malformed") {
+              assistantContent = "";
+              setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+            }
+          } else if (event === "waiting") {
+            // semi_auto: action card already shows confirm buttons
+          } else if (event === "done") {
+            doneReasonRef.current = (data.reason as string) || null;
+            streamDone = true;
+            break;
+          }
         }
-        console.log("[processAgentStream] Stream ended");
-      } finally {
-        clearTimeout(timeoutId);
+        if (streamDone) break;
       }
     },
     [token, agentMode, mode, locale, maxTurns, setMessages, setError, setCurrentTurn, setCurrentSessionId],
@@ -300,14 +273,10 @@ export function useAIChat() {
 
   // Main send handler
   const handleSend = useCallback(async () => {
-    if (!token || !input.trim() || loading) {
-      console.log("[handleSend] blocked:", { hasToken: !!token, hasInput: !!input.trim(), loading });
-      return;
-    }
+    if (!token || !input.trim() || loading) return;
 
     const userMsg: ChatMessage = { role: "user", content: input.trim() };
     const newMessages = [...messages, userMsg];
-    console.log("[handleSend] Adding user message:", userMsg);
     setMessages(newMessages);
     setInput("");
     setLoading(true);
@@ -321,12 +290,9 @@ export function useAIChat() {
         await processAgentStream(newMessages);
       }
     } catch (err) {
-      // Check for abort error (handle different browser implementations)
-      const isAbortError =
-        (err instanceof DOMException && err.name === "AbortError") ||
-        (err instanceof Error && err.name === "AbortError") ||
-        (err instanceof Error && err.message?.includes("aborted"));
-      if (isAbortError) {
+      const isAbort = (err instanceof DOMException && err.name === "AbortError") ||
+                      (err instanceof Error && (err.name === "AbortError" || err.message?.includes("aborted")));
+      if (isAbort) {
         setLoading(false);
         return;
       }
@@ -405,12 +371,9 @@ export function useAIChat() {
       try {
         await processAgentStream(apiMessages, { approved, action });
       } catch (err) {
-        // Check for abort error (handle different browser implementations)
-        const isAbortError =
-          (err instanceof DOMException && err.name === "AbortError") ||
-          (err instanceof Error && err.name === "AbortError") ||
-          (err instanceof Error && err.message?.includes("aborted"));
-        if (isAbortError) {
+        const isAbort = (err instanceof DOMException && err.name === "AbortError") ||
+                        (err instanceof Error && (err.name === "AbortError" || err.message?.includes("aborted")));
+        if (isAbort) {
           setLoading(false);
           return;
         }
