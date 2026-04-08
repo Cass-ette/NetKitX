@@ -1,6 +1,12 @@
 {
   "title": "Dashboard",
   "subtitle": "NetKitX Security Toolkit Overview",
+  "aiChat": "AI Chat",
+  "aiChatDesc": "Chat with the AI assistant",
+  "sessions": "Sessions",
+  "sessionsDesc": "Review your agent sessions",
+  "knowledge": "Knowledge",
+  "knowledgeDesc": "Browse extracted knowledge entries",
   "toolsAvailable": "Tools Available",
   "registeredTools": "registered tools",
   "totalTasks": "Total Tasks",
@@ -9,6 +15,10 @@
   "tasksInProgress": "tasks in progress",
   "plugins": "Plugins",
   "loadedPlugins": "loaded plugins",
+  "gettingStarted": "Getting Started",
+  "gettingStartedDesc": "Configure an AI provider, then start a chat or run a tool.",
+  "configureAI": "Configure AI",
+  "startChat": "Start Chat",
   "recentTasks": "Recent Tasks",
   "noTasksYet": "No tasks yet. Go to {{toolsLink}} to start a scan.",
   "toolsLinkText": "Tools"
