@@ -202,85 +202,95 @@ export function useAIChat() {
 
       setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
+      // Set a timeout to detect stuck streams
+      const timeoutId = setTimeout(() => {
+        console.error("[processAgentStream] Stream timeout - aborting");
+        abortRef.current?.abort();
+      }, 120000); // 2 minute timeout
 
-        let streamDone = false;
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const raw = line.slice(6);
-          if (raw === "[DONE]") { streamDone = true; break; }
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
 
-          let evt: { event: string; data: Record<string, unknown> };
-          try {
-            evt = JSON.parse(raw);
-          } catch {
-            continue;
-          }
+          let streamDone = false;
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            const raw = line.slice(6);
+            if (raw === "[DONE]") { streamDone = true; break; }
 
-          const { event, data } = evt;
-
-          if (event === "session_start") {
-            console.log("[processAgentStream] session_start:", data.session_id);
-            setCurrentSessionId(data.session_id as number);
-          } else if (event === "text") {
-            assistantContent += (data.content as string) || "";
-            const snap = assistantContent;
-            setMessages((prev) => {
-              const updated = [...prev];
-              const last = updated.length - 1;
-              updated[last] = { ...updated[last], content: snap };
-              return updated;
-            });
-          } else if (event === "turn") {
-            setCurrentTurn(data.turn as number);
-          } else if (event === "action") {
-            const action = data.action as AgentAction;
-            const status = agentMode === "semi_auto" ? "proposed" : "executing";
-            setMessages((prev) => {
-              const updated = [...prev];
-              const last = updated.length - 1;
-              updated[last] = { ...updated[last], action, actionStatus: status };
-              return updated;
-            });
-          } else if (event === "action_status") {
-            setMessages((prev) => {
-              const updated = [...prev];
-              const last = updated.length - 1;
-              updated[last] = { ...updated[last], actionStatus: "executing" };
-              return updated;
-            });
-          } else if (event === "action_result") {
-            const result = data.result as AgentActionResult;
-            assistantContent = "";
-            setMessages((prev) => {
-              const updated = [...prev];
-              const last = updated.length - 1;
-              updated[last] = { ...updated[last], actionResult: result, actionStatus: "done" };
-              return [...updated, { role: "assistant", content: "" }];
-            });
-          } else if (event === "action_error") {
-            const errorType = data.error_type as string;
-            if (errorType === "malformed") {
-              assistantContent = "";
-              setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+            let evt: { event: string; data: Record<string, unknown> };
+            try {
+              evt = JSON.parse(raw);
+            } catch {
+              continue;
             }
-          } else if (event === "waiting") {
-            // semi_auto: action card already shows confirm buttons
-          } else if (event === "done") {
-            console.log("[processAgentStream] done event:", data.reason);
-            doneReasonRef.current = (data.reason as string) || null;
-            streamDone = true;
-            break;
+
+            const { event, data } = evt;
+
+            if (event === "session_start") {
+              console.log("[processAgentStream] session_start:", data.session_id);
+              setCurrentSessionId(data.session_id as number);
+            } else if (event === "text") {
+              assistantContent += (data.content as string) || "";
+              const snap = assistantContent;
+              setMessages((prev) => {
+                const updated = [...prev];
+                const last = updated.length - 1;
+                updated[last] = { ...updated[last], content: snap };
+                return updated;
+              });
+            } else if (event === "turn") {
+              setCurrentTurn(data.turn as number);
+            } else if (event === "action") {
+              const action = data.action as AgentAction;
+              const status = agentMode === "semi_auto" ? "proposed" : "executing";
+              setMessages((prev) => {
+                const updated = [...prev];
+                const last = updated.length - 1;
+                updated[last] = { ...updated[last], action, actionStatus: status };
+                return updated;
+              });
+            } else if (event === "action_status") {
+              setMessages((prev) => {
+                const updated = [...prev];
+                const last = updated.length - 1;
+                updated[last] = { ...updated[last], actionStatus: "executing" };
+                return updated;
+              });
+            } else if (event === "action_result") {
+              const result = data.result as AgentActionResult;
+              assistantContent = "";
+              setMessages((prev) => {
+                const updated = [...prev];
+                const last = updated.length - 1;
+                updated[last] = { ...updated[last], actionResult: result, actionStatus: "done" };
+                return [...updated, { role: "assistant", content: "" }];
+              });
+            } else if (event === "action_error") {
+              const errorType = data.error_type as string;
+              if (errorType === "malformed") {
+                assistantContent = "";
+                setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+              }
+            } else if (event === "waiting") {
+              // semi_auto: action card already shows confirm buttons
+            } else if (event === "done") {
+              console.log("[processAgentStream] done event:", data.reason);
+              doneReasonRef.current = (data.reason as string) || null;
+              streamDone = true;
+              break;
+            }
           }
+          if (streamDone) break;
         }
-        if (streamDone) break;
+        console.log("[processAgentStream] Stream ended");
+      } finally {
+        clearTimeout(timeoutId);
       }
-      console.log("[processAgentStream] Stream ended");
     },
     [token, agentMode, mode, locale, maxTurns, setMessages, setError, setCurrentTurn, setCurrentSessionId],
   );
