@@ -324,8 +324,22 @@ export function AIChatCore({ variant = "full" }: AIChatCoreProps) {
                 </Card>
               )}
 
-              {/* Action card */}
-              {msg.action && msg.actionStatus && (
+              {/* Action card(s) */}
+              {msg.actions && msg.actions.length > 1 && msg.actionStatus ? (
+                <>
+                  <div className="text-xs text-muted-foreground mb-1">
+                    {t("agentExecuting")} {msg.actions.length} actions…
+                  </div>
+                  {msg.actions.map((a, ai) => (
+                    <AgentActionCard
+                      key={ai}
+                      action={a}
+                      status={msg.actionStatus!}
+                      result={msg.actionResults?.[ai]}
+                    />
+                  ))}
+                </>
+              ) : msg.action && msg.actionStatus ? (
                 <AgentActionCard
                   action={msg.action}
                   status={msg.actionStatus}
@@ -336,7 +350,7 @@ export function AIChatCore({ variant = "full" }: AIChatCoreProps) {
                       : undefined
                   }
                 />
-              )}
+              ) : null}
             </div>
 
             {msg.role === "user" && (
