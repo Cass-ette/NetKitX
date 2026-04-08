@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Bot, Brain, Puzzle, History } from "lucide-react";
 import { useTranslations } from "@/i18n/use-translations";
 
@@ -72,10 +73,12 @@ export default function DashboardPage() {
           <Card className="cursor-pointer hover:border-primary transition-colors">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{t("plugins")}</CardTitle>
-              <Puzzle className="h-4 w-4 text-muted-foreground" />
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary">{stats?.plugins_count ?? "-"}</Badge>
+                <Puzzle className="h-4 w-4 text-muted-foreground" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.plugins_count ?? "-"}</div>
               <p className="text-xs text-muted-foreground">{t("loadedPlugins")}</p>
             </CardContent>
           </Card>
