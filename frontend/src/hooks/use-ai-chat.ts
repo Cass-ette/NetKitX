@@ -188,7 +188,10 @@ export function useAIChat() {
       }
 
       const reader = res.body?.getReader();
-      if (!reader) return;
+      if (!reader) {
+        setError("Failed to read response stream");
+        return;
+      }
       const decoder = new TextDecoder();
       let buffer = "";
       let assistantContent = "";
