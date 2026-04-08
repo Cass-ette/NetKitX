@@ -201,11 +201,9 @@ export function useAIChat() {
       let buffer = "";
       let assistantContent = "";
 
-      console.log("[processAgentStream] Adding empty assistant message");
-      setMessages((prev) => {
-        console.log("[processAgentStream] setMessages prev length:", prev.length);
-        return [...prev, { role: "assistant", content: "" }];
-      });
+      // Add empty assistant message for streaming
+      const newAssistantMsg: ChatMessage = { role: "assistant", content: "" };
+      setMessages((prev) => [...prev, newAssistantMsg]);
 
       // Set a timeout to detect stuck streams
       const timeoutId = setTimeout(() => {
