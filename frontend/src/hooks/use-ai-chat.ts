@@ -214,7 +214,7 @@ export function useAIChat() {
           const { event, data } = evt;
 
           // Support both nested format (agent) and flat format (chat)
-          const textContent = (data.content as string) || (data as unknown as string) || "";
+          const textContent = (data as { content?: string }).content || "";
 
           if (event === "session_start") {
             setCurrentSessionId((data as { session_id: number }).session_id);
