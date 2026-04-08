@@ -23,12 +23,8 @@ _TAG_RE = {
 }
 
 
-def parse_action(text: str) -> dict[str, Any] | None:
-    """Extract the first <action> block from AI text using regex."""
-    match = _ACTION_RE.search(text)
-    if not match:
-        return None
-    block = match.group(0)
+def _parse_single_block(block: str) -> dict[str, Any] | None:
+    """Parse a single <action>...</action> block into an action dict."""
     type_match = _TYPE_RE.search(block)
     if not type_match:
         return None
@@ -50,6 +46,22 @@ def parse_action(text: str) -> dict[str, Any] | None:
     m = _TAG_RE["reason"].search(block)
     result["reason"] = m.group(1).strip() if m else ""
     return result
+
+
+def parse_actions(text: str) -> list[dict[str, Any]]:
+    """Extract ALL <action> blocks from AI text. Returns list (may be empty)."""
+    results = []
+    for match in _ACTION_RE.finditer(text):
+        action = _parse_single_block(match.group(0))
+        if action:
+            results.append(action)
+    return results
+
+
+def parse_action(text: str) -> dict[str, Any] | None:
+    """Extract the first <action> block from AI text using regex."""
+    actions = parse_actions(text)
+    return actions[0] if actions else None
 
 
 def strip_action_tags(text: str) -> str:

@@ -26,7 +26,7 @@ from app.services.agent_utils import (
     execute_plugin_action,
     format_action_result,
     has_action_attempt,
-    parse_action,
+    parse_actions,
 )
 
 logger = logging.getLogger(__name__)
@@ -158,10 +158,10 @@ async def run_agent_loop(
             )
             continue
 
-        # Parse action from response
-        action = parse_action(full_text)
+        # Parse actions from response
+        actions = parse_actions(full_text)
 
-        if not action:
+        if not actions:
             # Check if AI attempted an action but malformed the XML
             if has_action_attempt(full_text):
                 consecutive_errors += 1
@@ -199,32 +199,60 @@ async def run_agent_loop(
             yield {"event": "done", "data": {"reason": "complete"}}
             return
 
-        # Validate action type for mode
-        if agent_mode == "full_auto" and action.get("type") == "shell":
-            yield {
-                "event": "action_error",
-                "data": {
-                    "error": "Shell commands not allowed in full_auto mode",
-                    "error_type": "fatal",
-                    "retry_count": 0,
-                    "max_retries": MAX_CONSECUTIVE_ERRORS,
-                },
-            }
-            yield {"event": "done", "data": {"reason": "error"}}
-            return
-
-        yield {"event": "action", "data": {"action": action}}
-
-        # Mode A: pause and wait for user
+        # Mode A (semi_auto): only take the first action
         if agent_mode == "semi_auto":
+            action = actions[0]
+            # Validate action type
+            if agent_mode == "full_auto" and action.get("type") == "shell":
+                yield {
+                    "event": "action_error",
+                    "data": {
+                        "error": "Shell commands not allowed in full_auto mode",
+                        "error_type": "fatal",
+                        "retry_count": 0,
+                        "max_retries": MAX_CONSECUTIVE_ERRORS,
+                    },
+                }
+                yield {"event": "done", "data": {"reason": "error"}}
+                return
+            yield {"event": "action", "data": {"action": action}}
             yield {"event": "waiting", "data": {}}
             yield {"event": "done", "data": {"reason": "waiting"}}
             return
 
-        # Mode B/C: auto-execute
-        yield {"event": "action_status", "data": {"status": "executing", "action": action}}
+        # Mode B/C (full_auto / terminal): validate all actions
+        for a in actions:
+            if agent_mode == "full_auto" and a.get("type") == "shell":
+                yield {
+                    "event": "action_error",
+                    "data": {
+                        "error": "Shell commands not allowed in full_auto mode",
+                        "error_type": "fatal",
+                        "retry_count": 0,
+                        "max_retries": MAX_CONSECUTIVE_ERRORS,
+                    },
+                }
+                yield {"event": "done", "data": {"reason": "error"}}
+                return
+
+        # Emit action event(s)
+        if len(actions) == 1:
+            yield {"event": "action", "data": {"action": actions[0]}}
+        else:
+            yield {"event": "action", "data": {"action": actions[0], "actions": actions}}
+        yield {
+            "event": "action_status",
+            "data": {"status": "executing", "count": len(actions)},
+        }
+
+        # Concurrent execution of all actions
+        import asyncio
+
+        async def _run_one(a: dict[str, Any]) -> dict[str, Any]:
+            return await _execute_action(a, agent_mode, user_id, is_admin, user_token)
+
         try:
-            result = await _execute_action(action, agent_mode, user_id, is_admin, user_token)
+            results = await asyncio.gather(*[_run_one(a) for a in actions], return_exceptions=True)
         except Exception as e:
             logger.exception("Action execution error in agent loop")
             yield {
@@ -239,69 +267,58 @@ async def run_agent_loop(
             yield {"event": "done", "data": {"reason": "error"}}
             return
 
-        error_msg = result.get("error")
-        if error_msg:
-            error_type = classify_error(error_msg)
-            consecutive_errors += 1
+        # Process results
+        result_texts = []
+        max_similar = 0
+        # Snapshot history BEFORE this turn so same-turn actions don't count
+        # against each other (e.g. scanning 5 ports in parallel is not stagnation)
+        history_before_turn = list(action_history)
+        for action, result in zip(actions, results):
+            if isinstance(result, Exception):
+                result = {"error": str(result)}
 
-            yield {
-                "event": "action_error",
-                "data": {
-                    "error": error_msg,
-                    "error_type": error_type,
-                    "retry_count": consecutive_errors,
-                    "max_retries": MAX_CONSECUTIVE_ERRORS,
-                },
-            }
-
-            if error_type == "fatal":
-                yield {"event": "done", "data": {"reason": "error"}}
-                return
-
-            # Retryable: inject error feedback into conversation
-            full_messages.append({"role": "assistant", "content": full_text})
-            if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
-                full_messages.append(
-                    {
-                        "role": "user",
-                        "content": f"[Action Failed: {error_msg}] "
-                        "You have failed multiple consecutive times. "
-                        "Please continue your analysis in plain text without action blocks.",
-                    }
-                )
+            error_msg = result.get("error")
+            if error_msg:
+                error_type = classify_error(error_msg)
+                consecutive_errors += 1
+                yield {
+                    "event": "action_error",
+                    "data": {
+                        "error": error_msg,
+                        "error_type": error_type,
+                        "retry_count": consecutive_errors,
+                        "max_retries": MAX_CONSECUTIVE_ERRORS,
+                        "action": action,
+                    },
+                }
+                if error_type == "fatal":
+                    yield {"event": "done", "data": {"reason": "error"}}
+                    return
             else:
-                full_messages.append(
-                    {
-                        "role": "user",
-                        "content": f"[Action Failed: {error_msg}] "
-                        "Please analyze the error and try a different approach.",
-                    }
-                )
-            continue
+                consecutive_errors = 0
+                yield {"event": "action_result", "data": {"result": result, "action": action}}
 
-        # Success — reset error counter
-        consecutive_errors = 0
-        yield {"event": "action_result", "data": {"result": result, "action": action}}
+            result_texts.append(format_action_result(action, result))
 
-        # Stagnation detection
-        fingerprint = _action_fingerprint(action)
-        similar_count = count_similar_recent(action_history, fingerprint)
-        action_history.append(fingerprint)
+            # Stagnation detection: compare against PREVIOUS turns only
+            fingerprint = _action_fingerprint(action)
+            similar_count = count_similar_recent(history_before_turn, fingerprint)
+            max_similar = max(max_similar, similar_count)
+            action_history.append(fingerprint)
 
         # Inject into conversation
         full_messages.append({"role": "assistant", "content": full_text})
-        result_text = format_action_result(action, result)
-        full_messages.append({"role": "user", "content": result_text})
+        full_messages.append({"role": "user", "content": "\n\n".join(result_texts)})
 
         # Context compression: trigger when conversation grows too large
         if _estimate_context_chars(full_messages) > 50_000:
             full_messages = _summarize_context(full_messages)
             logger.info("Context compressed at turn %d", turn)
 
-        if similar_count >= STAGNATION_STOP:
+        if max_similar >= STAGNATION_STOP:
             yield {"event": "done", "data": {"reason": "stagnation"}}
             return
-        elif similar_count >= STAGNATION_FORCE:
+        elif max_similar >= STAGNATION_FORCE:
             full_messages.append(
                 {
                     "role": "user",
@@ -312,7 +329,7 @@ async def run_agent_loop(
                     "Do NOT repeat the same approach again.",
                 }
             )
-        elif similar_count >= STAGNATION_WARN:
+        elif max_similar >= STAGNATION_WARN:
             full_messages.append(
                 {
                     "role": "user",

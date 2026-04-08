@@ -1,4 +1,5 @@
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// Use relative URL in development to leverage Next.js rewrites proxy
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 type FetchOptions = RequestInit & {
   token?: string;
