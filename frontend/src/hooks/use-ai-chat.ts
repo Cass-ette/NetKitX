@@ -213,13 +213,10 @@ export function useAIChat() {
 
           const { event, data } = evt;
 
-          // Support both nested format (agent) and flat format (chat)
-          const textContent = (data as { content?: string }).content || "";
-
           if (event === "session_start") {
             setCurrentSessionId((data as { session_id: number }).session_id);
-          } else if (event === "text" && textContent) {
-            assistantContent += textContent;
+          } else if (event === "text") {
+            assistantContent += (data.content as string) || "";
             const snap = assistantContent;
             setMessages((prev) => {
               const updated = [...prev];
