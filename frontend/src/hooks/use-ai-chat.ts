@@ -156,6 +156,7 @@ export function useAIChat() {
         body.confirm_action = confirmAction;
       }
 
+      console.log("[processAgentStream] Starting fetch...");
       const res = await fetch(`${API_BASE}/api/v1/ai/agent`, {
         method: "POST",
         headers: {
@@ -165,6 +166,7 @@ export function useAIChat() {
         body: JSON.stringify(body),
         signal: abortRef.current.signal,
       });
+      console.log("[processAgentStream] Response:", res.status, res.ok);
 
       if (!res.ok) {
         if (res.status === 401) {
@@ -189,9 +191,11 @@ export function useAIChat() {
 
       const reader = res.body?.getReader();
       if (!reader) {
+        console.error("[processAgentStream] No reader available");
         setError("Failed to read response stream");
         return;
       }
+      console.log("[processAgentStream] Got reader, starting to read...");
       const decoder = new TextDecoder();
       let buffer = "";
       let assistantContent = "";
@@ -221,6 +225,7 @@ export function useAIChat() {
           const { event, data } = evt;
 
           if (event === "session_start") {
+            console.log("[processAgentStream] session_start:", data.session_id);
             setCurrentSessionId(data.session_id as number);
           } else if (event === "text") {
             assistantContent += (data.content as string) || "";
@@ -267,6 +272,7 @@ export function useAIChat() {
           } else if (event === "waiting") {
             // semi_auto: action card already shows confirm buttons
           } else if (event === "done") {
+            console.log("[processAgentStream] done event:", data.reason);
             doneReasonRef.current = (data.reason as string) || null;
             streamDone = true;
             break;
@@ -274,13 +280,17 @@ export function useAIChat() {
         }
         if (streamDone) break;
       }
+      console.log("[processAgentStream] Stream ended");
     },
     [token, agentMode, mode, locale, maxTurns, setMessages, setError, setCurrentTurn, setCurrentSessionId],
   );
 
   // Main send handler
   const handleSend = useCallback(async () => {
-    if (!token || !input.trim() || loading) return;
+    if (!token || !input.trim() || loading) {
+      console.log("[handleSend] blocked:", { hasToken: !!token, hasInput: !!input.trim(), loading });
+      return;
+    }
 
     const userMsg: ChatMessage = { role: "user", content: input.trim() };
     const newMessages = [...messages, userMsg];
