@@ -324,21 +324,30 @@ export function AIChatCore({ variant = "full" }: AIChatCoreProps) {
                 </Card>
               )}
 
-              {/* Action card(s) */}
+              {/* Action card(s) — multi-action parallel or single */}
               {msg.actions && msg.actions.length > 1 && msg.actionStatus ? (
-                <>
-                  <div className="text-xs text-muted-foreground mb-1">
-                    {t("agentExecuting")} {msg.actions.length} actions…
-                  </div>
-                  {msg.actions.map((a, ai) => (
+                <div className="space-y-2">
+                  <Badge variant="outline" className="text-xs">
+                    {msg.actions.length} {t("parallelActions")}
+                    {msg.pendingResults != null && msg.pendingResults > 0 && (
+                      <span className="ml-1 text-muted-foreground">
+                        ({msg.actions.length - msg.pendingResults}/{msg.actions.length})
+                      </span>
+                    )}
+                  </Badge>
+                  {msg.actions.map((act, idx) => (
                     <AgentActionCard
-                      key={ai}
-                      action={a}
-                      status={msg.actionStatus!}
-                      result={msg.actionResults?.[ai]}
+                      key={idx}
+                      action={act}
+                      status={
+                        msg.actionResults && msg.actionResults[idx]
+                          ? "done"
+                          : msg.actionStatus ?? "executing"
+                      }
+                      result={msg.actionResults?.[idx]}
                     />
                   ))}
-                </>
+                </div>
               ) : msg.action && msg.actionStatus ? (
                 <AgentActionCard
                   action={msg.action}
