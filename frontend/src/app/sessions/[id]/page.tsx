@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, User, Bot, Sparkles, Loader2, BookOpen } from "lucide-react";
 import { AgentActionCard } from "@/components/ai/agent-action-card";
+import { stripActionTags } from "@/lib/agent-utils";
 import ReactMarkdown from "react-markdown";
 import type { AgentSessionDetail, SessionTurn, AgentAction, AgentActionResult, KnowledgeEntry } from "@/types";
 
@@ -178,6 +179,8 @@ export default function SessionDetailPage() {
 }
 
 function TurnCard({ turn }: { turn: SessionTurn }) {
+  const assistantContent = turn.role === "assistant" ? stripActionTags(turn.content) : turn.content;
+
   if (turn.role === "user") {
     return (
       <div className="flex gap-3 items-start">
@@ -222,10 +225,10 @@ function TurnCard({ turn }: { turn: SessionTurn }) {
         <Bot className="h-4 w-4" />
       </div>
       <div className="flex-1 max-w-[80%] space-y-2">
-        {turn.content && (
+        {assistantContent && (
           <Card>
             <CardContent className="p-3 prose prose-sm dark:prose-invert max-w-none">
-              <ReactMarkdown>{turn.content}</ReactMarkdown>
+              <ReactMarkdown>{assistantContent}</ReactMarkdown>
             </CardContent>
           </Card>
         )}
