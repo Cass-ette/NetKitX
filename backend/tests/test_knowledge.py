@@ -1,11 +1,14 @@
 """Unit tests for knowledge service (_events_to_turns logic + extraction helpers)."""
 
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+from app.services.ai_service import encrypt_key
 from app.services.embedding_service import build_embedding_text, format_rag_context
 from app.services.knowledge_service import (
     _compress_action_result,
     _events_to_turns,
+    _get_active_ai_config,
     _parse_extraction_json,
     _sanitize_extraction,
     build_session_digest,
@@ -362,6 +365,48 @@ class TestSanitizeExtraction:
         result = _sanitize_extraction(data)
         assert len(result["scenario"]) == 500
         assert len(result["attack_chain"]) == 2000
+
+
+class TestGetActiveAiConfig:
+    """_get_active_ai_config resolves provider-specific settings."""
+
+    def test_glm_provider_uses_provider_specific_fields(self):
+        ai = SimpleNamespace(
+            provider="glm",
+            deepseek_api_key_enc=None,
+            deepseek_model="deepseek-chat",
+            glm_api_key_enc=encrypt_key("glm-secret"),
+            glm_model="glm-4-flash",
+            custom_api_key_enc=None,
+            custom_model=None,
+            custom_base_url=None,
+        )
+
+        provider, api_key, model, base_url = _get_active_ai_config(ai)
+
+        assert provider == "glm"
+        assert api_key == "glm-secret"
+        assert model == "glm-4-flash"
+        assert base_url is None
+
+    def test_custom_provider_requires_base_url(self):
+        ai = SimpleNamespace(
+            provider="custom",
+            deepseek_api_key_enc=None,
+            deepseek_model="deepseek-chat",
+            glm_api_key_enc=None,
+            glm_model="glm-4-flash",
+            custom_api_key_enc=encrypt_key("custom-secret"),
+            custom_model="gpt-4o-mini",
+            custom_base_url=None,
+        )
+
+        try:
+            _get_active_ai_config(ai)
+        except ValueError as exc:
+            assert str(exc) == "Custom provider requires base_url"
+        else:
+            raise AssertionError("Expected ValueError for missing custom base_url")
 
 
 # =====================================================================

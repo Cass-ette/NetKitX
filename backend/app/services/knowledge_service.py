@@ -558,10 +558,41 @@ def _sanitize_extraction(data: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _get_active_ai_config(ai: Any) -> tuple[str, str, str, str | None]:
+    """Resolve provider-specific AI settings from the active AISettings row."""
+    from app.services.ai_service import decrypt_key
+
+    provider = ai.provider
+
+    if provider == "deepseek":
+        api_key_enc = ai.deepseek_api_key_enc
+        model = ai.deepseek_model or "deepseek-chat"
+        base_url = None
+    elif provider == "glm":
+        api_key_enc = ai.glm_api_key_enc
+        model = ai.glm_model or "glm-4-flash"
+        base_url = None
+    elif provider == "custom":
+        api_key_enc = ai.custom_api_key_enc
+        model = ai.custom_model or ""
+        base_url = ai.custom_base_url
+    else:
+        raise ValueError(f"Unknown AI provider: {provider}")
+
+    if not api_key_enc:
+        raise ValueError(f"No API key configured for {provider}")
+    if not model:
+        raise ValueError(f"No model configured for {provider}")
+    if provider == "custom" and not base_url:
+        raise ValueError("Custom provider requires base_url")
+
+    return provider, decrypt_key(api_key_enc), model, base_url
+
+
 async def extract_knowledge(session_id: int, user_id: int) -> int:
     """Extract knowledge from a completed session. Returns KnowledgeEntry.id."""
     from app.models.ai_settings import AISettings
-    from app.services.ai_service import call_ai, decrypt_key, get_lang_reminder
+    from app.services.ai_service import call_ai, get_lang_reminder
 
     async with async_session() as db:
         # Check for existing successful extraction
@@ -618,7 +649,7 @@ async def extract_knowledge(session_id: int, user_id: int) -> int:
         if not ai_row:
             raise ValueError("AI not configured")
 
-        api_key = decrypt_key(ai_row.api_key_enc)
+        provider, api_key, model, base_url = _get_active_ai_config(ai_row)
 
         # Create pending entry
         entry = KnowledgeEntry(
@@ -639,11 +670,11 @@ async def extract_knowledge(session_id: int, user_id: int) -> int:
 
             # Call 1: Structured extraction
             extraction_raw = await call_ai(
-                provider=ai_row.provider,
+                provider=provider,
                 api_key=api_key,
-                model=ai_row.model,
+                model=model,
                 messages=[{"role": "user", "content": prompt}],
-                base_url=ai_row.base_url,
+                base_url=base_url,
             )
 
             extracted = _parse_extraction_json(extraction_raw)
@@ -662,11 +693,11 @@ async def extract_knowledge(session_id: int, user_id: int) -> int:
             report_prompt += get_lang_reminder(lang)
 
             learning_report = await call_ai(
-                provider=ai_row.provider,
+                provider=provider,
                 api_key=api_key,
-                model=ai_row.model,
+                model=model,
                 messages=[{"role": "user", "content": report_prompt}],
-                base_url=ai_row.base_url,
+                base_url=base_url,
             )
 
             # Update entry

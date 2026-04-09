@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { Fragment, useEffect, useState, useTransition } from "react";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { useTranslations } from "@/i18n/use-translations";
@@ -109,9 +109,8 @@ export default function KnowledgePage() {
             </TableHeader>
             <TableBody>
               {entries.map((entry) => (
-                <>
+                <Fragment key={entry.id}>
                   <TableRow
-                    key={entry.id}
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => setExpanded(expanded === entry.id ? null : entry.id)}
                   >
@@ -167,7 +166,7 @@ export default function KnowledgePage() {
                     </TableCell>
                   </TableRow>
                   {expanded === entry.id && (
-                    <TableRow key={`${entry.id}-detail`}>
+                    <TableRow>
                       <TableCell colSpan={7} className="bg-muted/30 p-4">
                         <div className="space-y-4">
                           {/* Tags */}
@@ -216,7 +215,7 @@ export default function KnowledgePage() {
                       </TableCell>
                     </TableRow>
                   )}
-                </>
+                </Fragment>
               ))}
             </TableBody>
           </Table>
