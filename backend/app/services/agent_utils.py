@@ -3,7 +3,6 @@
 import json
 import logging
 import re
-from difflib import SequenceMatcher
 from typing import Any
 
 from app.plugins.registry import registry
@@ -285,27 +284,65 @@ STAGNATION_WARN = 3
 STAGNATION_FORCE = 5
 STAGNATION_STOP = 7
 
+_URL_RE = re.compile(r"https?://([^/\s]+)([^\s]*)")
+_CURL_METHOD_RE = re.compile(r"-X\s+(\w+)|--request\s+(\w+)")
+# nmap target is typically the last non-option argument (or last argument overall)
+_NMAP_TARGET_RE = re.compile(r"nmap\s+(?:-[a-zA-Z0-9,]+(?:\s+\S+)?\s+)*([^-\s][^\s]*)\s*$")
+
+
+def _extract_shell_pattern(cmd: str) -> str:
+    """Extract command structure pattern rather than raw arguments."""
+    if not cmd:
+        return ""
+    parts = cmd.strip().split()
+    if not parts:
+        return ""
+
+    base_cmd = parts[0]
+
+    if base_cmd == "curl":
+        method = "GET"
+        m = _CURL_METHOD_RE.search(cmd)
+        if m:
+            method = m.group(1) or m.group(2)
+        url_m = _URL_RE.search(cmd)
+        if url_m:
+            return f"curl:{method}:{url_m.group(1)}"
+        return "curl:nohost"
+
+    if base_cmd == "nmap":
+        m = _NMAP_TARGET_RE.search(cmd)
+        if m:
+            return f"nmap:{m.group(1)}"
+        return "nmap:notarget"
+
+    return base_cmd
+
 
 def _action_fingerprint(action: dict[str, Any]) -> str:
-    """Extract a comparable fingerprint from an action dict."""
+    """Extract a structured fingerprint from an action dict."""
     atype = action.get("type", "")
+
     if atype == "shell":
-        return f"shell:{action.get('command', '')}"
+        return f"shell:{_extract_shell_pattern(action.get('command', ''))}"
+
     elif atype == "plugin":
-        params_str = json.dumps(action.get("params", {}), sort_keys=True)
-        return f"plugin:{action.get('plugin', '')}:{params_str}"
+        params = action.get("params", {})
+        param_keys = ",".join(sorted(params.keys()))
+        return f"plugin:{action.get('plugin', '')}:{param_keys}"
+
     return ""
 
 
 def _is_similar(a: str, b: str) -> bool:
-    """Check if two fingerprints are similar enough to count as repetition."""
+    """Check if two fingerprints represent the same structural pattern."""
     if not a or not b:
         return False
-    return SequenceMatcher(None, a, b).ratio() >= STAGNATION_SIMILARITY
+    return a == b
 
 
 def count_similar_recent(history: list[str], current: str) -> int:
-    """Count how many recent actions are similar to the current one."""
+    """Count how many recent actions match the current pattern."""
     return sum(1 for h in history if _is_similar(h, current))
 
 

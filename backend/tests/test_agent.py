@@ -591,55 +591,62 @@ async def test_successful_action_resets_error_counter():
 # ---------------------------------------------------------------------------
 
 
-def test_action_fingerprint_shell():
-    fp = _action_fingerprint({"type": "shell", "command": "curl http://example.com"})
-    assert fp == "shell:curl http://example.com"
+def test_action_fingerprint_curl_extracts_host_method():
+    fp1 = _action_fingerprint({"type": "shell", "command": "curl http://example.com/api/users"})
+    fp2 = _action_fingerprint({"type": "shell", "command": "curl http://example.com/api/admin"})
+    assert fp1 == "shell:curl:GET:example.com"
+    assert fp1 == fp2
 
 
 def test_action_fingerprint_plugin():
     fp = _action_fingerprint(
         {"type": "plugin", "plugin": "nmap", "params": {"target": "192.168.1.1"}}
     )
-    assert "plugin:nmap:" in fp
-    assert "192.168.1.1" in fp
+    assert fp == "plugin:nmap:target"
 
 
-def test_similar_commands_detected():
-    a = "shell:curl -X POST http://target.com/ -d 'payload1'"
-    b = "shell:curl -X POST http://target.com/ -d 'payload2'"
+def test_different_hosts_different_fingerprints():
+    fp1 = _action_fingerprint({"type": "shell", "command": "curl http://host1.com/path"})
+    fp2 = _action_fingerprint({"type": "shell", "command": "curl http://host2.com/path"})
+    assert fp1 != fp2
+
+
+def test_same_curl_pattern_detected_as_similar():
+    a = _action_fingerprint({"type": "shell", "command": "curl http://target.com/page1"})
+    b = _action_fingerprint({"type": "shell", "command": "curl http://target.com/page2"})
     assert _is_similar(a, b) is True
 
 
-def test_different_commands_not_similar():
-    a = "shell:curl http://example.com"
-    b = "shell:nmap -sV 192.168.1.1"
-    assert _is_similar(a, b) is False
+def test_different_methods_not_similar():
+    a = _action_fingerprint({"type": "shell", "command": "curl http://api.example.com/data"})
+    b = _action_fingerprint({"type": "shell", "command": "curl -X POST http://api.example.com/data"})
+    assert not _is_similar(a, b)
 
 
 def test_count_similar_recent_empty_history():
-    assert count_similar_recent([], "shell:curl http://example.com") == 0
+    assert count_similar_recent([], "shell:curl:GET:example.com") == 0
 
 
 def test_count_similar_recent_counts_correctly():
     history = [
-        "shell:curl -X POST http://target.com/ -d 'data1'",
-        "shell:curl -X POST http://target.com/ -d 'data2'",
-        "shell:nmap -sV 192.168.1.1",
-        "shell:curl -X POST http://target.com/ -d 'data3'",
+        "shell:curl:GET:target.com",
+        "shell:curl:GET:target.com",
+        "shell:nmap:target.com",
+        "shell:curl:POST:target.com",
     ]
-    current = "shell:curl -X POST http://target.com/ -d 'data4'"
+    current = "shell:curl:GET:target.com"
     count = count_similar_recent(history, current)
-    # Should match the 3 curl commands but not nmap
-    assert count == 3
+    # Should match the 2 GET curl commands but not nmap or POST
+    assert count == 2
 
 
 def test_count_similar_recent_no_matches():
     history = [
-        "shell:nmap -sV 192.168.1.1",
-        "shell:nikto -h http://target.com",
-        "plugin:sql-inject:{}",
+        "shell:nmap:GET:192.168.1.1",
+        "shell:nikto",
+        "plugin:sql-inject:url,method",
     ]
-    current = "shell:curl http://example.com"
+    current = "shell:curl:GET:example.com"
     assert count_similar_recent(history, current) == 0
 
 
