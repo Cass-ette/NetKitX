@@ -37,6 +37,24 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
+def _truncate_for_log(value: str, limit: int = 160) -> str:
+    value = " ".join(value.split())
+    if len(value) <= limit:
+        return value
+    return value[:limit] + "..."
+
+
+def _describe_action(action: dict[str, Any]) -> str:
+    action_type = action.get("type", "?")
+    if action_type == "plugin":
+        plugin = action.get("plugin", "?")
+        params = action.get("params", {})
+        return f"plugin:{plugin} params={params}"
+    if action_type == "shell":
+        return f"shell:{_truncate_for_log(action.get('command', ''))}"
+    return str(action)
+
+
 async def run_agent_loop(
     *,
     provider: str,
@@ -59,6 +77,17 @@ async def run_agent_loop(
     For semi_auto: yields one AI response, parses action, yields waiting event, then stops.
     For full_auto/terminal: loops up to max_turns, auto-executing actions.
     """
+    logger.info(
+        "Agent loop started user=%s mode=%s security=%s provider=%s model=%s max_turns=%s confirm=%s",
+        user_id,
+        agent_mode,
+        security_mode,
+        provider,
+        model,
+        max_turns,
+        bool(confirm_action),
+    )
+
     # Build system prompt once (contest: removed phase/role rotation)
     system_prompt = get_agent_system_prompt(agent_mode, security_mode, lang)
     lang_reminder = get_lang_reminder(lang)
@@ -84,6 +113,12 @@ async def run_agent_loop(
         )
 
         if approved and action:
+            logger.info(
+                "Executing confirmed action user=%s mode=%s action=%s",
+                user_id,
+                agent_mode,
+                _describe_action(action),
+            )
             yield {"event": "action_status", "data": {"status": "executing", "action": action}}
             result = await _execute_action(action, agent_mode, user_id, is_admin, user_token)
             yield {"event": "action_result", "data": {"result": result, "action": action}}
@@ -91,6 +126,7 @@ async def run_agent_loop(
             result_text = format_action_result(action, result)
             messages.append({"role": "user", "content": result_text})
         else:
+            logger.info("User skipped proposed action user=%s mode=%s", user_id, agent_mode)
             # User skipped — inject skip note
             messages.append(
                 {
@@ -160,10 +196,26 @@ async def run_agent_loop(
 
         # Parse actions from response
         actions = parse_actions(full_text)
+        if actions:
+            logger.info(
+                "Parsed actions user=%s turn=%d mode=%s count=%d actions=%s",
+                user_id,
+                turn,
+                agent_mode,
+                len(actions),
+                [_describe_action(action) for action in actions],
+            )
 
         if not actions:
             # Check if AI attempted an action but malformed the XML
             if has_action_attempt(full_text):
+                logger.warning(
+                    "Malformed action XML user=%s turn=%d mode=%s preview=%s",
+                    user_id,
+                    turn,
+                    agent_mode,
+                    _truncate_for_log(full_text),
+                )
                 consecutive_errors += 1
                 yield {
                     "event": "action_error",
@@ -216,6 +268,12 @@ async def run_agent_loop(
                 yield {"event": "done", "data": {"reason": "error"}}
                 return
             yield {"event": "action", "data": {"action": action}}
+            logger.info(
+                "Semi-auto proposed action user=%s turn=%d action=%s",
+                user_id,
+                turn,
+                _describe_action(action),
+            )
             yield {"event": "waiting", "data": {}}
             yield {"event": "done", "data": {"reason": "waiting"}}
             return
@@ -244,6 +302,13 @@ async def run_agent_loop(
             "event": "action_status",
             "data": {"status": "executing", "count": len(actions)},
         }
+        logger.info(
+            "Executing actions user=%s turn=%d mode=%s count=%d",
+            user_id,
+            turn,
+            agent_mode,
+            len(actions),
+        )
 
         # Concurrent execution of all actions
         import asyncio
@@ -280,6 +345,15 @@ async def run_agent_loop(
             error_msg = result.get("error")
             if error_msg:
                 error_type = classify_error(error_msg)
+                logger.warning(
+                    "Action failed user=%s turn=%d mode=%s error_type=%s action=%s error=%s",
+                    user_id,
+                    turn,
+                    agent_mode,
+                    error_type,
+                    _describe_action(action),
+                    error_msg,
+                )
                 consecutive_errors += 1
                 yield {
                     "event": "action_error",
@@ -295,6 +369,14 @@ async def run_agent_loop(
                     yield {"event": "done", "data": {"reason": "error"}}
                     return
             else:
+                logger.info(
+                    "Action succeeded user=%s turn=%d mode=%s action=%s result_keys=%s",
+                    user_id,
+                    turn,
+                    agent_mode,
+                    _describe_action(action),
+                    sorted(result.keys()),
+                )
                 consecutive_errors = 0
                 yield {"event": "action_result", "data": {"result": result, "action": action}}
 
@@ -353,25 +435,78 @@ async def _execute_action(
     action_type = action.get("type", "")
 
     if action_type == "plugin":
-        return await execute_plugin_action(action)
+        logger.info(
+            "Dispatching plugin action user=%s mode=%s action=%s",
+            user_id,
+            agent_mode,
+            _describe_action(action),
+        )
+        result = await execute_plugin_action(action)
+        if result.get("error"):
+            logger.warning(
+                "Plugin action returned error user=%s action=%s error=%s",
+                user_id,
+                _describe_action(action),
+                result["error"],
+            )
+        return result
     elif action_type == "shell":
         if agent_mode != "terminal":
+            logger.warning(
+                "Rejected shell action outside terminal mode user=%s mode=%s action=%s",
+                user_id,
+                agent_mode,
+                _describe_action(action),
+            )
             return {"error": "Shell commands only allowed in terminal mode"}
         from app.services.container_service import exec_in_container
         from app.services.sandbox import is_command_safe
 
         command = action.get("command", "")
         command = _preprocess_shell_command(command)
+        logger.info(
+            "Dispatching shell action user=%s mode=%s command=%s",
+            user_id,
+            agent_mode,
+            _truncate_for_log(command),
+        )
 
         safe, reason = is_command_safe(command)
         if not safe:
+            logger.warning(
+                "Blocked shell command user=%s command=%s reason=%s",
+                user_id,
+                _truncate_for_log(command),
+                reason,
+            )
             return {"error": f"Command blocked: {reason}", "exit_code": -1}
 
         if user_id and user_token:
-            return await exec_in_container(user_id, command, user_token)
+            result = await exec_in_container(user_id, command, user_token)
         else:
             from app.services.sandbox import execute_shell
 
-            return await execute_shell(command)
+            logger.info(
+                "Executing shell via local sandbox user=%s command=%s",
+                user_id,
+                _truncate_for_log(command),
+            )
+            result = await execute_shell(command)
+        if result.get("error"):
+            logger.warning(
+                "Shell action returned error user=%s command=%s error=%s",
+                user_id,
+                _truncate_for_log(command),
+                result["error"],
+            )
+        else:
+            logger.info(
+                "Shell action completed user=%s command=%s exit_code=%s",
+                user_id,
+                _truncate_for_log(command),
+                result.get("exit_code"),
+            )
+        return result
     else:
+        logger.warning("Unknown action type user=%s action=%s", user_id, action)
         return {"error": f"Unknown action type: {action_type}"}

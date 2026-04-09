@@ -231,6 +231,12 @@ export function useAIChat() {
             const allActions = data.actions as AgentAction[] | undefined;
             const isMulti = allActions && allActions.length > 1;
             const status = agentMode === "semi_auto" ? "proposed" : "executing";
+            console.info("[AI Agent] action", {
+              agentMode,
+              action,
+              actions: allActions,
+              currentTurn: data.turn,
+            });
             expectedResults = isMulti ? allActions.length : 1;
             receivedResults = 0;
             setMessages((prev) => {
@@ -259,6 +265,11 @@ export function useAIChat() {
             });
           } else if (event === "action_result") {
             const result = data.result as AgentActionResult;
+            console.info("[AI Agent] action_result", {
+              agentMode,
+              action: data.action,
+              result,
+            });
             receivedResults++;
             const allDone = receivedResults >= expectedResults;
 
@@ -293,10 +304,16 @@ export function useAIChat() {
             }
           } else if (event === "action_error") {
             const errorType = data.error_type as string;
+            const errResult: AgentActionResult = { error: (data.error as string) || "Unknown error" };
+            console.error("[AI Agent] action_error", {
+              agentMode,
+              action: data.action,
+              errorType,
+              error: errResult.error,
+            });
             receivedResults++;
             if (expectedResults > 1) {
               // Multi-action error: accumulate
-              const errResult: AgentActionResult = { error: (data.error as string) || "Unknown error" };
               const allDone = receivedResults >= expectedResults;
               setMessages((prev) => {
                 const updated = [...prev];
@@ -318,11 +335,23 @@ export function useAIChat() {
             } else if (errorType === "malformed") {
               assistantContent = "";
               setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+            } else {
+              assistantContent = "";
+              setMessages((prev) => {
+                const updated = [...prev];
+                const last = updated.length - 1;
+                updated[last] = { ...updated[last], actionResult: errResult, actionStatus: "done" };
+                return [...updated, { role: "assistant", content: "" }];
+              });
             }
           } else if (event === "waiting") {
             // semi_auto: action card already shows confirm buttons
           } else if (event === "done") {
             doneReasonRef.current = (data.reason as string) || null;
+            console.info("[AI Agent] done", {
+              agentMode,
+              reason: doneReasonRef.current,
+            });
             streamDone = true;
             break;
           }

@@ -310,6 +310,15 @@ async def agent(
 ):
     from app.services.knowledge_service import create_session, finalize_session
 
+    logger.info(
+        "Agent request received user=%s mode=%s security=%s messages=%d max_turns=%s",
+        user.id,
+        body.agent_mode,
+        body.security_mode,
+        len(body.messages),
+        body.max_turns,
+    )
+
     ai = await _get_ai_settings(session, user.id)
     if not ai:
         raise HTTPException(status_code=400, detail="AI not configured")
@@ -374,10 +383,29 @@ async def agent(
                 base_url=base_url,
             ):
                 collected.append(evt)
+                if evt.get("event") == "action_error":
+                    logger.warning(
+                        "Agent SSE action_error session=%s user=%s payload=%s",
+                        agent_session.id,
+                        user.id,
+                        evt.get("data"),
+                    )
                 if evt.get("event") == "done":
                     done_reason_holder[0] = evt.get("data", {}).get("reason", "complete")
+                    logger.info(
+                        "Agent SSE done session=%s user=%s reason=%s",
+                        agent_session.id,
+                        user.id,
+                        done_reason_holder[0],
+                    )
                 yield f"data: {json.dumps(evt, default=str)}\n\n"
         except Exception:
+            logger.exception(
+                "Agent SSE stream failed session=%s user=%s mode=%s",
+                agent_session.id,
+                user.id,
+                body.agent_mode,
+            )
             # Client disconnect or other error — mark as aborted
             if done_reason_holder[0] == "complete":
                 done_reason_holder[0] = "aborted"

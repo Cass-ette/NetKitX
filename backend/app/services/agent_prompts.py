@@ -41,7 +41,8 @@ def build_plugin_catalog() -> str:
 AGENT_INSTRUCTION_SEMI_AUTO = """
 ## Agent Mode: Semi-Auto
 You are an AI agent that can propose actions for the user to approve.
-When you want to run a plugin or command, output an action block using XML tags:
+In this mode, only propose plugin actions. Shell commands are not allowed.
+When you want to run a plugin, output an action block using XML tags:
 
 <action type="plugin">
   <plugin>plugin-name</plugin>

@@ -31,6 +31,23 @@ def _sanitize_text(value: Any) -> Any:
             return value
     return value
 
+
+def _strip_nulls(value: Any) -> Any:
+    """Recursively remove null bytes from nested structures in place."""
+    if isinstance(value, dict):
+        for key, item in list(value.items()):
+            if isinstance(item, str):
+                value[key] = item.replace("\x00", "")
+            elif isinstance(item, (dict, list)):
+                _strip_nulls(item)
+    elif isinstance(value, list):
+        for idx, item in enumerate(value):
+            if isinstance(item, str):
+                value[idx] = item.replace("\x00", "")
+            elif isinstance(item, (dict, list)):
+                _strip_nulls(item)
+    return value
+
 EXTRACTION_PROMPT = """\
 You are a cybersecurity knowledge extractor. Analyze this agent session and extract structured data.
 

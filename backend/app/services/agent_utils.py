@@ -1,11 +1,14 @@
 """Agent utility functions: action parsing, compression, error classification, stagnation detection."""
 
 import json
+import logging
 import re
 from difflib import SequenceMatcher
 from typing import Any
 
 from app.plugins.registry import registry
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -103,10 +106,13 @@ async def execute_plugin_action(action: dict[str, Any]) -> dict[str, Any]:
     """Execute a plugin action and return the result."""
     plugin_name = action.get("plugin", "")
     params = action.get("params", {})
+    logger.info("Executing plugin action plugin=%s params=%s", plugin_name, json.dumps(params))
     plugin = registry.get(plugin_name)
     if not plugin:
+        logger.warning("Plugin action failed: plugin '%s' not found or not enabled", plugin_name)
         return {"error": f"Plugin '{plugin_name}' not found or not enabled"}
     if not registry.is_enabled(plugin_name):
+        logger.warning("Plugin action failed: plugin '%s' is disabled", plugin_name)
         return {"error": f"Plugin '{plugin_name}' is disabled"}
     results: list[dict] = []
     logs: list[str] = []
@@ -117,9 +123,27 @@ async def execute_plugin_action(action: dict[str, Any]) -> dict[str, Any]:
             elif event.type == "log":
                 logs.append(event.data.get("message", str(event.data)))
             elif event.type == "error":
-                return {"error": event.data.get("message", str(event.data))}
+                logger.warning(
+                    "Plugin action emitted error plugin=%s error=%s",
+                    plugin_name,
+                    event.data,
+                )
+                if isinstance(event.data, dict):
+                    return {
+                        "error": event.data.get("message")
+                        or event.data.get("error")
+                        or str(event.data)
+                    }
+                return {"error": str(event.data)}
     except Exception as e:
+        logger.exception("Plugin action crashed plugin=%s", plugin_name)
         return {"error": str(e)}
+    logger.info(
+        "Plugin action completed plugin=%s results=%d logs=%d",
+        plugin_name,
+        len(results),
+        len(logs),
+    )
     return {"items": results, "logs": logs}
 
 
