@@ -19,6 +19,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   worker:
@@ -37,10 +43,14 @@ services:
     depends_on:
       - backend
       - redis
+    healthcheck:
+      disable: true
     command: celery -A app.workers.celery_app worker --loglevel=info
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      target: dev
     ports:
       - "3000:3000"
     environment:
@@ -49,7 +59,6 @@ services:
       - ./frontend/src:/app/src
     depends_on:
       - backend
-    command: npm run dev
 
   db:
     image: pgvector/pgvector:pg16
