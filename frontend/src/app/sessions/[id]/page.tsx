@@ -8,8 +8,9 @@ import { useTranslations } from "@/i18n/use-translations";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, User, Bot, Sparkles, Loader2, BookOpen } from "lucide-react";
+import { ArrowLeft, User, Bot, Sparkles, Loader2, BookOpen, TerminalSquare } from "lucide-react";
 import { AgentActionCard } from "@/components/ai/agent-action-card";
+import { AgentOutputBlock } from "@/components/ai/agent-output-block";
 import { stripActionTags } from "@/lib/agent-utils";
 import ReactMarkdown from "react-markdown";
 import type { AgentSessionDetail, SessionTurn, AgentAction, AgentActionResult, KnowledgeEntry } from "@/types";
@@ -179,6 +180,7 @@ export default function SessionDetailPage() {
 }
 
 function TurnCard({ turn }: { turn: SessionTurn }) {
+  const { t } = useTranslations("ai");
   const assistantContent = turn.role === "assistant" ? stripActionTags(turn.content) : turn.content;
 
   if (turn.role === "user") {
@@ -199,21 +201,52 @@ function TurnCard({ turn }: { turn: SessionTurn }) {
   if (turn.role === "action_result") {
     const result = turn.action_result as AgentActionResult | undefined;
     if (!result) return null;
+    const logsOutput = result.logs?.join("\n");
+    const itemsOutput = result.items?.length ? JSON.stringify(result.items, null, 2) : "";
+    const hasStructuredOutput = Boolean(
+      result.error || logsOutput || result.stdout || result.stderr || itemsOutput,
+    );
+
     return (
       <div className="flex gap-3 items-start pl-11">
-        <Card className="flex-1 max-w-[80%] border-muted">
-          <CardContent className="p-3 text-xs space-y-1">
-            {result.error ? (
-              <p className="text-destructive">{result.error}</p>
-            ) : result.items ? (
-              <p className="text-green-600">{result.items.length} result(s)</p>
-            ) : result.stdout ? (
-              <pre className="font-mono text-muted-foreground bg-muted rounded p-1.5 max-h-32 overflow-y-auto whitespace-pre-wrap">
-                {result.stdout.slice(0, 1000)}
-              </pre>
-            ) : null}
-          </CardContent>
-        </Card>
+        <div className="flex-1 max-w-[80%] space-y-2">
+          <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+            <TerminalSquare className="h-3.5 w-3.5" />
+            <span>{t("actionOutput")}</span>
+            {result.exit_code != null && (
+              <span className="rounded-full border border-border px-2 py-0.5 tracking-normal normal-case">
+                {t("actionExitCode", { code: result.exit_code })}
+              </span>
+            )}
+          </div>
+
+          {result.error && (
+            <AgentOutputBlock
+              title={t("actionErrorOutput")}
+              content={result.error}
+              tone="error"
+            />
+          )}
+          {logsOutput && (
+            <AgentOutputBlock title={t("actionLogs")} content={logsOutput} />
+          )}
+          {result.stdout && (
+            <AgentOutputBlock title={t("actionOutput")} content={result.stdout} />
+          )}
+          {result.stderr && (
+            <AgentOutputBlock
+              title={t("actionErrorOutput")}
+              content={result.stderr}
+              tone="error"
+            />
+          )}
+          {itemsOutput && (
+            <AgentOutputBlock title={t("actionResults")} content={itemsOutput} />
+          )}
+          {!hasStructuredOutput && (
+            <AgentOutputBlock title={t("actionOutput")} content="" />
+          )}
+        </div>
       </div>
     );
   }

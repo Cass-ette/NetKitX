@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Play, SkipForward, CheckCircle, Terminal, Plug, ExternalLink } from "lucide-react";
 import { useTranslations } from "@/i18n/use-translations";
 import Link from "next/link";
+import { AgentOutputBlock } from "@/components/ai/agent-output-block";
 import type { AgentAction, AgentActionResult } from "@/types";
 
 interface AgentActionCardProps {
@@ -24,9 +25,11 @@ export function AgentActionCard({
   onConfirm,
 }: AgentActionCardProps) {
   const { t } = useTranslations("ai");
+  const logsOutput = result?.logs?.join("\n");
+  const itemsOutput = result?.items?.length ? JSON.stringify(result.items, null, 2) : "";
 
   return (
-    <Card className="border-primary/30 bg-primary/5 w-full max-w-[80%]">
+    <Card className="w-full border-primary/30 bg-primary/5">
       <CardContent className="p-3 space-y-2">
         {/* Header */}
         <div className="flex items-center gap-2">
@@ -88,14 +91,23 @@ export function AgentActionCard({
         {status === "done" && result && (
           <div className="text-xs space-y-1">
             {result.error ? (
-              <p className="text-destructive">{result.error}</p>
+              <AgentOutputBlock
+                title={t("actionErrorOutput")}
+                content={result.error}
+                tone="error"
+              />
             ) : (result.exit_code != null && result.exit_code !== 0) ? (
               <div className="space-y-1">
-                <p className="text-destructive">Exit: {result.exit_code}</p>
+                <p className="text-destructive">{t("actionExitCode", { code: result.exit_code })}</p>
                 {result.stderr && (
-                  <pre className="font-mono text-destructive/80 bg-muted rounded p-1.5 max-h-24 overflow-y-auto whitespace-pre-wrap">
-                    {result.stderr.slice(0, 500)}
-                  </pre>
+                  <AgentOutputBlock
+                    title={t("actionErrorOutput")}
+                    content={result.stderr}
+                    tone="error"
+                  />
+                )}
+                {result.stdout && (
+                  <AgentOutputBlock title={t("actionOutput")} content={result.stdout} />
                 )}
               </div>
             ) : (
@@ -104,9 +116,9 @@ export function AgentActionCard({
                   <CheckCircle className="h-3 w-3" />
                   <span>
                     {result.items
-                      ? `${result.items.length} result(s)`
+                      ? t("actionResultCount", { count: result.items.length })
                       : result.stdout
-                        ? `Exit: 0`
+                        ? t("actionExitCode", { code: 0 })
                         : t("agentDone")}
                   </span>
                   {taskId && (
@@ -119,10 +131,21 @@ export function AgentActionCard({
                     </Link>
                   )}
                 </div>
+                {logsOutput && (
+                  <AgentOutputBlock title={t("actionLogs")} content={logsOutput} />
+                )}
                 {result.stdout && (
-                  <pre className="font-mono text-muted-foreground bg-muted rounded p-1.5 max-h-24 overflow-y-auto whitespace-pre-wrap">
-                    {result.stdout.slice(0, 500)}{result.stdout.length > 500 ? "…" : ""}
-                  </pre>
+                  <AgentOutputBlock title={t("actionOutput")} content={result.stdout} />
+                )}
+                {result.stderr && (
+                  <AgentOutputBlock
+                    title={t("actionErrorOutput")}
+                    content={result.stderr}
+                    tone="error"
+                  />
+                )}
+                {itemsOutput && (
+                  <AgentOutputBlock title={t("actionResults")} content={itemsOutput} />
                 )}
               </div>
             )}
