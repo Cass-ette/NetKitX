@@ -13,7 +13,6 @@ services:
     volumes:
       - ./backend:/app
       - ./plugins:/app/plugins
-      - ./engines/bin:/app/engines/bin
     depends_on:
       db:
         condition: service_healthy
@@ -39,7 +38,6 @@ services:
     volumes:
       - ./backend:/app
       - ./plugins:/app/plugins
-      - ./engines/bin:/app/engines/bin
     depends_on:
       - backend
       - redis
