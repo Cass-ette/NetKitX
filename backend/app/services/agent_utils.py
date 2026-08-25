@@ -307,7 +307,8 @@ def _extract_shell_pattern(cmd: str) -> str:
             method = m.group(1) or m.group(2)
         url_m = _URL_RE.search(cmd)
         if url_m:
-            return f"curl:{method}:{url_m.group(1)}"
+            path = url_m.group(2).split("?")[0] or "/"
+            return f"curl:{method}:{url_m.group(1)}{path}"
         return "curl:nohost"
 
     if base_cmd == "nmap":
