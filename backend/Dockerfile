@@ -1,3 +1,11 @@
+# Build Go engines (linux binaries so plugins work inside the container)
+FROM golang:1.24-alpine AS engines
+WORKDIR /src/engines
+COPY engines/ ./
+RUN go build -o /out/portscan ./cmd/portscan && \
+    go build -o /out/subdomain ./cmd/subdomain && \
+    go build -o /out/fingerprint ./cmd/fingerprint
+
 # Build stage
 FROM python:3.11-slim as builder
 
@@ -41,6 +49,9 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application code
 COPY backend/ .
+
+# Copy Go engine binaries built for the container platform
+COPY --from=engines /out /app/engines/bin
 
 # Create non-root user
 RUN useradd -m -u 1000 netkitx && \
